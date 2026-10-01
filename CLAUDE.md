@@ -29,7 +29,8 @@ En producción TaskFlow no tiene dominio propio: vive en una ruta de `sistemas.r
 - Toda URL se genera con `{% url %}`, `reverse()`, `redirect("nombre")` o `{% static %}`;
   **nunca** rutas absolutas escritas a mano (`href="/tarjetas/"`, `fetch("/api/…")`), que en
   producción saltarían fuera de `/taskflow/` y caerían en actividades-uaz.
-- `STATIC_URL` y `MEDIA_URL` son relativas (`static/`) a propósito; no anteponerles `/`.
+- `STATIC_URL` y `MEDIA_URL` se arman con `RUTA_BASE` (`/taskflow/static/`); no volverlas relativas
+  (`static/`): con gunicorn quedan en caché sin el prefijo y el admin pierde los estilos.
 - Las cookies tienen nombre propio (`taskflow_sessionid`, `taskflow_csrftoken`); en JS, leer el
   CSRF de `taskflow_csrftoken`, no de `csrftoken`.
 - Lo que deba responder igual con o sin prefijo (como `/healthz/`) se compara contra

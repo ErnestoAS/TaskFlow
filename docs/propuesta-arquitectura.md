@@ -136,3 +136,8 @@ navegación y las pantallas.
 - (2026-10-01) Las migraciones de `tarjetas` quedaron en `0001_initial` y `0002_initial` porque se
   generaron en la misma corrida que `usuarios`. Es válido; si se prefiere una sola, borrar ambas y
   regenerar antes del primer despliegue.
+- (2026-10-01) **Estilos del admin rotos en producción** (versión `2df6d82`): `STATIC_URL` relativa
+  (`static/`) quedaba en caché sin el prefijo porque gunicorn la lee al cargar WhiteNoise, antes de
+  fijar `FORCE_SCRIPT_NAME`; el HTML pedía `/static/…` y caía en actividades-uaz. Se arma ahora con
+  el prefijo explícito (`RUTA_BASE + "static/"`); WhiteNoise le quita `FORCE_SCRIPT_NAME` para
+  servirla. Prueba: `apps/core/tests/test_smoke.py::test_estaticos_con_prefijo`.

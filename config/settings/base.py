@@ -124,14 +124,18 @@ CSRF_COOKIE_PATH = RUTA_BASE
 
 
 # Archivos estáticos y media
-# Rutas relativas a propósito: Django les antepone FORCE_SCRIPT_NAME (/taskflow/static/).
+# Con el prefijo explícito (/taskflow/static/). No usar rutas relativas ("static/"): Django les
+# antepone el prefijo solo si ya está fijado la primera vez que se lee STATIC_URL, y con gunicorn
+# esa primera lectura ocurre al cargar WhiteNoise, antes de cualquier petición; el valor queda en
+# caché sin prefijo y el admin pide sus estilos a /static/, fuera de /taskflow/ (2026-10-01).
+# WhiteNoise le quita FORCE_SCRIPT_NAME por su cuenta para comparar con la ruta ya sin prefijo.
 
 STATICFILES_DIRS = [BASE_DIR / "static"]
 STATIC_ROOT = env.path("DJANGO_STATIC_ROOT", default=BASE_DIR / "staticfiles")
-STATIC_URL = "static/"
+STATIC_URL = RUTA_BASE + "static/"
 
 MEDIA_ROOT = env.path("DJANGO_MEDIA_ROOT", default=BASE_DIR / "media")
-MEDIA_URL = "media/"
+MEDIA_URL = RUTA_BASE + "media/"
 
 STORAGES = {
     "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
