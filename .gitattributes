@@ -1,0 +1,6 @@
+# Normaliza finales de línea: los scripts deben ser LF para ejecutarse en los contenedores.
+* text=auto eol=lf
+*.png binary
+*.jpg binary
+*.ico binary
+*.woff2 binary

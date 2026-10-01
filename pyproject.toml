@@ -1,0 +1,40 @@
+[project]
+name = "taskflow"
+version = "0.1.0"
+description = "Gestor de tarjetas para organizar actividades."
+readme = "README.md"
+requires-python = ">=3.13,<3.14"
+dependencies = [
+    "django>=5.2,<5.3",               # LTS (soporte hasta abril 2028)
+    "psycopg[binary]>=3.3,<3.4",
+    "django-environ>=0.14,<0.15",
+    "whitenoise>=6.12,<7",
+    "gunicorn>=26,<27",
+]
+
+[dependency-groups]
+dev = [
+    "django-debug-toolbar>=6",
+    "pytest>=8",
+    "pytest-django>=4.11",
+    "ruff>=0.13",
+]
+
+[tool.uv]
+package = false
+
+[tool.pytest.ini_options]
+python_files = ["tests.py", "test_*.py"]
+# --ds tiene prioridad sobre DJANGO_SETTINGS_MODULE del contenedor.
+addopts = "--ds=config.settings.test --reuse-db"
+
+[tool.ruff]
+line-length = 100
+target-version = "py313"
+extend-exclude = ["**/migrations/*"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "DJ"]
+
+[tool.ruff.lint.per-file-ignores]
+"config/settings/*.py" = ["F403", "F405"]

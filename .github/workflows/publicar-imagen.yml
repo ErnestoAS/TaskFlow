@@ -1,0 +1,121 @@
+# Pruebas y publicación de la imagen de producción en GitHub Container Registry (ghcr.io).
+#
+# Se ejecuta con cada push a main (p. ej. al hacer merge de un PR) y a mano desde la pestaña
+# Actions. Si las pruebas fallan no se publica nada. La imagen queda como
+#   ghcr.io/ernestoas/taskflow:<commit corto>   y   ghcr.io/ernestoas/taskflow:latest
+# y el servidor la descarga con `docker pull` (docs/operacion.md, «Despliegue de una versión»).
+name: Pruebas y publicación de la imagen
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# Un despliegue a la vez; uno nuevo espera al anterior en vez de cancelarlo.
+concurrency:
+  group: publicar-imagen
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  # ghcr.io exige minúsculas; el repositorio es ErnestoAS/TaskFlow.
+  IMAGEN: ghcr.io/ernestoas/taskflow
+
+jobs:
+  pruebas:
+    name: Lint, migraciones y pruebas
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    services:
+      db:
+        image: postgres:18-alpine
+        env:
+          POSTGRES_DB: taskflow
+          POSTGRES_USER: taskflow
+          POSTGRES_PASSWORD: taskflow
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U taskflow -d taskflow"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgres://taskflow:taskflow@localhost:5432/taskflow
+      DJANGO_SETTINGS_MODULE: config.settings.test
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: astral-sh/setup-uv@v6
+        with:
+          python-version: "3.13"
+          enable-cache: true
+
+      - name: Instalar dependencias (uv.lock)
+        run: uv sync --frozen
+
+      - name: Ruff
+        run: |
+          uv run ruff check .
+          uv run ruff format --check .
+
+      - name: Migraciones al día
+        run: uv run python manage.py makemigrations --check --dry-run
+
+      - name: Pruebas
+        run: uv run pytest -q -p no:cacheprovider
+
+  imagen:
+    name: Construir y publicar la imagen
+    needs: pruebas
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # Etiquetas: el commit corto (igual que `git rev-parse --short HEAD`) y `latest`.
+      - id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.IMAGEN }}
+          tags: |
+            type=sha,prefix=,format=short
+            type=raw,value=latest
+
+      # La caché de GitHub Actions reutiliza las capas sin cambios (dependencias de Python):
+      # construye más rápido y el servidor solo descarga las capas que cambiaron.
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          target: production
+          push: true
+          provenance: false
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Resumen
+        run: |
+          {
+            echo "### Imagen publicada"
+            echo
+            echo '```'
+            echo "${{ steps.meta.outputs.tags }}"
+            echo '```'
+            echo
+            echo "En el servidor: \`taskflow desplegar ${GITHUB_SHA::7}\`"
+          } >> "$GITHUB_STEP_SUMMARY"
