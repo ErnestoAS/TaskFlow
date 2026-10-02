@@ -22,6 +22,7 @@ from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.shortcuts import get_object_or_404
+from django.utils import timezone
 from django.views.decorators.csrf import ensure_csrf_cookie
 from rest_framework import status
 from rest_framework.authentication import SessionAuthentication
@@ -39,6 +40,8 @@ from apps.proyectos import servicios as sp
 from apps.proyectos.models import PERMISOS, Invitacion, Proyecto, TipoTarjeta
 from apps.tarjetas import servicios as st
 from apps.tarjetas.models import ORDEN_PRIORIDAD, Estatus, Tarjeta
+from apps.usuarios import servicios as su
+from apps.usuarios.models import CodigoCorreo
 
 from . import representacion as rep
 
@@ -93,13 +96,31 @@ def _ordenar(tarjetas):
     )
 
 
-def _datos_usuario(request, obligatorio_correo=True):
-    nombre = (request.data.get("nombre") or "").strip()
-    apellidos = (request.data.get("apellidos") or "").strip()
-    password = request.data.get("password") or ""
+def _nombre(request, actual=None) -> dict:
+    """Nombre y apellidos de la petición; el primer apellido es obligatorio (§4.3)."""
+    actual = actual or {}
+    datos = {
+        campo: (request.data.get(campo, actual.get(campo, "")) or "").strip()
+        for campo in ("nombre", "primer_apellido", "segundo_apellido")
+    }
     errores = {}
-    if not nombre:
+    if not datos["nombre"]:
         errores["nombre"] = ["Escribe tu nombre."]
+    if not datos["primer_apellido"]:
+        errores["primer_apellido"] = ["Escribe tu primer apellido."]
+    if errores:
+        raise ValidationError(errores)
+    return datos
+
+
+def _datos_usuario(request, obligatorio_correo=True):
+    errores = {}
+    try:
+        nombre = _nombre(request)
+    except ValidationError as e:
+        nombre = {}
+        errores.update(e.message_dict)
+    password = request.data.get("password") or ""
     correo = ""
     if obligatorio_correo:
         correo = (request.data.get("correo") or "").strip().lower()
@@ -108,12 +129,12 @@ def _datos_usuario(request, obligatorio_correo=True):
         elif Usuario.objects.filter(email__iexact=correo).exists():
             errores["correo"] = ["Ya existe una cuenta con ese correo. Entra con ella."]
     try:
-        validate_password(password, Usuario(email=correo, nombre=nombre, apellidos=apellidos))
+        validate_password(password, Usuario(email=correo, **nombre))
     except ValidationError as e:
         errores["password"] = e.messages
     if errores:
         raise ValidationError(errores)
-    return nombre, apellidos, correo, password
+    return nombre, correo, password
 
 
 # ---------------------------------------------------------------------------------------------
@@ -136,6 +157,18 @@ def csrf(request):
     )
 
 
+def _por_verificar(u):
+    """Respuesta para una cuenta que aún no confirma su correo: la PWA pasa a capturar el código."""
+    return Response(
+        {
+            "detalle": f"Confirma tu correo: te enviamos un código a {u.email}.",
+            "verificar": True,
+            "correo": u.email,
+        },
+        status=status.HTTP_403_FORBIDDEN,
+    )
+
+
 @api_view(["POST"])
 @authentication_classes([SesionConCsrf])
 @permission_classes([AllowAny])
@@ -148,6 +181,12 @@ def entrar(request):
         return Response(
             {"detalle": "Correo o contraseña incorrectos."}, status=status.HTTP_400_BAD_REQUEST
         )
+    if not u.correo_verificado:
+        try:
+            su.enviar_codigo(u, CodigoCorreo.Proposito.VERIFICAR)
+        except ValidationError:
+            pass  # Se mandó uno hace poco: sigue valiendo ese.
+        return _por_verificar(u)
     login(request, u)
     return Response(rep.usuario(u))
 
@@ -163,26 +202,77 @@ def salir(request):
 @permission_classes([AllowAny])
 @throttle_classes([LimiteAcceso])
 def registro(request):
+    """Crea la cuenta sin sesión y manda el código; se entra al confirmarlo (auth/verificar/)."""
     if not settings.TASKFLOW_REGISTRO_ABIERTO:
         return Response({"detalle": "El registro está cerrado. Pide una invitación."}, status=403)
-    nombre, apellidos, correo, password = _datos_usuario(request)
-    u = Usuario.objects.create_user(correo, password, nombre=nombre, apellidos=apellidos)
+    nombre, correo, password = _datos_usuario(request)
+    with transaction.atomic():
+        u = Usuario.objects.create_user(correo, password, **nombre)
+        su.enviar_codigo(u, CodigoCorreo.Proposito.VERIFICAR)
+    return Response({"verificar": True, "correo": u.email}, status=status.HTTP_201_CREATED)
+
+
+def _entrar_con(request, u):
     login(request, u, backend="django.contrib.auth.backends.ModelBackend")
-    return Response(rep.usuario(u), status=status.HTTP_201_CREATED)
+    return Response(rep.usuario(u))
+
+
+@api_view(["POST"])
+@authentication_classes([SesionConCsrf])
+@permission_classes([AllowAny])
+@throttle_classes([LimiteAcceso])
+def verificar(request):
+    u = su.verificar_correo(request.data.get("correo"), request.data.get("codigo"))
+    return _entrar_con(request, u)
+
+
+@api_view(["POST"])
+@authentication_classes([SesionConCsrf])
+@permission_classes([AllowAny])
+@throttle_classes([LimiteAcceso])
+def reenviar_verificacion(request):
+    su.pedir_verificacion(request.data.get("correo"))
+    return Response({"ok": True})
+
+
+@api_view(["POST"])
+@authentication_classes([SesionConCsrf])
+@permission_classes([AllowAny])
+@throttle_classes([LimiteAcceso])
+def recuperar(request):
+    """Responde igual exista o no la cuenta, para no revelar qué correos están registrados."""
+    su.pedir_recuperacion(request.data.get("correo"))
+    return Response({"ok": True})
+
+
+@api_view(["POST"])
+@authentication_classes([SesionConCsrf])
+@permission_classes([AllowAny])
+@throttle_classes([LimiteAcceso])
+def recuperar_confirmar(request):
+    d = request.data
+    u = su.restablecer_password(d.get("correo"), d.get("codigo"), d.get("password") or "")
+    return _entrar_con(request, u)
 
 
 @api_view(["GET", "PATCH"])
 def yo(request):
     u = request.user
+    campos = ("nombre", "primer_apellido", "segundo_apellido")
     if request.method == "PATCH":
-        nombre = (request.data.get("nombre", u.nombre) or "").strip()
-        if not nombre:
-            raise ValidationError({"nombre": "Escribe tu nombre."})
-        u.nombre = nombre
-        u.apellidos = (request.data.get("apellidos", u.apellidos) or "").strip()
-        u.save(update_fields=["nombre", "apellidos", "actualizado_en"])
+        datos = _nombre(request, actual={c: getattr(u, c) for c in campos})
+        for campo, valor in datos.items():
+            setattr(u, campo, valor)
+        u.save(update_fields=[*campos, "actualizado_en"])
     # Además del nombre completo, los campos por separado para el formulario del perfil.
-    return Response({**rep.usuario(u), "nombre_pila": u.nombre, "apellidos": u.apellidos})
+    return Response(
+        {
+            **rep.usuario(u),
+            "nombre_pila": u.nombre,
+            "primer_apellido": u.primer_apellido,
+            "segundo_apellido": u.segundo_apellido,
+        }
+    )
 
 
 @api_view(["POST"])
@@ -337,9 +427,12 @@ def registro_por_invitacion(request, token):
         raise ValidationError("La invitación ya se usó o fue cancelada.")
     if Usuario.objects.filter(email__iexact=inv.correo).exists():
         raise ValidationError("Ya existe una cuenta con ese correo: entra con ella para aceptar.")
-    nombre, apellidos, _, password = _datos_usuario(request, obligatorio_correo=False)
+    nombre, _, password = _datos_usuario(request, obligatorio_correo=False)
     with transaction.atomic():
-        u = Usuario.objects.create_user(inv.correo, password, nombre=nombre, apellidos=apellidos)
+        # El enlace llegó a ese correo: queda verificado sin pedir código (§7).
+        u = Usuario.objects.create_user(
+            inv.correo, password, correo_verificado_en=timezone.now(), **nombre
+        )
         m = sp.aceptar_invitacion(token, u)
     login(request, u, backend="django.contrib.auth.backends.ModelBackend")
     return Response(

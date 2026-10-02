@@ -29,7 +29,7 @@ const router = useRouter();
 
 const info = ref<InfoInvitacion | null>(null);
 const noExiste = ref(false);
-const form = reactive({ nombre: "", apellidos: "", password: "" });
+const form = reactive({ nombre: "", primer_apellido: "", segundo_apellido: "", password: "" });
 const errores = ref<Record<string, string>>({});
 const errorGeneral = ref("");
 const ocupado = ref(false);
@@ -144,8 +144,13 @@ async function cambiarDeCuenta() {
             <div v-if="errores.nombre" class="error">{{ errores.nombre }}</div>
           </div>
           <div class="campo">
-            <label for="apellidos">Apellidos <span style="text-transform: none; font-weight: 400">(opcional)</span></label>
-            <input id="apellidos" v-model="form.apellidos" type="text" autocomplete="family-name" />
+            <label for="primer_apellido">Primer apellido</label>
+            <input id="primer_apellido" v-model="form.primer_apellido" type="text" autocomplete="family-name" />
+            <div v-if="errores.primer_apellido" class="error">{{ errores.primer_apellido }}</div>
+          </div>
+          <div class="campo">
+            <label for="segundo_apellido">Segundo apellido <span style="text-transform: none; font-weight: 400">(opcional)</span></label>
+            <input id="segundo_apellido" v-model="form.segundo_apellido" type="text" autocomplete="off" />
           </div>
           <div class="campo">
             <label for="password">Contraseña</label>

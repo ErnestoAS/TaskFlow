@@ -4,8 +4,10 @@
 > invitaciones, tipos e historial, §4.5) implementadas el 2026-10-01. **Etapa 3 (API `/api/v1/`,
 > PWA y portada de instalación, §5–§7) implementada el 2026-10-01**, sin desplegar todavía.
 > CI (GitHub Actions + ghcr.io) y despliegue en `https://sistemas.reduaz.mx/taskflow/` en
-> producción desde el 2026-10-01 (versión `f6d2e40`, solo Etapa 1).
-> **Fecha:** 2026-10-01
+> producción desde el 2026-10-01 (versión `f6d2e40`, solo Etapa 1). **Cuentas con correo
+> verificado, recuperación de contraseña y apellidos separados** implementados el 2026-10-02
+> (§4.3, §7), sin desplegar.
+> **Fecha:** 2026-10-02
 > **Alcance:** describe el funcionamiento general y el esquema. Lo pendiente de decidir está en
 > [§10](#10-preguntas-abiertas); los ajustes hechos al implementar, en [§11](#11-notas-de-implementación).
 
@@ -36,7 +38,7 @@ tiene sitios públicos ni unidades, así que esas piezas solo agregarían comple
 ```
 apps/
 ├── core/        TimeStampedModel, /healthz/, portada (/), entrega de la PWA (/app/)
-├── usuarios/    Usuario (AUTH_USER_MODEL)
+├── usuarios/    Usuario (AUTH_USER_MODEL), CodigoCorreo + servicios (verificar, recuperar)
 ├── proyectos/   Proyecto, MiembroProyecto, Invitacion, TipoTarjeta + servicios (reglas)
 ├── tarjetas/    Tarjeta, CambioEstatus + servicios (reglas)
 └── api/         /api/v1/: vistas finas que llaman a los servicios; sin reglas propias
@@ -68,6 +70,7 @@ erDiagram
     TIPO_TARJETA }o--o{ TARJETA : "tipos (uno o más)"
     TARJETA ||--o{ CAMBIO_ESTATUS : "historial"
     USUARIO ||--o{ CAMBIO_ESTATUS : "hizo el cambio"
+    USUARIO ||--o{ CODIGO_CORREO : "verificar o recuperar"
 ```
 
 ### 4.2 Campos comunes
@@ -81,12 +84,43 @@ erDiagram
 | Campo | Tipo | Notas |
 | --- | --- | --- |
 | `email` | Email, único | Credencial de acceso. Se guarda en minúsculas y hay restricción única sin distinguir mayúsculas (`usuario_email_unico_ci`). |
-| `nombre`, `apellidos` | Texto, opcionales | Para mostrar a quién está asignada una tarjeta. |
+| `nombre` | Texto | Obligatorio al registrarse y en el perfil (lo exige la API). |
+| `primer_apellido` | Texto (100) | Obligatorio al registrarse y en el perfil. |
+| `segundo_apellido` | Texto (100), opcional | Hay personas con un solo apellido (y extranjeros). |
+| `correo_verificado_en` | Fecha y hora, nula | Nula = la cuenta no ha confirmado su correo y **no puede entrar a la app**. Fecha y no booleano, para saber desde cuándo (igual que `archivado_en`). |
 | `is_active`, `is_staff`, permisos | | Los de Django. |
 
 Extiende `AbstractBaseUser` y no `AbstractUser` para no arrastrar `username`: una sola credencial
 (el correo) evita que dos campos digan cosas distintas. Se definió desde la primera migración porque
 cambiar `AUTH_USER_MODEL` después es muy costoso.
+
+Los nombres van en la base **por separado y sin obligatoriedad** (`blank=True`): el superusuario
+se crea sin nombre y el admin no debe exigirlo. La obligatoriedad de nombre y primer apellido la
+aplica la API al registrarse y al editar el perfil. `nombre_completo` = nombre + primer apellido
++ segundo apellido, omitiendo los vacíos.
+
+**Quién queda verificado sin código:** quien se registra desde una **invitación** (el enlace llegó
+a ese correo), el **superusuario** (`create_superuser`), las cuentas **creadas desde el admin** y
+las que **ya existían** al agregar la verificación (la migración `usuarios.0002` les pone su
+`creado_en`, para no cerrarles la puerta por una regla nueva).
+
+#### `CodigoCorreo` — código de un solo uso *(2026-10-02)*
+
+| Campo | Tipo | Notas |
+| --- | --- | --- |
+| `usuario` | FK `Usuario`, `CASCADE` | |
+| `proposito` | `verificar` · `recuperar` | `CheckConstraint`. |
+| `codigo_hash` | Texto (64) | HMAC-SHA256 con la `SECRET_KEY` (`salted_hmac`), **nunca el código en claro**: quien lea la base o un respaldo no puede usarlo. |
+| `intentos` | Entero | Intentos fallidos con este código. |
+| `creado_en` | Fecha y hora (`default=timezone.now`) | De ahí sale el vencimiento. No `auto_now_add`, para poder simular un código vencido en las pruebas. |
+
+Reglas (`apps/usuarios/servicios.py`): 6 dígitos (`secrets`), **vence a los 15 min**, **5
+intentos**, solo vale **el más reciente** de cada propósito, **un minuto entre envíos** y **5
+envíos por hora**. Con eso, adivinar uno de un millón no es práctico. Al usarlo bien se borran
+los códigos de ese propósito; los vencidos o sin usar se quedan (son pocos y cuentan para el tope
+por hora). *Pendiente:* limpiar los viejos con un comando periódico si la tabla creciera.
+El correo sale con `transaction.on_commit` (plantillas en
+`apps/usuarios/templates/usuarios/correos/`).
 
 ### 4.4 `tarjetas`
 
@@ -184,13 +218,15 @@ Código en `frontend/`. Rutas con `#` (decisión en §9):
 
 | Ruta | Pantalla | Notas |
 | --- | --- | --- |
-| `#/entrar`, `#/registro` | Acceso | Sin armazón. `?siguiente=` regresa a donde iba. |
+| `#/entrar`, `#/registro` | Acceso | Sin armazón. `?siguiente=` regresa a donde iba. Registro: nombre, primer apellido, segundo apellido (opcional), correo y contraseña; al enviarlo pasa a `#/verificar`. Entrar con una cuenta sin confirmar también pasa ahí. Enlace «¿Olvidaste tu contraseña?». |
+| `#/verificar?correo=` | Confirmar correo | Código de 6 dígitos (`autocomplete="one-time-code"` para que el teléfono lo sugiera) y «Reenviar código», habilitado tras 60 s, lo mismo que exige el servidor. Al confirmar, entra. |
+| `#/recuperar` | Recuperar contraseña | Paso 1: correo. Paso 2: código y contraseña nueva; al guardar, entra. El paso 2 aparece siempre, exista o no la cuenta (§7). |
 | `#/invitacion/<token>` | Aceptar invitación | Pública. Ver §7. |
 | `#/proyectos` | Mis proyectos | Activos con barra de avance y conteos (pendientes, en curso, finalizadas, vencidas); archivados aparte. Aviso de instalación. |
 | `#/proyectos/<id>` | Tablero | Teléfono: pestañas por estatus y botón «+». Computadora (≥ 900 px): tres columnas. Filtro por tipo y «Solo mías». Banner de solo lectura si está archivado. |
 | `#/proyectos/<id>/ajustes` | Miembros y ajustes | Invitar, reenviar/cancelar, permisos por miembro, «Hacer dueño», quitar, tipos, renombrar, archivar/restaurar, eliminar, salir. |
 | `#/mis-tarjetas` | Mis tarjetas | Asignadas a mí, sin finalizar, de mis proyectos activos; vencidas primero, luego por fecha. |
-| `#/perfil` | Perfil | Nombre, contraseña, instalar, cerrar sesión. |
+| `#/perfil` | Perfil | Nombre y apellidos, contraseña, instalar, cerrar sesión. |
 
 - **Detalle de tarjeta** en hoja inferior (teléfono) o panel lateral (computadora): estatus con un
   toque, prioridad, tipos, descripción, fecha, historial (quién, de qué a qué, fecha y hora) y
@@ -218,8 +254,11 @@ a un servicio de `apps/*/servicios.py`; la API no tiene reglas propias. Salida a
 | Método y ruta | Qué hace |
 | --- | --- |
 | `GET auth/csrf/` | Deja la cookie CSRF; devuelve `registro_abierto` y el `usuario` de la sesión (o `null`). |
-| `POST auth/entrar/` · `auth/salir/` · `auth/registro/` | Sesión. Entrar y registro con límite `acceso`. |
-| `GET, PATCH yo/` · `POST yo/password/` | Mi cuenta (nombre, apellidos, contraseña). |
+| `POST auth/entrar/` · `auth/salir/` | Sesión. Entrar con una cuenta sin confirmar responde **403** `{detalle, verificar: true, correo}`, sin sesión, y reenvía el código (si no se mandó uno en el último minuto). |
+| `POST auth/registro/` | Crea la cuenta **sin sesión** y manda el código: `201 {verificar: true, correo}`. Pide `nombre`, `primer_apellido`, `segundo_apellido` (opcional), `correo`, `password`. |
+| `POST auth/verificar/` · `auth/verificar/reenviar/` | Confirmar con `{correo, codigo}` (abre la sesión y devuelve el usuario) · reenviar con `{correo}`. |
+| `POST auth/recuperar/` · `auth/recuperar/confirmar/` | Pedir el código con `{correo}` (siempre `{ok: true}`) · `{correo, codigo, password}` cambia la contraseña, verifica el correo y abre la sesión. |
+| `GET, PATCH yo/` · `POST yo/password/` | Mi cuenta (`nombre_pila`, `primer_apellido`, `segundo_apellido`; contraseña). |
 | `GET yo/tarjetas/` | Mis tarjetas sin finalizar en proyectos activos. |
 | `GET, POST proyectos/` | Mis proyectos (resumen con conteos y mis permisos) · crear. |
 | `GET, PATCH, DELETE proyectos/<id>/` | Detalle (miembros, tipos, invitaciones si soy dueño) · renombrar · eliminar. |
@@ -231,10 +270,11 @@ a un servicio de `apps/*/servicios.py`; la API no tiene reglas propias. Salida a
 | `GET, PATCH, DELETE tarjetas/<id>/` | Detalle con historial · editar · eliminar. |
 | `POST tarjetas/<id>/estatus/` | Mover a otro estatus (queda en el historial). |
 | `GET invitaciones/<token>/` | Pública: proyecto, correo, quién invitó, estado y si ya hay cuenta. |
-| `POST invitaciones/<token>/aceptar/` · `…/registro/` | Aceptar con sesión · crear cuenta con el correo invitado y aceptar. |
+| `POST invitaciones/<token>/aceptar/` · `…/registro/` | Aceptar con sesión · crear cuenta con el correo invitado (ya verificada) y aceptar. |
 
 Errores: `{"detalle": "…"}` o un mensaje por campo (`{"titulo": ["…"]}`); 400 validación, 403 sin
-permiso, 404 lo que no existe **o no es tuyo** (§7).
+permiso, 404 lo que no existe **o no es tuyo** (§7). Todo lo de `auth/` exige CSRF y tiene el
+límite `acceso`.
 
 ## 7. Acceso y seguridad
 
@@ -243,6 +283,16 @@ permiso, 404 lo que no existe **o no es tuyo** (§7).
   (`SesionConCsrf`) y tienen límite de intentos (`TASKFLOW_LIMITE_ACCESO`, 20/min por omisión).
 - **Registro abierto** (`TASKFLOW_REGISTRO_ABIERTO`, `True` por omisión): cualquiera crea su cuenta
   y sus proyectos. Si se cierra, solo entra quien recibe una invitación.
+- **Correo verificado** *(2026-10-02)*: quien se registra solo recibe un código de 6 dígitos y
+  **no tiene sesión hasta capturarlo**; así no se llenan proyectos e invitaciones con correos
+  ajenos o inventados. Reglas del código en §4.3.
+- **Recuperar contraseña** *(2026-10-02)* con el mismo código. `auth/recuperar/` responde igual
+  exista o no la cuenta, y un código equivocado, vencido o de un correo sin cuenta dan el mismo
+  mensaje. Usar el código **también verifica el correo**: así, si alguien registró primero un
+  correo ajeno sin poder confirmarlo, el dueño real recupera la cuenta y pone su contraseña. Las
+  cuentas desactivadas no reciben códigos.
+  Límite conocido: «Espera un minuto…» al reenviar sí delata que hay una cuenta con ese correo; el
+  registro ya lo delata («Ya existe una cuenta…»), así que no se gana nada ocultándolo aquí.
 - **Invitaciones:** solo la cuenta con el correo invitado puede aceptarla. Sin cuenta, la crea desde
   el enlace con ese correo (no se puede cambiar) y queda dentro del proyecto. Con sesión de otra
   cuenta, se le pide salir y entrar con la correcta.
@@ -266,6 +316,7 @@ permiso, 404 lo que no existe **o no es tuyo** (§7).
 | 1.5 | CI (GitHub Actions + ghcr.io) y despliegue en el servidor compartido (docs/operacion.md, docs/despliegue-actual.md) | ✅ 2026-10-01 · en producción `f6d2e40` |
 | 2 | Proyectos, miembros, permisos, invitaciones, tipos e historial (§4.5): modelos, migraciones, servicios, admin y pruebas | ✅ 2026-10-01 (maquetas en `docs/_mockups/`) |
 | 3 | API `/api/v1/`, PWA (tablero, tarjetas, miembros, invitaciones, tipos, perfil) y portada de instalación (§5–§7) | ✅ 2026-10-01 · sin desplegar |
+| 3.5 | Correo verificado con código, recuperar contraseña y apellidos separados (§4.3, §7) | ✅ 2026-10-02 · sin desplegar |
 | 4 | Por definir: avisos por correo de asignación o vencimiento, búsqueda, comentarios en tarjetas | — |
 
 ## 9. Decisiones de diseño
@@ -289,6 +340,14 @@ permiso, 404 lo que no existe **o no es tuyo** (§7).
   vive en los servicios. Se usa DRF por sesión, CSRF, límites de intentos y manejo de errores.
 - **Registro abierto por omisión** (2026-10-01): cualquier persona puede crear su cuenta y sus
   proyectos (§4.5: «cada usuario podrá crear un proyecto»). Se puede cerrar con una variable.
+- **Código de 6 dígitos y no enlace mágico para verificar y recuperar** (2026-10-02): en la app
+  instalada, un enlace del correo se abre en el navegador y no en la PWA, así que la persona
+  terminaría en otra ventana sin su sesión; el código se escribe donde ya está, y el teléfono lo
+  sugiere solo (`one-time-code`). Se descartó también `PasswordResetTokenGenerator` de Django por
+  la misma razón (es un enlace) y porque no limita intentos.
+- **El código se guarda como HMAC, no en claro ni con el hasher de contraseñas** (2026-10-02): un
+  respaldo filtrado no debe servir para entrar; el HMAC basta porque el código vive 15 minutos y
+  tiene 5 intentos, y no paga el costo de PBKDF2 en cada intento.
 - **Paleta y tipografía compartidas** (2026-10-01): la PWA importa `static/css/tema.css` y
   `static/css/fuentes.css`, los mismos que la portada; no hay una segunda copia de los colores.
 - **Sin nginx interno** (2026-10-01), a diferencia de mi-campus: no hay archivos privados que
@@ -316,6 +375,9 @@ permiso, 404 lo que no existe **o no es tuyo** (§7).
 8. ~~¿Vencen las invitaciones?~~ **Resuelta (2026-10-01):** no vencen y se pueden reenviar.
 9. ~~¿Archivar o eliminar proyectos?~~ **Resuelta (2026-10-01):** ambos, solo el dueño; archivado =
    solo lectura y se puede restaurar.
+
+10. ~~¿Cómo recupera alguien su contraseña?~~ **Resuelta (2026-10-02):** con un código por
+    correo (§7), el mismo mecanismo que verifica la cuenta al registrarse.
 
 ## 11. Notas de implementación
 
@@ -359,3 +421,14 @@ permiso, 404 lo que no existe **o no es tuyo** (§7).
     `Path(env(...))`. Las pruebas no lo detectaron porque `test.py` lo reemplaza.
   - En la portada, `.btn` le ganaba al atributo `hidden` y en computadora se veía también «Ver
     cómo instalar en iPhone»: `[hidden]{display:none!important}` en `portada.css`.
+- (2026-10-02) **Cambio al esquema aprobado: apellidos separados y correo verificado.**
+  `Usuario.apellidos` (opcional) pasa a `primer_apellido` (obligatorio en la API) y
+  `segundo_apellido` (opcional), a pedido de Ernesto: en México se usan dos apellidos y
+  ordenarlos o buscarlos por separado es lo normal. Se agregan `correo_verificado_en` y el modelo
+  `CodigoCorreo`. La migración `usuarios.0002` parte `apellidos` en la primera palabra y el resto
+  (falla con apellidos compuestos como «De la Torre»: cada quien lo corrige en su perfil) y marca
+  como verificadas las cuentas existentes; es reversible. `auth/registro/` ya no abre sesión
+  (antes devolvía el usuario). Las pruebas que mandan el código usan
+  `django_db(transaction=True)` porque el correo sale en `on_commit`, y `conftest.py` limpia la
+  caché antes de cada prueba (ahí cuenta DRF los intentos de `acceso`); el fixture `crear_usuario`
+  crea cuentas verificadas.

@@ -1,0 +1,1 @@
+Tu código para confirmar tu correo en TaskFlow: {{ codigo }}

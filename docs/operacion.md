@@ -323,6 +323,7 @@ cambio así lo anota aquí (y en §11 de la propuesta) en el mismo commit.
 | *(primera versión)* | Primera instalación completa (sección de arriba) y `createsuperuser`. | Una vez |
 | *(versión con proyectos, Etapa 2)* | **Antes:** agregar a `/opt/taskflow/.env.prod` `TASKFLOW_URL=https://sistemas.reduaz.mx/taskflow` y, para que las invitaciones lleguen, las `DJANGO_EMAIL_*` (ver `.env.prod.example`). **Después:** las tarjetas que ya existían quedan en el proyecto «Tarjetas anteriores» (migración `tarjetas.0004`); revisarlo en el admin y renombrarlo, moverlas o borrarlo. | Una vez |
 | *(versión con la app, Etapa 3)* | Incluye los pasos de la Etapa 2 si no se hicieron. **Antes (opcional):** `TASKFLOW_REGISTRO_ABIERTO` y `TASKFLOW_LIMITE_ACCESO` en `.env.prod` (por omisión: registro abierto, 20 intentos/min). La imagen ya trae la PWA compilada; nginx no cambia (`/taskflow/` ya reenvía todo). **Después:** abrir `https://sistemas.reduaz.mx/taskflow/` (portada) y `/taskflow/app/`, crear una cuenta de prueba y revisar que `/taskflow/app/manifest.webmanifest` responda 200. | Una vez |
+| *(versión con correo verificado, 2026-10-02)* | **Antes:** `DJANGO_EMAIL_*` y `DJANGO_DEFAULT_FROM_EMAIL` configuradas y probadas: **sin correo nadie puede terminar de registrarse** ni recuperar su contraseña. **Después:** la migración `usuarios.0002` separa `apellidos` en primer y segundo apellido y marca como verificadas las cuentas existentes; revisar en el admin los apellidos compuestos. | Una vez |
 
 ### Alternativa sin GitHub Actions
 

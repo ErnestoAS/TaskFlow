@@ -17,16 +17,17 @@ const router = useRouter();
 const hoja = ref<"nombre" | "password" | null>(null);
 const errores = ref<Record<string, string>>({});
 const ocupado = ref(false);
-const datos = reactive({ nombre: "", apellidos: "", actual: "", nueva: "" });
+const datos = reactive({ nombre: "", primer_apellido: "", segundo_apellido: "", actual: "", nueva: "" });
 
 async function abrir(cual: "nombre" | "password") {
   errores.value = {};
-  Object.assign(datos, { nombre: "", apellidos: "", actual: "", nueva: "" });
+  Object.assign(datos, { nombre: "", primer_apellido: "", segundo_apellido: "", actual: "", nueva: "" });
   if (cual === "nombre") {
     // yo/ trae nombre y apellidos por separado; `nombre` en el resto de la API es el completo.
     const yo = await api<Usuario>("yo/").catch(() => sesion.usuario);
     datos.nombre = yo?.nombre_pila ?? yo?.nombre ?? "";
-    datos.apellidos = yo?.apellidos ?? "";
+    datos.primer_apellido = yo?.primer_apellido ?? "";
+    datos.segundo_apellido = yo?.segundo_apellido ?? "";
   }
   hoja.value = cual;
 }
@@ -36,7 +37,8 @@ async function guardar() {
   ocupado.value = true;
   try {
     if (hoja.value === "nombre") {
-      sesion.usuario = await api<Usuario>("yo/", "PATCH", { nombre: datos.nombre, apellidos: datos.apellidos });
+      const { nombre, primer_apellido, segundo_apellido } = datos;
+      sesion.usuario = await api<Usuario>("yo/", "PATCH", { nombre, primer_apellido, segundo_apellido });
       avisar("Se guardó tu nombre.");
     } else {
       await api("yo/password/", "POST", { actual: datos.actual, nueva: datos.nueva });
@@ -92,8 +94,13 @@ async function cerrarSesion() {
           <div v-if="errores.nombre" class="error">{{ errores.nombre }}</div>
         </div>
         <div class="campo">
-          <label for="p-apellidos">Apellidos <span style="text-transform: none; font-weight: 400">(opcional)</span></label>
-          <input id="p-apellidos" v-model="datos.apellidos" type="text" autocomplete="family-name" />
+          <label for="p-primer-apellido">Primer apellido</label>
+          <input id="p-primer-apellido" v-model="datos.primer_apellido" type="text" autocomplete="family-name" />
+          <div v-if="errores.primer_apellido" class="error">{{ errores.primer_apellido }}</div>
+        </div>
+        <div class="campo">
+          <label for="p-segundo-apellido">Segundo apellido <span style="text-transform: none; font-weight: 400">(opcional)</span></label>
+          <input id="p-segundo-apellido" v-model="datos.segundo_apellido" type="text" autocomplete="off" />
         </div>
       </template>
       <template v-else>

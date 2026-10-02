@@ -11,6 +11,9 @@ const rutas: RouteRecordRaw[] = [
   { path: "/perfil", name: "perfil", component: () => import("./vistas/Perfil.vue") },
   { path: "/entrar", name: "entrar", component: () => import("./vistas/Entrar.vue"), meta: { publica: true, soloAnonimo: true } },
   { path: "/registro", name: "registro", component: () => import("./vistas/Registro.vue"), meta: { publica: true, soloAnonimo: true } },
+  // ?correo= de la cuenta por confirmar; ?siguiente= como en Entrar.
+  { path: "/verificar", name: "verificar", component: () => import("./vistas/Verificar.vue"), meta: { publica: true, soloAnonimo: true } },
+  { path: "/recuperar", name: "recuperar", component: () => import("./vistas/Recuperar.vue"), meta: { publica: true, soloAnonimo: true } },
   // Abierta con o sin sesión: quien no tiene cuenta la crea desde aquí (§4.5).
   { path: "/invitacion/:token", name: "invitacion", component: () => import("./vistas/Invitacion.vue"), props: true, meta: { publica: true } },
   { path: "/:pathMatch(.*)*", redirect: { name: "proyectos" } },

@@ -1,3 +1,5 @@
+import re
+
 import pytest
 from django.test import Client
 
@@ -62,29 +64,116 @@ def test_entrar_exige_csrf(crear_usuario):
     assert r.status_code == 200
 
 
-def test_registro_abierto(client, settings):
-    datos = {
-        "nombre": "Sofía",
-        "apellidos": "Méndez",
-        "correo": "sofia@ejemplo.mx",
-        "password": "una-clave-larga-9",
-    }
-    r = _post(client, "/auth/registro/", datos)
-    assert r.status_code == 201 and client.get(f"{API}/yo/").json()["nombre"] == "Sofía Méndez"
-    r = _post(Client(), "/auth/registro/", datos)
+# El código sale con transaction.on_commit: estas pruebas necesitan transacciones reales.
+CORREO_REAL = pytest.mark.django_db(transaction=True)
+
+
+def _codigo(mailoutbox):
+    """El código de 6 dígitos del último correo enviado."""
+    return re.search(r"\b(\d{6})\b", mailoutbox[-1].body).group(1)
+
+
+DATOS_REGISTRO = {
+    "nombre": "Sofía",
+    "primer_apellido": "Méndez",
+    "segundo_apellido": "Ruiz",
+    "correo": "sofia@ejemplo.mx",
+    "password": "una-clave-larga-9",
+}
+
+
+@CORREO_REAL
+def test_registro_pide_codigo_y_entra_al_verificar(client, mailoutbox):
+    r = _post(client, "/auth/registro/", DATOS_REGISTRO)
+    assert r.status_code == 201 and r.json() == {"verificar": True, "correo": "sofia@ejemplo.mx"}
+    assert client.get(f"{API}/yo/").status_code == 403  # Sin sesión hasta confirmar el correo.
+    assert len(mailoutbox) == 1 and mailoutbox[0].to == ["sofia@ejemplo.mx"]
+    r = _post(client, "/auth/verificar/", {"correo": "sofia@ejemplo.mx", "codigo": "000000"})
+    assert r.status_code == 400 and "codigo" in r.json()
+    r = _post(
+        client, "/auth/verificar/", {"correo": "sofia@ejemplo.mx", "codigo": _codigo(mailoutbox)}
+    )
+    assert r.status_code == 200
+    assert client.get(f"{API}/yo/").json()["nombre"] == "Sofía Méndez Ruiz"
+
+
+def test_registro_rechaza_correo_repetido_y_registro_cerrado(client, settings):
+    assert _post(client, "/auth/registro/", DATOS_REGISTRO).status_code == 201
+    r = _post(Client(), "/auth/registro/", DATOS_REGISTRO)
     assert r.status_code == 400 and "correo" in r.json()
     settings.TASKFLOW_REGISTRO_ABIERTO = False
-    assert (
-        _post(Client(), "/auth/registro/", {**datos, "correo": "otra@ejemplo.mx"}).status_code
-        == 403
-    )
+    otra = {**DATOS_REGISTRO, "correo": "otra@ejemplo.mx"}
+    assert _post(Client(), "/auth/registro/", otra).status_code == 403
 
 
-def test_registro_valida_contraseña(client):
+def test_registro_valida_contraseña_y_primer_apellido(client):
     r = _post(
         client, "/auth/registro/", {"nombre": "A", "correo": "a@ejemplo.mx", "password": "123"}
     )
+    assert r.status_code == 400 and {"password", "primer_apellido"} <= set(r.json())
+
+
+@CORREO_REAL
+def test_entrar_sin_verificar_manda_codigo(client, crear_usuario, mailoutbox):
+    crear_usuario("ana@ejemplo.mx", correo_verificado_en=None)
+    datos = {"correo": "ana@ejemplo.mx", "password": "contraseña-de-prueba"}
+    r = _post(client, "/auth/entrar/", datos)
+    assert r.status_code == 403 and r.json()["verificar"] is True
+    assert len(mailoutbox) == 1 and client.get(f"{API}/yo/").status_code == 403
+    # Reintentar enseguida no manda otro correo (espera de un minuto entre envíos).
+    assert _post(client, "/auth/entrar/", datos).status_code == 403 and len(mailoutbox) == 1
+
+
+@CORREO_REAL
+def test_reenviar_verificacion_respeta_la_espera(client, crear_usuario, mailoutbox):
+    crear_usuario("ana@ejemplo.mx", correo_verificado_en=None)
+    assert (
+        _post(client, "/auth/verificar/reenviar/", {"correo": "ana@ejemplo.mx"}).status_code == 200
+    )
+    r = _post(client, "/auth/verificar/reenviar/", {"correo": "ana@ejemplo.mx"})
+    assert r.status_code == 400 and len(mailoutbox) == 1
+    # Un correo sin cuenta responde igual que uno con cuenta.
+    assert (
+        _post(client, "/auth/verificar/reenviar/", {"correo": "nadie@ejemplo.mx"}).status_code
+        == 200
+    )
+
+
+@CORREO_REAL
+def test_recuperar_contraseña(client, crear_usuario, mailoutbox):
+    crear_usuario("ana@ejemplo.mx")
+    assert _post(client, "/auth/recuperar/", {"correo": "nadie@ejemplo.mx"}).json() == {"ok": True}
+    assert len(mailoutbox) == 0
+    assert _post(client, "/auth/recuperar/", {"correo": "ANA@ejemplo.mx"}).status_code == 200
+    datos = {"correo": "ana@ejemplo.mx", "codigo": _codigo(mailoutbox), "password": "123"}
+    r = _post(client, "/auth/recuperar/confirmar/", datos)
     assert r.status_code == 400 and "password" in r.json()
+    r = _post(client, "/auth/recuperar/confirmar/", {**datos, "password": "otra-clave-larga-7"})
+    assert r.status_code == 200 and client.get(f"{API}/yo/").status_code == 200
+    # El código ya se usó y la contraseña nueva sirve para entrar.
+    assert (
+        _post(
+            Client(), "/auth/recuperar/confirmar/", {**datos, "password": "x-clave-larga-8"}
+        ).status_code
+        == 400
+    )
+    entrar = {"correo": "ana@ejemplo.mx", "password": "otra-clave-larga-7"}
+    assert _post(Client(), "/auth/entrar/", entrar).status_code == 200
+
+
+@CORREO_REAL
+def test_recuperar_verifica_el_correo(client, crear_usuario, mailoutbox):
+    """Quien no verificó (o alguien registró su correo antes) recupera la cuenta con el código."""
+    u = crear_usuario("ana@ejemplo.mx", correo_verificado_en=None)
+    _post(client, "/auth/recuperar/", {"correo": "ana@ejemplo.mx"})
+    datos = {
+        "correo": "ana@ejemplo.mx",
+        "codigo": _codigo(mailoutbox),
+        "password": "otra-clave-larga-7",
+    }
+    assert _post(client, "/auth/recuperar/confirmar/", datos).status_code == 200
+    u.refresh_from_db()
+    assert u.correo_verificado
 
 
 # --- proyectos ----------------------------------------------------------------------------------
@@ -159,9 +248,11 @@ def test_flujo_de_invitacion_con_registro(
     r = _post(
         anonimo,
         f"/invitaciones/{token}/registro/",
-        {"nombre": "Sofía", "password": "una-clave-larga-9"},
+        {"nombre": "Sofía", "primer_apellido": "Méndez", "password": "una-clave-larga-9"},
     )
     assert r.status_code == 201 and r.json()["proyecto"] == proyecto.pk
+    # El enlace llegó a su correo: entra sin código.
+    assert len(mailoutbox) == 1 and r.json()["usuario"]["correo"] == "sofia@ejemplo.mx"
     assert anonimo.get(f"{API}/proyectos/{proyecto.pk}/").status_code == 200
 
 
@@ -278,7 +369,16 @@ def test_csrf_trae_el_usuario_de_la_sesion(client, crear_usuario):
 
 
 def test_yo_trae_nombre_y_apellidos_por_separado(client, crear_usuario):
-    client.force_login(crear_usuario("ana@ejemplo.mx", nombre="Ana", apellidos="López"))
+    u = crear_usuario("ana@ejemplo.mx", nombre="Ana", primer_apellido="López")
+    client.force_login(u)
     datos = client.get(f"{API}/yo/").json()
     assert datos["nombre"] == "Ana López"
-    assert (datos["nombre_pila"], datos["apellidos"]) == ("Ana", "López")
+    assert (datos["nombre_pila"], datos["primer_apellido"], datos["segundo_apellido"]) == (
+        "Ana",
+        "López",
+        "",
+    )
+    r = _patch(client, "/yo/", {"segundo_apellido": "Ramírez"})
+    assert r.json()["nombre"] == "Ana López Ramírez"
+    r = _patch(client, "/yo/", {"primer_apellido": " "})
+    assert r.status_code == 400 and "primer_apellido" in r.json()

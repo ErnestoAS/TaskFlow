@@ -2,7 +2,7 @@
 import { ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
 
-import { mensajeDeError } from "../api";
+import { ErrorApi, mensajeDeError } from "../api";
 import Logo from "../componentes/Logo.vue";
 import { entrar, sesion } from "../sesion";
 
@@ -25,6 +25,11 @@ async function enviar() {
     const siguiente = typeof route.query.siguiente === "string" ? route.query.siguiente : "/proyectos";
     await router.replace(siguiente);
   } catch (e) {
+    // Cuenta sin confirmar: el servidor ya mandó (o reenvió) el código; se pasa a capturarlo.
+    if (e instanceof ErrorApi && e.datos?.verificar) {
+      await router.replace({ name: "verificar", query: { ...route.query, correo: String(e.datos.correo) } });
+      return;
+    }
     error.value = mensajeDeError(e);
   } finally {
     ocupado.value = false;
@@ -53,6 +58,11 @@ async function enviar() {
         </button>
       </form>
     </div>
+    <p class="pie-acceso">
+      <RouterLink :to="{ name: 'recuperar', query: correo.trim() ? { correo: correo.trim() } : {} }"
+        >¿Olvidaste tu contraseña?</RouterLink
+      >
+    </p>
     <p v-if="sesion.registroAbierto" class="pie-acceso">
       ¿No tienes cuenta? <RouterLink :to="{ name: 'registro' }">Crea una</RouterLink>
     </p>

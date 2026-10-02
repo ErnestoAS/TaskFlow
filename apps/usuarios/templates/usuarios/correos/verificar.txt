@@ -1,0 +1,12 @@
+{% autoescape off %}Hola{% if usuario.nombre %} {{ usuario.nombre }}{% endif %}:
+
+Para terminar de crear tu cuenta de TaskFlow, escribe este código en la app:
+
+{{ codigo }}
+
+El código vence en {{ minutos }} minutos y solo sirve una vez.
+
+Si no creaste una cuenta en TaskFlow, puedes ignorar este mensaje.
+
+TaskFlow
+{% endautoescape %}

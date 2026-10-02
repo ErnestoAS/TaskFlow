@@ -12,7 +12,8 @@ export interface Usuario {
   iniciales: string;
   /** Solo en yo/: nombre y apellidos por separado. */
   nombre_pila?: string;
-  apellidos?: string;
+  primer_apellido?: string;
+  segundo_apellido?: string;
 }
 
 export interface Tipo {
