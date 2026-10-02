@@ -30,7 +30,8 @@ def pwa(request):
     if indice.exists():
         return HttpResponse(indice.read_bytes(), content_type="text/html; charset=utf-8")
     return HttpResponse(
-        'La PWA no está compilada. Ejecuta: docker compose run --rm frontend sh -c "npm ci && npm run build"',
+        "La PWA no está compilada. Ejecuta: "
+        'docker compose run --rm frontend sh -c "npm ci && npm run build"',
         content_type="text/plain; charset=utf-8",
         status=503,
     )
