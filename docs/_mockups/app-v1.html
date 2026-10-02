@@ -1,0 +1,822 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TaskFlow · maqueta de la app (v1)</title>
+<style>
+/* =========================================================
+   Maqueta de la PWA de TaskFlow. Exploración: NO aprobada.
+   Colores solo por variable. En la app real saldrán del tema
+   (static/css/tema.css) y de las clases de Bootstrap 5.
+========================================================= */
+:root{
+  --primario:#3b5bdb;
+  --primario-osc:#2b44a8;
+  --primario-suave:#e8edff;
+  --fondo:#f4f5f8;
+  --superficie:#ffffff;
+  --texto:#1d2330;
+  --tenue:#6b7280;
+  --linea:#e4e6eb;
+  --sombra:0 1px 2px rgba(16,24,40,.06),0 1px 3px rgba(16,24,40,.08);
+  --sombra-alta:0 12px 32px rgba(16,24,40,.18);
+  --velo:rgba(16,24,40,.45);
+
+  /* Estatus: mismas semánticas que la tabla de badges de CLAUDE.md */
+  --pendiente:#5f6672;      --pendiente-suave:#eceef2;      /* text-bg-secondary */
+  --en-curso:#1c7ed6;       --en-curso-suave:#e3f0fc;       /* text-bg-info */
+  --finalizada:#2f9e44;     --finalizada-suave:#e6f4ea;     /* text-bg-success */
+  --vencida:#c92a2a;        --vencida-suave:#fdecec;        /* text-bg-danger */
+  --por-vencer:#a85a00;     --por-vencer-suave:#fff1dc;     /* propuesta: text-bg-warning */
+
+  /* Avatares */
+  --av1:#5c7cfa; --av2:#20c997; --av3:#f06595; --av4:#fab005; --av5:#7950f2; --av6:#fd7e14;
+
+  /* Escaparate (no es parte de la app) */
+  --esc-fondo:#e9eaed; --esc-texto:#33404d; --esc-caja:#ffffff; --esc-linea:#d5d8de;
+
+  --radio:16px;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  background:var(--esc-fondo);color:var(--texto);
+  font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  min-height:100vh;display:flex;flex-direction:column;align-items:center;gap:14px;padding:16px;
+}
+button,input,textarea,select{font-family:inherit;font-size:inherit;color:inherit}
+button{cursor:pointer}
+svg{flex-shrink:0}
+
+/* ---------- escaparate (solo para presentar) ---------- */
+.escaparate{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;align-items:center;font-size:12.5px;color:var(--esc-texto)}
+.escaparate .grupo{display:flex;align-items:center;gap:4px;background:var(--esc-caja);border:1px solid var(--esc-linea);border-radius:10px;padding:4px 6px}
+.escaparate .grupo b{font-weight:600;padding:0 4px}
+.escaparate button{border:0;background:transparent;padding:4px 9px;border-radius:7px}
+.escaparate button[aria-pressed="true"]{background:var(--primario);color:var(--superficie)}
+.escaparate input[type=date]{border:0;background:transparent;padding:2px 4px}
+.escaparate .nota{opacity:.75}
+
+/* ---------- marco ---------- */
+.dispositivo{
+  width:390px;height:800px;background:var(--fondo);border-radius:38px;overflow:hidden;position:relative;
+  box-shadow:0 0 0 10px var(--texto),0 24px 60px rgba(0,0,0,.25);display:flex;flex-direction:column;
+}
+.dispositivo.computadora{width:min(1180px,100%);height:760px;border-radius:14px;box-shadow:0 0 0 1px var(--esc-linea),0 24px 60px rgba(0,0,0,.18)}
+@media (max-width:520px){
+  body{padding:0;background:var(--fondo)}
+  .escaparate{display:none}
+  .dispositivo,.dispositivo.computadora{width:100%;height:100vh;border-radius:0;box-shadow:none}
+}
+
+/* ---------- cabecera ---------- */
+.cabecera{background:var(--primario);color:var(--superficie);padding:14px 16px 12px;display:flex;align-items:center;gap:10px;flex-shrink:0}
+.computadora .cabecera{padding:12px 24px}
+.cabecera .titulos{flex:1;min-width:0}
+.cabecera h1{font-size:17px;margin:0;font-weight:650;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cabecera .sub{font-size:12px;opacity:.8;margin-top:1px}
+.btn-icono{border:0;background:transparent;color:inherit;width:36px;height:36px;border-radius:10px;display:grid;place-items:center}
+.btn-icono:hover{background:rgba(255,255,255,.14)}
+.sello{width:34px;height:34px;border-radius:10px;background:rgba(255,255,255,.18);display:grid;place-items:center;font-weight:700;font-size:13px;letter-spacing:.5px}
+
+/* ---------- contenido ---------- */
+.contenido{flex:1;overflow:auto;padding:14px 14px 90px}
+.computadora .contenido{padding:20px 24px 24px}
+.seccion-titulo{font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--tenue);margin:18px 4px 8px;font-weight:600}
+.seccion-titulo:first-child{margin-top:4px}
+.vacio{color:var(--tenue);text-align:center;padding:36px 16px;font-size:14px}
+
+/* ---------- proyectos ---------- */
+.lista-proyectos{display:grid;gap:10px}
+.computadora .lista-proyectos{grid-template-columns:repeat(auto-fill,minmax(300px,1fr))}
+.proyecto{background:var(--superficie);border-radius:var(--radio);box-shadow:var(--sombra);padding:14px;border:0;text-align:left;width:100%;display:flex;flex-direction:column;gap:10px}
+.proyecto:hover{outline:2px solid var(--primario-suave)}
+.proyecto .fila{display:flex;align-items:center;gap:8px}
+.proyecto h3{margin:0;font-size:15.5px;flex:1}
+.proyecto .conteos{display:flex;gap:6px;flex-wrap:wrap}
+.etiqueta-rol{font-size:11px;padding:2px 8px;border-radius:99px;background:var(--primario-suave);color:var(--primario-osc);font-weight:600}
+
+/* ---------- chips / badges ---------- */
+.chip{display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:600;padding:3px 9px;border-radius:99px;white-space:nowrap}
+.chip.pendiente{background:var(--pendiente-suave);color:var(--pendiente)}
+.chip.en_curso{background:var(--en-curso-suave);color:var(--en-curso)}
+.chip.finalizada{background:var(--finalizada-suave);color:var(--finalizada)}
+.chip.vencida{background:var(--vencida-suave);color:var(--vencida)}
+.chip.por-vencer{background:var(--por-vencer-suave);color:var(--por-vencer)}
+.chip.fecha{background:var(--fondo);color:var(--tenue);font-weight:500}
+.punto{width:7px;height:7px;border-radius:50%;background:currentColor}
+
+/* ---------- avatares ---------- */
+.avatares{display:flex}
+.avatar{width:26px;height:26px;border-radius:50%;color:var(--superficie);font-size:10.5px;font-weight:700;display:grid;place-items:center;border:2px solid var(--superficie);margin-left:-7px}
+.avatares .avatar:first-child{margin-left:0}
+.avatar.grande{width:36px;height:36px;font-size:13px;margin:0;border:0}
+.avatar.mas{background:var(--linea);color:var(--tenue)}
+
+/* ---------- tablero ---------- */
+.segmentos{display:flex;background:var(--superficie);border-radius:12px;padding:4px;gap:4px;box-shadow:var(--sombra);position:sticky;top:-14px;z-index:2;margin-bottom:12px}
+.segmentos button{flex:1;border:0;background:transparent;border-radius:9px;padding:8px 4px;font-size:13px;font-weight:600;color:var(--tenue);display:flex;justify-content:center;align-items:center;gap:6px}
+.segmentos button[aria-pressed="true"].pendiente{background:var(--pendiente-suave);color:var(--pendiente)}
+.segmentos button[aria-pressed="true"].en_curso{background:var(--en-curso-suave);color:var(--en-curso)}
+.segmentos button[aria-pressed="true"].finalizada{background:var(--finalizada-suave);color:var(--finalizada)}
+.segmentos .num{font-size:11.5px;opacity:.85}
+.filtros{display:flex;justify-content:space-between;align-items:center;margin:0 2px 10px;font-size:13px;color:var(--tenue)}
+.interruptor{display:flex;align-items:center;gap:8px;border:0;background:transparent;color:var(--tenue);padding:4px}
+.interruptor .pista{width:32px;height:18px;border-radius:99px;background:var(--linea);position:relative;transition:.15s}
+.interruptor .pista::after{content:"";position:absolute;top:2px;left:2px;width:14px;height:14px;border-radius:50%;background:var(--superficie);transition:.15s}
+.interruptor[aria-pressed="true"] .pista{background:var(--primario)}
+.interruptor[aria-pressed="true"] .pista::after{left:16px}
+.columnas{display:grid;gap:10px}
+.computadora .columnas{grid-template-columns:repeat(3,1fr);gap:18px;align-items:start}
+.columna{display:flex;flex-direction:column;gap:10px}
+.computadora .columna{background:var(--superficie);border-radius:var(--radio);padding:12px;box-shadow:var(--sombra);min-height:200px}
+.computadora .columna .tarjeta{box-shadow:none;border:1px solid var(--linea)}
+.columna-cab{display:none;align-items:center;gap:8px;font-weight:650;font-size:14px;padding:2px 4px 4px}
+.computadora .columna-cab{display:flex}
+.columna-cab .num{margin-left:auto;color:var(--tenue);font-weight:500;font-size:13px}
+.computadora .segmentos{display:none}
+
+.tarjeta{background:var(--superficie);border-radius:14px;box-shadow:var(--sombra);padding:12px 13px;border:0;text-align:left;width:100%;display:flex;flex-direction:column;gap:8px;border-left:4px solid transparent}
+.tarjeta:hover{outline:2px solid var(--primario-suave)}
+.tarjeta.vencida{border-left-color:var(--vencida)}
+.tarjeta h4{margin:0;font-size:14.5px;font-weight:620;line-height:1.3}
+.tarjeta p{margin:0;font-size:13px;color:var(--tenue);line-height:1.4;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.tarjeta .pie{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.tarjeta .pie .avatares{margin-left:auto}
+.tarjeta .proyecto-de{font-size:11.5px;color:var(--primario);font-weight:600}
+.tarjeta.terminada h4{color:var(--tenue)}
+
+/* ---------- botones ---------- */
+.fab{position:absolute;right:18px;bottom:84px;width:56px;height:56px;border-radius:18px;border:0;background:var(--primario);color:var(--superficie);display:grid;place-items:center;box-shadow:var(--sombra-alta)}
+.computadora .fab,.fab[hidden]{display:none}
+.btn{border:0;border-radius:11px;padding:10px 16px;font-weight:600;font-size:14px;display:inline-flex;align-items:center;justify-content:center;gap:7px}
+.btn-primario{background:var(--primario);color:var(--superficie)}
+.btn-primario:hover{background:var(--primario-osc)}
+.btn-secundario{background:var(--superficie);color:var(--texto);box-shadow:inset 0 0 0 1px var(--linea)}
+.btn-peligro{background:var(--superficie);color:var(--vencida);box-shadow:inset 0 0 0 1px var(--vencida)}
+.btn-peligro-lleno{background:var(--vencida);color:var(--superficie)}
+.btn-chico{padding:6px 11px;font-size:12.5px;border-radius:9px}
+.btn-bloque{width:100%}
+.acciones-cab{display:none;gap:8px}
+.computadora .acciones-cab{display:flex}
+
+/* ---------- navegación inferior ---------- */
+.nav-inferior{position:absolute;left:0;right:0;bottom:0;background:var(--superficie);border-top:1px solid var(--linea);display:flex;justify-content:space-around;padding:6px 6px 14px}
+.nav-inferior button{border:0;background:transparent;display:flex;flex-direction:column;align-items:center;gap:3px;font-size:11px;color:var(--tenue);padding:6px 12px;border-radius:10px;min-width:84px}
+.nav-inferior button[aria-current="page"]{color:var(--primario);font-weight:650}
+.nav-lateral{display:none}
+.computadora .nav-inferior{display:none}
+.cuerpo{display:flex;flex-direction:column;flex:1;min-height:0}
+.computadora .cuerpo{flex-direction:row}
+.computadora .nav-lateral{display:flex;flex-direction:column;gap:4px;width:220px;background:var(--superficie);border-right:1px solid var(--linea);padding:16px 10px}
+.nav-lateral button{border:0;background:transparent;display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:10px;font-size:14px;color:var(--tenue);text-align:left}
+.nav-lateral button[aria-current="page"]{background:var(--primario-suave);color:var(--primario-osc);font-weight:650}
+
+/* ---------- hoja (detalle / formularios) ---------- */
+.velo{position:absolute;inset:0;background:var(--velo);display:flex;align-items:flex-end;z-index:10;animation:aparecer .15s}
+.computadora .velo{align-items:stretch;justify-content:flex-end}
+.hoja{background:var(--superficie);width:100%;max-height:92%;border-radius:22px 22px 0 0;overflow:auto;padding:8px 18px 22px;animation:subir .2s ease-out}
+.computadora .hoja{width:440px;max-height:none;border-radius:0;padding:20px 24px;animation:entrar .2s ease-out}
+.asa{width:40px;height:5px;border-radius:9px;background:var(--linea);margin:4px auto 12px}
+.computadora .asa{display:none}
+.hoja-cab{display:flex;align-items:flex-start;gap:8px;margin-bottom:12px}
+.hoja-cab h2{font-size:18px;margin:0;flex:1;line-height:1.3}
+.hoja-cab .btn-icono{color:var(--tenue)}
+.campo{margin-bottom:16px}
+.campo>label,.campo>.etiqueta{display:block;font-size:12px;font-weight:600;color:var(--tenue);margin-bottom:6px;text-transform:uppercase;letter-spacing:.04em}
+.campo input[type=text],.campo input[type=email],.campo input[type=date],.campo textarea{width:100%;border:1px solid var(--linea);border-radius:11px;padding:10px 12px;background:var(--superficie);font-size:14.5px}
+.campo input:focus,.campo textarea:focus{outline:2px solid var(--primario-suave);border-color:var(--primario)}
+.campo textarea{min-height:96px;resize:vertical}
+.campo .ayuda{font-size:12px;color:var(--tenue);margin-top:5px}
+.campo .error{font-size:12px;color:var(--vencida);margin-top:5px}
+.texto-largo{font-size:14.5px;line-height:1.5;white-space:pre-wrap;margin:0}
+.selector-estatus{display:flex;gap:6px}
+.selector-estatus button{flex:1;border:1px solid var(--linea);background:var(--superficie);border-radius:11px;padding:9px 4px;font-size:13px;font-weight:600;color:var(--tenue);display:flex;align-items:center;justify-content:center;gap:6px}
+.selector-estatus button[aria-pressed="true"].pendiente{background:var(--pendiente-suave);color:var(--pendiente);border-color:var(--pendiente)}
+.selector-estatus button[aria-pressed="true"].en_curso{background:var(--en-curso-suave);color:var(--en-curso);border-color:var(--en-curso)}
+.selector-estatus button[aria-pressed="true"].finalizada{background:var(--finalizada-suave);color:var(--finalizada);border-color:var(--finalizada)}
+.personas{display:flex;flex-direction:column;gap:6px}
+.persona{display:flex;align-items:center;gap:10px;padding:6px 4px;border-radius:10px}
+.persona .nombre{flex:1;font-size:14px}
+.persona .nombre small{display:block;color:var(--tenue);font-size:12px}
+.persona input[type=checkbox]{width:18px;height:18px;accent-color:var(--primario)}
+label.persona{cursor:pointer}
+label.persona:hover{background:var(--fondo)}
+/* Tipos de tarjeta: el color lo elige el usuario (dato, no diseño) y llega como --tipo en línea. */
+.chip.tipo{background:color-mix(in srgb,var(--tipo) 16%,var(--superficie));color:color-mix(in srgb,var(--tipo) 72%,var(--texto))}
+.chip.tipo .punto{background:var(--tipo)}
+.tipos-tarjeta{display:flex;gap:5px;flex-wrap:wrap}
+.tipos-tarjeta .chip{font-size:11px;padding:2px 8px}
+.filtro-tipos{display:flex;gap:6px;overflow-x:auto;margin:0 0 12px;padding-bottom:2px}
+.filtro-tipos button{border:1px solid var(--linea);background:var(--superficie);border-radius:99px;padding:5px 11px;font-size:12.5px;font-weight:600;color:var(--tenue);display:inline-flex;gap:6px;align-items:center;white-space:nowrap}
+.filtro-tipos button .punto{background:var(--tipo,var(--tenue))}
+.filtro-tipos button[aria-pressed="true"]{border-color:var(--tipo,var(--primario));background:color-mix(in srgb,var(--tipo,var(--primario)) 14%,var(--superficie));color:var(--texto)}
+.elegir-tipos{display:flex;gap:6px;flex-wrap:wrap}
+.elegir-tipos label{cursor:pointer}
+.elegir-tipos input{position:absolute;opacity:0;pointer-events:none}
+.elegir-tipos .chip{border:1px solid transparent;padding:6px 12px;font-size:13px;opacity:.55}
+.elegir-tipos input:checked + .chip{opacity:1;border-color:var(--tipo)}
+.elegir-tipos input:focus-visible + .chip{outline:2px solid var(--primario)}
+.fila-tipo{display:flex;gap:10px;align-items:center;padding:10px 0;border-bottom:1px solid var(--linea)}
+.fila-tipo:last-child{border-bottom:0}
+.fila-tipo .nombre{flex:1;font-size:14px;min-width:0}
+.fila-tipo .nombre small{display:block;color:var(--tenue);font-size:12px}
+.muestra-color{width:28px;height:28px;border-radius:8px;background:var(--tipo);flex-shrink:0}
+.muestras{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.muestras button{width:30px;height:30px;border-radius:50%;border:2px solid var(--superficie);background:var(--tipo);box-shadow:0 0 0 1px var(--linea)}
+.muestras button[aria-pressed="true"]{box-shadow:0 0 0 2px var(--texto)}
+.muestras input[type=color]{width:42px;height:34px;border:1px solid var(--linea);border-radius:9px;padding:2px;background:var(--superficie)}
+.historial{list-style:none;margin:0;padding:0 0 0 4px;display:flex;flex-direction:column}
+.historial li{position:relative;padding:0 0 14px 22px;font-size:13.5px;line-height:1.4}
+.historial li::before{content:"";position:absolute;left:4px;top:6px;width:9px;height:9px;border-radius:50%;background:var(--superficie);border:2px solid var(--tenue)}
+.historial li::after{content:"";position:absolute;left:9px;top:18px;bottom:0;width:1px;background:var(--linea)}
+.historial li:last-child{padding-bottom:0}
+.historial li:last-child::after{display:none}
+.historial li.pendiente::before{border-color:var(--pendiente)}
+.historial li.en_curso::before{border-color:var(--en-curso)}
+.historial li.finalizada::before{border-color:var(--finalizada)}
+.historial .cuando{display:block;font-size:12px;color:var(--tenue)}
+.historial .flecha{color:var(--tenue);margin:0 2px}
+.historial .chip{font-size:11.5px;padding:1px 8px}
+.meta{display:flex;flex-direction:column;gap:4px;font-size:12.5px;color:var(--tenue);border-top:1px solid var(--linea);padding-top:12px;margin-top:6px}
+.fila-botones{display:flex;gap:8px;margin-top:8px}
+.fila-botones .btn{flex:1}
+
+/* ---------- miembros ---------- */
+.tarjeta-blanca{background:var(--superficie);border-radius:var(--radio);box-shadow:var(--sombra);padding:6px 12px}
+.tarjeta-blanca .persona{padding:10px 0;border-bottom:1px solid var(--linea);border-radius:0}
+.tarjeta-blanca .persona:last-child{border-bottom:0}
+.invitar{background:var(--superficie);border-radius:var(--radio);box-shadow:var(--sombra);padding:14px}
+.invitar .linea{display:flex;gap:8px}
+.invitar input{flex:1;border:1px solid var(--linea);border-radius:11px;padding:10px 12px;min-width:0}
+.persona{flex-wrap:wrap}
+.acciones-persona{display:flex;gap:6px;align-items:center}
+.permisos{display:flex;gap:6px;flex-wrap:wrap;width:100%;padding-left:46px}
+.permisos button,.permisos span{border:1px solid var(--linea);background:var(--superficie);border-radius:99px;padding:4px 10px;font-size:12px;font-weight:600;color:var(--tenue);display:inline-flex;gap:5px;align-items:center}
+.permisos button svg{display:none}
+.permisos button[aria-pressed="true"],.permisos span.si{background:var(--primario-suave);border-color:var(--primario);color:var(--primario-osc)}
+.permisos button[aria-pressed="true"] svg,.permisos span.si svg{display:inline}
+.permisos .rotulo{border:0;padding:4px 0;background:transparent;font-weight:500}
+.selector-estatus button:disabled{opacity:.5;cursor:not-allowed}
+.banner{display:flex;gap:10px;align-items:center;background:var(--pendiente-suave);color:var(--texto);border-radius:12px;padding:10px 12px;font-size:13px;margin-bottom:12px}
+.banner span{flex:1}
+.proyecto.archivado{opacity:.75}
+.aviso{font-size:13px;color:var(--tenue);background:var(--superficie);border-radius:12px;padding:10px 12px;box-shadow:var(--sombra);display:flex;gap:8px;align-items:flex-start}
+
+/* ---------- confirmación y toast ---------- */
+.modal{position:absolute;inset:0;background:var(--velo);display:grid;place-items:center;z-index:20;padding:24px;animation:aparecer .12s}
+.modal .caja{background:var(--superficie);border-radius:18px;padding:20px;max-width:340px;width:100%;box-shadow:var(--sombra-alta)}
+.modal p{margin:0 0 16px;font-size:15px;line-height:1.45}
+.toast{position:absolute;left:50%;bottom:92px;transform:translateX(-50%);background:var(--texto);color:var(--superficie);padding:10px 16px;border-radius:12px;font-size:13.5px;z-index:30;box-shadow:var(--sombra-alta);white-space:nowrap;animation:aparecer .15s}
+.computadora .toast{bottom:24px}
+
+@keyframes aparecer{from{opacity:0}to{opacity:1}}
+@keyframes subir{from{transform:translateY(40px);opacity:.4}to{transform:none;opacity:1}}
+@keyframes entrar{from{transform:translateX(40px);opacity:.4}to{transform:none;opacity:1}}
+</style>
+</head>
+<body>
+
+<!-- Escaparate de presentación: NO es parte de la app. -->
+<div class="escaparate" aria-label="Controles de la maqueta">
+  <div class="grupo"><b>Vista</b>
+    <button data-vista="telefono" aria-pressed="true">Teléfono</button>
+    <button data-vista="computadora" aria-pressed="false">Computadora</button>
+  </div>
+  <div class="grupo"><b>Entrar como</b>
+    <button data-yo="ana" aria-pressed="true">Ana</button>
+    <button data-yo="luis" aria-pressed="false">Luis</button>
+  </div>
+  <div class="grupo"><b>Hoy</b><input type="date" id="hoy" value="2026-10-15"></div>
+  <span class="nota">Maqueta con datos inventados · exploración, no aprobada</span>
+</div>
+
+<div class="dispositivo" id="dispositivo">
+  <header class="cabecera" id="cabecera"></header>
+  <div class="cuerpo">
+    <nav class="nav-lateral" id="nav-lateral" aria-label="Navegación principal"></nav>
+    <main class="contenido" id="contenido"></main>
+  </div>
+  <button class="fab" id="fab" aria-label="Nueva tarjeta" hidden></button>
+  <nav class="nav-inferior" id="nav-inferior" aria-label="Navegación principal"></nav>
+  <div id="capa"></div>
+</div>
+
+<script>
+/* ---------------------------------------------------------------------------
+   Íconos (SVG en línea, nunca emojis)
+--------------------------------------------------------------------------- */
+const I = {
+  carpetas:'<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>',
+  check:'<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="m8 12 3 3 5-6"/></svg>',
+  persona:'<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>',
+  personas:'<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M16 4.6a3.5 3.5 0 0 1 0 6.8"/><path d="M18.5 20a6.5 6.5 0 0 0-3-5.5"/></svg>',
+  atras:'<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>',
+  mas:'<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>',
+  masChico:'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>',
+  cerrar:'<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>',
+  calendario:'<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18"/></svg>',
+  alerta:'<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4M12 17h.01"/><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg>',
+  correo:'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg>',
+  palomita:'<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 5 5 9-10"/></svg>',
+  archivo:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="4" rx="1"/><path d="M5 8v11a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8M10 12h4"/></svg>',
+  info:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg>',
+};
+
+/* ---------------------------------------------------------------------------
+   Datos inventados
+--------------------------------------------------------------------------- */
+const usuarios = {
+  ana:   {nombre:'Ana López',    correo:'ana.lopez@ejemplo.mx',   color:'--av1'},
+  luis:  {nombre:'Luis Pérez',   correo:'luis.perez@ejemplo.mx',  color:'--av2'},
+  maria: {nombre:'María Ruiz',   correo:'maria.ruiz@ejemplo.mx',  color:'--av3'},
+  jorge: {nombre:'Jorge Díaz',   correo:'jorge.diaz@ejemplo.mx',  color:'--av4'},
+  sofia: {nombre:'Sofía Méndez', correo:'sofia.mendez@ejemplo.mx',color:'--av5'},
+};
+
+const proyectos = [
+  // permisos: lo que el dueño concede a cada miembro sobre las tarjetas (el dueño siempre puede todo).
+  {id:1, nombre:'Semana de la Ciencia 2026', dueno:'ana', miembros:['ana','luis','maria'], invitaciones:['sofia.mendez@ejemplo.mx'], archivado:false,
+   permisos:{luis:{crear:true, editar:true, estatus:true, eliminar:false, tipos:true}, maria:{crear:true, editar:false, estatus:true, eliminar:false, tipos:false}},
+   tipos:[{id:1, nombre:'Logística', descripcion:'Espacios, equipo y servicios.', color:'#f08c00'},
+          {id:2, nombre:'Difusión', descripcion:'Carteles, redes sociales y comunicados.', color:'#d6336c'},
+          {id:3, nombre:'Académico', descripcion:'', color:'#4263eb'},
+          {id:4, nombre:'Urgente', descripcion:'Atender antes que lo demás.', color:'#c92a2a'}]},
+  {id:2, nombre:'Mantenimiento del laboratorio', dueno:'luis', miembros:['luis','ana','jorge'], invitaciones:[], archivado:false,
+   permisos:{ana:{crear:true, editar:true, estatus:true, eliminar:true, tipos:true}, jorge:{crear:false, editar:false, estatus:true, eliminar:false, tipos:false}},
+   tipos:[{id:5, nombre:'Mantenimiento', descripcion:'Preventivo o correctivo.', color:'#0ca678'},
+          {id:6, nombre:'Compras', descripcion:'Requiere orden de compra.', color:'#7048e8'}]},
+  {id:3, nombre:'Revista institucional', dueno:'maria', miembros:['maria','luis'], invitaciones:[], archivado:false,
+   permisos:{luis:{crear:true, editar:true, estatus:true, eliminar:false, tipos:false}},
+   tipos:[{id:7, nombre:'Edición', descripcion:'', color:'#1098ad'}]},
+  {id:4, nombre:'Congreso regional 2025', dueno:'ana', miembros:['ana','luis'], invitaciones:[], archivado:true,
+   permisos:{luis:{crear:true, editar:true, estatus:true, eliminar:false, tipos:false}},
+   tipos:[{id:8, nombre:'Logística', descripcion:'', color:'#f08c00'}]},
+];
+
+// Fechas relativas al «hoy» del escaparate (días de diferencia).
+let sigId = 100;
+const tarjetas = [
+  {id:1, proyecto:1, titulo:'Reservar el auditorio', descripcion:'Confirmar con Servicios Generales el auditorio central para los tres días del evento, con proyector y sonido.', estatus:'en_curso', fin:-2, asignados:['ana'], creada_por:'ana', tipos:[1, 4]},
+  {id:2, proyecto:1, titulo:'Convocatoria de ponentes', descripcion:'Redactar y publicar la convocatoria. Incluir formato de resumen y fecha límite de recepción.', estatus:'finalizada', fin:-10, asignados:['luis','maria'], creada_por:'ana', tipos:[2, 3]},
+  {id:3, proyecto:1, titulo:'Diseñar el cartel', descripcion:'Versión impresa tamaño doble carta y versión para redes sociales.', estatus:'en_curso', fin:1, asignados:['maria'], creada_por:'luis', tipos:[2]},
+  {id:4, proyecto:1, titulo:'Lista de constancias', descripcion:'Generar la lista de asistentes que recibirán constancia al final del evento.', estatus:'pendiente', fin:12, asignados:['luis'], creada_por:'ana', tipos:[3]},
+  {id:5, proyecto:1, titulo:'Coffee break', descripcion:'Cotizar con tres proveedores y elegir el menú.', estatus:'pendiente', fin:null, asignados:[], creada_por:'maria', tipos:[1]},
+  {id:6, proyecto:1, titulo:'Programa del evento', descripcion:'Armar el programa con horarios, salas y ponentes confirmados.', estatus:'pendiente', fin:5, asignados:['ana','maria','luis'], creada_por:'ana', tipos:[1, 3]},
+  {id:7, proyecto:2, titulo:'Inventario de reactivos', descripcion:'Contar existencias y marcar los que caducan antes de diciembre.', estatus:'en_curso', fin:0, asignados:['jorge'], creada_por:'luis', tipos:[5]},
+  {id:8, proyecto:2, titulo:'Calibrar balanzas', descripcion:'Calibración semestral de las cuatro balanzas analíticas.', estatus:'pendiente', fin:-1, asignados:['ana','jorge'], creada_por:'luis', tipos:[5]},
+  {id:9, proyecto:2, titulo:'Cambiar filtros de la campana', descripcion:'Solicitar los filtros a compras y programar el cambio.', estatus:'finalizada', fin:-20, asignados:['luis'], creada_por:'luis', tipos:[5, 6]},
+  {id:10, proyecto:3, titulo:'Revisión de artículos del número 12', descripcion:'Asignar revisores a los ocho artículos recibidos.', estatus:'en_curso', fin:7, asignados:['luis'], creada_por:'maria', tipos:[7]},
+  {id:12, proyecto:4, titulo:'Memorias del congreso', descripcion:'Compilar y publicar las memorias en PDF.', estatus:'finalizada', fin:-300, asignados:['luis'], creada_por:'ana', tipos:[]},
+  {id:13, proyecto:4, titulo:'Constancias de ponentes', descripcion:'Enviar las constancias por correo.', estatus:'finalizada', fin:-320, asignados:['ana'], creada_por:'ana', tipos:[8]},
+  {id:11, proyecto:3, titulo:'Maquetación', descripcion:'Maquetar el número una vez aprobados los artículos.', estatus:'pendiente', fin:30, asignados:['maria'], creada_por:'maria', tipos:[7]},
+];
+
+/* ---------------------------------------------------------------------------
+   Estado de la maqueta
+--------------------------------------------------------------------------- */
+const estado = {
+  vista:'telefono', yo:'ana', hoy:new Date('2026-10-15T12:00:00'),
+  pantalla:'proyectos',   // proyectos | tablero | miembros | mis | perfil
+  proyecto:null, tab:'pendiente', soloMias:false, filtroTipo:null,
+  capa:null,              // {tipo:'detalle', id} | {tipo:'nueva'} | {tipo:'nuevo-proyecto'} | {tipo:'confirmar', ...}
+};
+const ESTATUS = [['pendiente','Pendiente'],['en_curso','En curso'],['finalizada','Finalizada']];
+
+/* ---------------------------------------------------------------------------
+   Utilidades
+--------------------------------------------------------------------------- */
+const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const $ = s => document.querySelector(s);
+const iniciales = id => usuarios[id].nombre.split(' ').map(p => p[0]).slice(0,2).join('');
+const avatar = (id, grande) => `<span class="avatar${grande ? ' grande' : ''}" style="background:var(${usuarios[id].color})" title="${esc(usuarios[id].nombre)}">${iniciales(id)}</span>`;
+function avatares(ids, max = 3){
+  const extra = ids.length - max;
+  return `<span class="avatares">${ids.slice(0, max).map(i => avatar(i)).join('')}${extra > 0 ? `<span class="avatar mas">+${extra}</span>` : ''}</span>`;
+}
+const fechaDe = dias => { if (dias === null) return null; const d = new Date(estado.hoy); d.setDate(d.getDate() + dias); return d; };
+const diasEntre = d => Math.round((new Date(d.toDateString()) - new Date(estado.hoy.toDateString())) / 864e5);
+const MESES = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+const corta = d => `${d.getDate()} ${MESES[d.getMonth()]}`;
+const iso = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+
+function chipFecha(t){
+  if (!t.fecha) return '';
+  const dif = diasEntre(t.fecha);
+  if (t.estatus !== 'finalizada' && dif < 0) return `<span class="chip vencida">${I.alerta} Vencida · ${corta(t.fecha)}</span>`;
+  if (t.estatus !== 'finalizada' && dif === 0) return `<span class="chip por-vencer">${I.calendario} Vence hoy</span>`;
+  if (t.estatus !== 'finalizada' && dif === 1) return `<span class="chip por-vencer">${I.calendario} Vence mañana</span>`;
+  return `<span class="chip fecha">${I.calendario} ${corta(t.fecha)}</span>`;
+}
+const esVencida = t => t.fecha && t.estatus !== 'finalizada' && diasEntre(t.fecha) < 0;
+const proyectoDe = id => proyectos.find(p => p.id === id);
+const misProyectos = () => proyectos.filter(p => p.miembros.includes(estado.yo));
+const PERMISOS = [['crear','Crear'],['editar','Editar'],['estatus','Cambiar estatus'],['eliminar','Eliminar'],['tipos','Gestionar tipos']];
+const PERMISOS_NUEVO = {crear:true, editar:true, estatus:true, eliminar:false, tipos:false};   // lo que recibe quien acepta una invitación
+// Crear, editar, cambiar estatus y eliminar tarjetas, y gestionar los tipos del proyecto: permisos que el dueño concede a cada miembro.
+let sigTipo = 100;
+const MUESTRAS = ['#c92a2a','#d6336c','#ae3ec9','#7048e8','#4263eb','#1098ad','#0ca678','#37b24d','#f08c00','#868e96'];
+const tipoDe = (p, id) => p.tipos.find(x => x.id === id);
+const chipTipo = tp => `<span class="chip tipo" style="--tipo:${tp.color}" title="${esc(tp.descripcion || tp.nombre)}"><span class="punto"></span>${esc(tp.nombre)}</span>`;
+const puede = (p, accion) => !p.archivado && (p.dueno === estado.yo || !!(p.permisos[estado.yo] || {})[accion]);
+const puedeEliminar = t => puede(proyectoDe(t.proyecto), 'eliminar');
+
+function toast(texto){
+  document.querySelectorAll('.toast').forEach(t => t.remove());
+  const el = document.createElement('div');
+  el.className = 'toast'; el.setAttribute('role','status'); el.textContent = texto;
+  $('#dispositivo').appendChild(el);
+  setTimeout(() => el.remove(), 2200);
+}
+
+/* Las fechas viven como objetos Date a partir de los días relativos. */
+tarjetas.forEach(t => { t.fecha = fechaDe(t.fin); });
+
+/* Historial de estatus: cada cambio guarda cuándo (fecha y hora), quién, de qué estatus y a cuál.
+   La creación es la primera entrada (de: null). Se siembra relativo al «hoy» inicial. */
+function momento(dias, hora, minuto){ const d = fechaDe(dias); d.setHours(hora, minuto, 0, 0); return d; }
+tarjetas.forEach(t => {
+  const quien = t.asignados[0] || t.creada_por;
+  t.historial = [{cuando:momento(-12, 9, 14), quien:t.creada_por, de:null, a:'pendiente'}];
+  if (t.estatus !== 'pendiente') t.historial.push({cuando:momento(-7, 11, 32), quien, de:'pendiente', a:'en_curso'});
+  if (t.estatus === 'finalizada') t.historial.push({cuando:momento(-3, 17, 5), quien, de:'en_curso', a:'finalizada'});
+});
+// Ejemplo de tarjeta finalizada que se reabrió y se volvió a finalizar.
+(() => { const t = tarjetas.find(x => x.id === 2); const p = t.historial.pop();
+  t.historial.push({cuando:momento(-6, 16, 48), quien:'maria', de:'en_curso', a:'finalizada'},
+                   {cuando:momento(-5, 8, 20), quien:'ana', de:'finalizada', a:'en_curso'},
+                   {cuando:momento(-4, 13, 57), quien:'luis', de:'en_curso', a:'finalizada'}); })();
+// «Ahora» en la maqueta: la fecha del escaparate con la hora real del equipo.
+function ahora(){ const d = new Date(estado.hoy), r = new Date(); d.setHours(r.getHours(), r.getMinutes(), r.getSeconds(), 0); return d; }
+const MESES_H = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+const fechaHora = d => `${d.getDate()} ${MESES_H[d.getMonth()]} ${d.getFullYear()} · ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+const nombreEstatus = e => ESTATUS.find(x => x[0] === e)[1];
+const chipEstatus = e => `<span class="chip ${e}"><span class="punto"></span>${nombreEstatus(e)}</span>`;
+
+/* ---------------------------------------------------------------------------
+   Render
+--------------------------------------------------------------------------- */
+function render(){
+  const disp = $('#dispositivo');
+  disp.classList.toggle('computadora', estado.vista === 'computadora');
+  renderCabecera(); renderNav(); renderContenido(); renderCapa();
+  const fab = $('#fab');
+  fab.hidden = estado.pantalla !== 'tablero' || !puede(proyectoDe(estado.proyecto), 'crear');
+  fab.innerHTML = I.mas;
+}
+
+function renderCabecera(){
+  const c = $('#cabecera');
+  if (estado.pantalla === 'tablero' || estado.pantalla === 'miembros'){
+    const p = proyectoDe(estado.proyecto);
+    const sub = estado.pantalla === 'miembros' ? 'Miembros y ajustes' : p.archivado ? 'Archivado · solo lectura' : `${p.miembros.length} miembros · ${p.dueno === estado.yo ? 'eres dueña/o' : 'dueño: ' + usuarios[p.dueno].nombre}`;
+    c.innerHTML = `
+      <button class="btn-icono" data-ir="${estado.pantalla === 'miembros' ? 'tablero' : 'proyectos'}" aria-label="Regresar">${I.atras}</button>
+      <div class="titulos"><h1>${esc(p.nombre)}</h1><div class="sub">${esc(sub)}</div></div>
+      <div class="acciones-cab">${estado.pantalla === 'tablero' ? `<button class="btn btn-chico btn-secundario" data-ir="miembros">${I.personas} Miembros</button>${!puede(p, 'crear') ? '' : `<button class="btn btn-chico btn-primario" data-accion="nueva">${I.masChico} Nueva tarjeta</button>`}` : ''}</div>
+      ${estado.pantalla === 'tablero' ? `<button class="btn-icono" data-ir="miembros" aria-label="Miembros del proyecto" style="${estado.vista === 'computadora' ? 'display:none' : ''}">${I.personas}</button>` : ''}`;
+  } else {
+    const titulos = {proyectos:'Mis proyectos', mis:'Mis tarjetas', perfil:'Perfil'};
+    c.innerHTML = `<span class="sello" aria-hidden="true">TF</span>
+      <div class="titulos"><h1>TaskFlow</h1><div class="sub">${titulos[estado.pantalla]}</div></div>
+      ${estado.pantalla === 'proyectos' ? `<div class="acciones-cab"><button class="btn btn-chico btn-secundario" data-accion="nuevo-proyecto">${I.masChico} Nuevo proyecto</button></div>` : ''}`;
+  }
+}
+
+function renderNav(){
+  const items = [['proyectos','Proyectos',I.carpetas],['mis','Mis tarjetas',I.check],['perfil','Perfil',I.persona]];
+  const activa = ['tablero','miembros'].includes(estado.pantalla) ? 'proyectos' : estado.pantalla;
+  const html = items.map(([id, txt, ic]) => `<button data-ir="${id}" ${activa === id ? 'aria-current="page"' : ''}>${ic}<span>${txt}</span></button>`).join('');
+  $('#nav-inferior').innerHTML = html;
+  $('#nav-lateral').innerHTML = html;
+}
+
+function htmlTarjeta(t, conProyecto){
+  return `<button class="tarjeta${esVencida(t) ? ' vencida' : ''}${t.estatus === 'finalizada' ? ' terminada' : ''}" data-tarjeta="${t.id}">
+    ${conProyecto ? `<span class="proyecto-de">${esc(proyectoDe(t.proyecto).nombre)}</span>` : ''}
+    ${t.tipos.length ? `<div class="tipos-tarjeta">${t.tipos.map(id => chipTipo(tipoDe(proyectoDe(t.proyecto), id))).join('')}</div>` : ''}
+    <h4>${esc(t.titulo)}</h4>
+    <p>${esc(t.descripcion)}</p>
+    <div class="pie">${conProyecto ? `<span class="chip ${t.estatus}"><span class="punto"></span>${ESTATUS.find(e => e[0] === t.estatus)[1]}</span>` : ''}${chipFecha(t)}${t.asignados.length ? avatares(t.asignados) : '<span class="chip fecha" style="margin-left:auto">Sin asignar</span>'}</div>
+  </button>`;
+}
+
+function renderContenido(){
+  const m = $('#contenido');
+  if (estado.pantalla === 'proyectos'){
+    const lista = misProyectos().filter(p => !p.archivado), archivados = misProyectos().filter(p => p.archivado);
+    const tarjetaProyecto = p => {
+        const ts = tarjetas.filter(t => t.proyecto === p.id);
+        const n = e => ts.filter(t => t.estatus === e).length;
+        const venc = ts.filter(esVencida).length;
+        return `<button class="proyecto${p.archivado ? ' archivado' : ''}" data-proyecto="${p.id}">
+          <div class="fila"><h3>${esc(p.nombre)}</h3>${p.archivado ? '<span class="chip pendiente">Archivado</span>' : ''}${p.dueno === estado.yo ? '<span class="etiqueta-rol">Dueña/o</span>' : ''}</div>
+          <div class="conteos">
+            <span class="chip pendiente"><span class="punto"></span>${n('pendiente')} pendiente${n('pendiente') === 1 ? '' : 's'}</span>
+            <span class="chip en_curso"><span class="punto"></span>${n('en_curso')} en curso</span>
+            <span class="chip finalizada"><span class="punto"></span>${n('finalizada')} finalizada${n('finalizada') === 1 ? '' : 's'}</span>
+            ${venc ? `<span class="chip vencida">${I.alerta} ${venc} vencida${venc > 1 ? 's' : ''}</span>` : ''}
+          </div>
+          <div class="fila">${avatares(p.miembros, 5)}<span style="font-size:12px;color:var(--tenue);margin-left:auto">Dueño: ${esc(usuarios[p.dueno].nombre)}</span></div>
+        </button>`;};
+    m.innerHTML = `<div class="seccion-titulo">Proyectos en los que participas</div>
+      <div class="lista-proyectos">${lista.map(tarjetaProyecto).join('') || '<div class="vacio">Aún no participas en ningún proyecto.</div>'}</div>
+      ${archivados.length ? `<div class="seccion-titulo">Archivados · ${archivados.length}</div><div class="lista-proyectos">${archivados.map(tarjetaProyecto).join('')}</div>` : ''}
+      <div style="margin-top:14px;${estado.vista === 'computadora' ? 'display:none' : ''}"><button class="btn btn-secundario btn-bloque" data-accion="nuevo-proyecto">${I.masChico} Nuevo proyecto</button></div>
+      <div class="aviso" style="margin-top:14px">${I.info}<span>Solo ves los proyectos de los que eres miembro. Cualquier usuario puede crear un proyecto; quien lo crea es su dueño y puede invitar a otras personas.</span></div>`;
+    return;
+  }
+  if (estado.pantalla === 'tablero'){
+    let ts = tarjetas.filter(t => t.proyecto === estado.proyecto);
+    if (estado.soloMias) ts = ts.filter(t => t.asignados.includes(estado.yo));
+    if (estado.filtroTipo) ts = ts.filter(t => t.tipos.includes(estado.filtroTipo));
+    const orden = (a, b) => (a.fecha ? a.fecha : Infinity) - (b.fecha ? b.fecha : Infinity);
+    const de = e => ts.filter(t => t.estatus === e).sort(orden);
+    const compu = estado.vista === 'computadora';
+    const pr = proyectoDe(estado.proyecto);
+    m.innerHTML = `
+      ${pr.archivado ? `<div class="banner">${I.archivo}<span>Proyecto archivado: se puede consultar, pero nadie puede crear, editar ni mover tarjetas.</span>${pr.dueno === estado.yo ? '<button class="btn btn-chico btn-secundario" data-accion="restaurar">Restaurar</button>' : ''}</div>` : ''}
+      <div class="segmentos" role="group" aria-label="Estatus">${ESTATUS.map(([e, txt]) =>
+        `<button class="${e}" data-tab="${e}" aria-pressed="${estado.tab === e}">${txt}<span class="num">${de(e).length}</span></button>`).join('')}</div>
+      <div class="filtros"><span>${ts.length} tarjeta${ts.length === 1 ? '' : 's'}${estado.soloMias ? ' asignadas a ti' : ''}</span>
+        <button class="interruptor" data-accion="solo-mias" aria-pressed="${estado.soloMias}"><span class="pista"></span>Solo mías</button></div>
+      ${pr.tipos.length ? `<div class="filtro-tipos" role="group" aria-label="Filtrar por tipo"><button data-filtro-tipo="0" aria-pressed="${!estado.filtroTipo}">Todos los tipos</button>${pr.tipos.map(tp =>
+        `<button data-filtro-tipo="${tp.id}" style="--tipo:${tp.color}" aria-pressed="${estado.filtroTipo === tp.id}"><span class="punto"></span>${esc(tp.nombre)}</button>`).join('')}</div>` : ''}
+      <div class="columnas">${ESTATUS.filter(([e]) => compu || e === estado.tab).map(([e, txt]) => `
+        <section class="columna" aria-label="${txt}">
+          <div class="columna-cab"><span class="chip ${e}"><span class="punto"></span>${txt}</span><span class="num">${de(e).length}</span></div>
+          ${de(e).map(t => htmlTarjeta(t)).join('') || `<div class="vacio">Sin tarjetas ${txt.toLowerCase() === 'pendiente' ? 'pendientes' : txt.toLowerCase() === 'en curso' ? 'en curso' : 'finalizadas'}.</div>`}
+        </section>`).join('')}</div>`;
+    return;
+  }
+  if (estado.pantalla === 'miembros'){
+    const p = proyectoDe(estado.proyecto);
+    const soyDueno = p.dueno === estado.yo;
+    const nTarjetas = tarjetas.filter(t => t.proyecto === p.id).length;
+    const permisosDe = u => {
+      if (u === p.dueno) return '';
+      const pu = p.permisos[u] || {};
+      if (soyDueno && !p.archivado) return `<div class="permisos" role="group" aria-label="Permisos de ${esc(usuarios[u].nombre)}">${PERMISOS.map(([k, txt]) =>
+        `<button data-permiso="${u}:${k}" aria-pressed="${!!pu[k]}">${I.palomita}${txt}</button>`).join('')}</div>`;
+      const dados = PERMISOS.filter(([k]) => pu[k]);
+      return `<div class="permisos"><span class="rotulo">Puede:</span>${dados.length ? dados.map(([, txt]) => `<span class="si">${I.palomita}${txt}</span>`).join('') : '<span>Solo ver tarjetas</span>'}</div>`;
+    };
+    m.innerHTML = `
+      ${soyDueno && !p.archivado ? `<div class="invitar">
+        <div class="campo" style="margin:0">
+          <label for="correo-inv">Invitar por correo</label>
+          <div class="linea"><input id="correo-inv" type="email" placeholder="nombre@ejemplo.mx"><button class="btn btn-primario" data-accion="invitar">Invitar</button></div>
+          <div class="ayuda">Le llega un correo con un enlace que no vence. Si aún no tiene cuenta, la crea desde ahí y entra directo al proyecto con permiso de crear, editar y cambiar estatus (puedes cambiarlo abajo).</div>
+        </div></div>` : !soyDueno ? `<div class="aviso">${I.info}<span>Solo el dueño del proyecto (${esc(usuarios[p.dueno].nombre)}) puede invitar, quitar personas y decidir qué puede hacer cada miembro con las tarjetas.</span></div>` : ''}
+      <div class="seccion-titulo">Miembros · ${p.miembros.length}</div>
+      <div class="tarjeta-blanca">${p.miembros.map(u => `
+        <div class="persona">${avatar(u, true)}<div class="nombre">${esc(usuarios[u].nombre)}${u === estado.yo ? ' (tú)' : ''}<small>${esc(usuarios[u].correo)}</small></div>
+          ${u === p.dueno ? '<span class="etiqueta-rol">Dueña/o</span>' : soyDueno ? `<div class="acciones-persona">
+            <form data-confirmar="¿Transferir «${esc(p.nombre)}» a ${esc(usuarios[u].nombre)}? Será el nuevo dueño y tú quedarás como miembro con todos los permisos sobre las tarjetas. Solo esa persona podrá devolvértelo." data-transferir="${u}"><button class="btn btn-chico btn-secundario">Hacer dueño</button></form>
+            ${p.archivado ? '' : `<form data-confirmar="¿Quitar a ${esc(usuarios[u].nombre)} del proyecto? Dejará de ver sus tarjetas y se le quitará de las que tenga asignadas." data-quitar="${u}"><button class="btn btn-chico btn-peligro">Quitar</button></form>`}</div>` : ''}
+          ${permisosDe(u)}
+        </div>`).join('')}</div>
+      ${p.invitaciones.length ? `<div class="seccion-titulo">Invitaciones pendientes · ${p.invitaciones.length}</div>
+      <div class="tarjeta-blanca">${p.invitaciones.map(c => `
+        <div class="persona"><span class="avatar grande mas">${I.correo}</span><div class="nombre">${esc(c)}<small>Enviada, sin aceptar · no vence</small></div>
+        ${soyDueno ? `<div class="acciones-persona"><button class="btn btn-chico btn-secundario" data-accion="reenviar" data-correo="${esc(c)}">Reenviar</button><form data-confirmar="¿Cancelar la invitación a ${esc(c)}? El enlace que recibió dejará de funcionar." data-cancelar="${esc(c)}"><button class="btn btn-chico btn-peligro">Cancelar</button></form></div>` : ''}</div>`).join('')}</div>` : ''}
+      <div class="seccion-titulo">Tipos de tarjeta · ${p.tipos.length}</div>
+      <div class="tarjeta-blanca">${p.tipos.map(tp => {
+        const n = tarjetas.filter(t => t.proyecto === p.id && t.tipos.includes(tp.id)).length;
+        return `<div class="fila-tipo"><span class="muestra-color" style="--tipo:${tp.color}"></span>
+          <div class="nombre">${esc(tp.nombre)}<small>${tp.descripcion ? esc(tp.descripcion) + ' · ' : ''}${n} tarjeta${n === 1 ? '' : 's'}</small></div>
+          ${puede(p, 'tipos') ? `<div class="acciones-persona"><button class="btn btn-chico btn-secundario" data-accion="editar-tipo" data-tipo="${tp.id}">Editar</button>
+            <form data-confirmar="¿Eliminar el tipo «${esc(tp.nombre)}»? Se quitará de ${n} tarjeta${n === 1 ? '' : 's'}; las tarjetas no se borran." data-eliminar-tipo="${tp.id}"><button class="btn btn-chico btn-peligro">Eliminar</button></form></div>` : ''}
+        </div>`;}).join('') || '<div class="vacio" style="padding:16px">Este proyecto aún no tiene tipos.</div>'}
+        ${puede(p, 'tipos') ? `<div style="padding:10px 0 8px"><button class="btn btn-secundario btn-bloque" data-accion="nuevo-tipo">${I.masChico} Nuevo tipo</button></div>` : ''}
+      </div>
+      ${!puede(p, 'tipos') && !p.archivado ? `<div class="ayuda" style="font-size:12px;color:var(--tenue);margin:6px 4px 0">Crear y editar tipos lo puede el dueño o quien tenga el permiso «Gestionar tipos».</div>` : ''}
+      <div class="seccion-titulo">Proyecto</div>
+      ${soyDueno ? `<div class="tarjeta-blanca" style="padding:14px;display:flex;flex-direction:column;gap:10px">
+        ${p.archivado
+          ? '<button class="btn btn-secundario btn-bloque" data-accion="restaurar">Restaurar proyecto</button>'
+          : `<form data-confirmar="¿Archivar «${esc(p.nombre)}»? Queda en solo lectura para todos sus miembros: nadie podrá crear, editar ni mover tarjetas. Puedes restaurarlo cuando quieras." data-archivar="1"><button class="btn btn-secundario btn-bloque">${I.archivo} Archivar proyecto</button></form>`}
+        <form data-confirmar="¿Eliminar «${esc(p.nombre)}» y sus ${nTarjetas} tarjetas? Se borra para todos sus miembros y no se puede deshacer." data-eliminar-proyecto="1"><button class="btn btn-peligro btn-bloque">Eliminar proyecto</button></form>
+        <div class="ayuda" style="font-size:12px;color:var(--tenue)">Para salir del proyecto, primero transfiérelo a otro miembro con «Hacer dueño».</div>
+      </div>` : `<form data-confirmar="¿Salir de «${esc(p.nombre)}»? Dejarás de ver sus tarjetas y se te quitará de las que tengas asignadas." data-salir="1"><button class="btn btn-peligro btn-bloque">Salir del proyecto</button></form>`}`;
+    return;
+  }
+  if (estado.pantalla === 'mis'){
+    const ids = misProyectos().filter(p => !p.archivado).map(p => p.id);
+    const ts = tarjetas.filter(t => ids.includes(t.proyecto) && t.asignados.includes(estado.yo) && t.estatus !== 'finalizada')
+      .sort((a, b) => (a.fecha ? a.fecha : Infinity) - (b.fecha ? b.fecha : Infinity));
+    const venc = ts.filter(esVencida), resto = ts.filter(t => !esVencida(t));
+    m.innerHTML = `${venc.length ? `<div class="seccion-titulo">Vencidas · ${venc.length}</div><div class="columnas" style="display:grid;gap:10px">${venc.map(t => htmlTarjeta(t, true)).join('')}</div>` : ''}
+      <div class="seccion-titulo">Por hacer · ${resto.length}</div>
+      <div class="columnas" style="display:grid;gap:10px">${resto.map(t => htmlTarjeta(t, true)).join('') || '<div class="vacio">No tienes tarjetas pendientes.</div>'}</div>
+      <div class="aviso" style="margin-top:14px">${I.info}<span>Tarjetas asignadas a ti en todos tus proyectos que aún no están finalizadas, ordenadas por fecha de fin.</span></div>`;
+    return;
+  }
+  if (estado.pantalla === 'perfil'){
+    const u = usuarios[estado.yo];
+    m.innerHTML = `<div class="tarjeta-blanca" style="padding:16px"><div class="persona" style="border:0">${avatar(estado.yo, true)}<div class="nombre"><b>${esc(u.nombre)}</b><small>${esc(u.correo)}</small></div></div></div>
+      <div class="seccion-titulo">Cuenta</div>
+      <div class="tarjeta-blanca"><div class="persona"><div class="nombre">Cambiar contraseña</div></div><div class="persona"><div class="nombre">Instalar la app<small>Pasos en la página de instalación</small></div></div></div>
+      <div style="margin-top:18px"><button class="btn btn-secundario btn-bloque">Cerrar sesión</button></div>`;
+  }
+}
+
+function renderCapa(){
+  const capa = $('#capa');
+  const c = estado.capa;
+  if (!c){ capa.innerHTML = ''; return; }
+  if (c.tipo === 'confirmar'){
+    capa.innerHTML = `<div class="modal" role="dialog" aria-modal="true"><div class="caja"><p>${c.mensaje}</p>
+      <div class="fila-botones"><button class="btn btn-secundario" data-accion="cerrar">Cancelar</button><button class="btn btn-peligro-lleno" data-accion="confirmar">${esc(c.boton)}</button></div></div></div>`;
+    return;
+  }
+  let cuerpo = '';
+  if (c.tipo === 'detalle'){
+    const t = tarjetas.find(x => x.id === c.id);
+    const p = proyectoDe(t.proyecto);
+    cuerpo = `<div class="hoja-cab"><h2>${esc(t.titulo)}</h2><button class="btn-icono" data-accion="cerrar" aria-label="Cerrar">${I.cerrar}</button></div>
+      <div class="campo"><span class="etiqueta">Estatus</span><div class="selector-estatus" role="group" aria-label="Cambiar estatus">${ESTATUS.map(([e, txt]) =>
+        `<button class="${e}" data-estatus="${e}" aria-pressed="${t.estatus === e}" ${puede(p, 'estatus') ? '' : 'disabled'}><span class="punto"></span>${txt}</button>`).join('')}</div></div>
+      <div class="campo"><span class="etiqueta">Tipos</span>${t.tipos.length ? `<div class="tipos-tarjeta">${t.tipos.map(id => chipTipo(tipoDe(p, id))).join('')}</div>` : '<span style="color:var(--tenue);font-size:14px">Sin tipo</span>'}</div>
+      <div class="campo"><span class="etiqueta">Descripción</span><p class="texto-largo">${esc(t.descripcion)}</p></div>
+      <div class="campo"><span class="etiqueta">Fecha fin</span>${t.fecha ? chipFecha(t) : '<span style="color:var(--tenue);font-size:14px">Sin fecha</span>'}</div>
+      <div class="campo"><span class="etiqueta">Historial de estatus · ${t.historial.length}</span><ul class="historial">${[...t.historial].reverse().map(h => `
+        <li class="${h.a}">${esc(usuarios[h.quien] ? usuarios[h.quien].nombre : 'Usuario eliminado')}${h.quien === estado.yo ? ' (tú)' : ''} ${h.de ? `la movió <span class="flecha">de</span> ${chipEstatus(h.de)} <span class="flecha">a</span> ${chipEstatus(h.a)}` : `la creó en ${chipEstatus(h.a)}`}<span class="cuando">${fechaHora(h.cuando)}</span></li>`).join('')}</ul></div>
+      <div class="campo"><span class="etiqueta">Asignada a · ${t.asignados.length}</span><div class="personas">${t.asignados.map(u => `<div class="persona">${avatar(u, true)}<div class="nombre">${esc(usuarios[u].nombre)}${u === estado.yo ? ' (tú)' : ''}</div></div>`).join('') || '<span style="color:var(--tenue);font-size:14px">Sin asignar</span>'}</div></div>
+      <div class="fila-botones">${puede(p, 'editar') ? '<button class="btn btn-secundario" data-accion="editar">Editar</button>' : ''}
+        ${puedeEliminar(t) ? `<form style="flex:1;display:flex" data-confirmar="¿Eliminar la tarjeta «${esc(t.titulo)}»? Esta acción no se puede deshacer." data-eliminar="${t.id}"><button class="btn btn-peligro" style="flex:1">Eliminar</button></form>` : ''}</div>
+      <div class="meta"><span>Proyecto: ${esc(p.nombre)}</span><span>Creada por ${esc(usuarios[t.creada_por].nombre)}</span>${p.archivado ? '<span>Proyecto archivado: solo lectura.</span>' : (!puede(p, 'estatus') || !puede(p, 'editar') || !puede(p, 'eliminar')) ? `<span>Lo que no ves disponible depende de los permisos que te dio el dueño (${esc(usuarios[p.dueno].nombre)}).</span>` : ''}</div>`;
+  }
+  if (c.tipo === 'nueva' || c.tipo === 'editar'){
+    const t = c.tipo === 'editar' ? tarjetas.find(x => x.id === c.id) : null;
+    const p = proyectoDe(t ? t.proyecto : estado.proyecto);
+    const asig = t ? t.asignados : [];
+    cuerpo = `<div class="hoja-cab"><h2>${t ? 'Editar tarjeta' : 'Nueva tarjeta'}</h2><button class="btn-icono" data-accion="cerrar" aria-label="Cerrar">${I.cerrar}</button></div>
+      <form id="form-tarjeta" novalidate>
+        <div class="campo"><label for="f-titulo">Título</label><input id="f-titulo" type="text" maxlength="200" value="${t ? esc(t.titulo) : ''}" placeholder="¿Qué hay que hacer?"><div class="error" id="e-titulo" hidden>Escribe un título.</div></div>
+        <div class="campo"><label for="f-desc">Descripción</label><textarea id="f-desc" placeholder="Detalles, criterios de terminado…">${t ? esc(t.descripcion) : ''}</textarea><div class="error" id="e-desc" hidden>Escribe una descripción.</div></div>
+        <div class="campo"><label for="f-fecha">Fecha fin <span style="text-transform:none;font-weight:400">(opcional)</span></label><input id="f-fecha" type="date" value="${t && t.fecha ? iso(t.fecha) : ''}"></div>
+        <div class="campo"><span class="etiqueta">Tipos <span style="text-transform:none;font-weight:400">(opcional, uno o más)</span></span>${p.tipos.length ? `<div class="elegir-tipos">${p.tipos.map(tp => `
+          <label><input type="checkbox" name="tipo" value="${tp.id}" ${t && t.tipos.includes(tp.id) ? 'checked' : ''}>${chipTipo(tp).replace('class="chip tipo"', 'class="chip tipo"')}</label>`).join('')}</div>` : '<div class="ayuda">Este proyecto aún no tiene tipos.</div>'}</div>
+        <div class="campo"><span class="etiqueta">Asignar a <span style="text-transform:none;font-weight:400">(opcional)</span></span><div class="personas">${p.miembros.map(u => `
+          <label class="persona"><input type="checkbox" name="asig" value="${u}" ${asig.includes(u) ? 'checked' : ''}>${avatar(u, true)}<span class="nombre">${esc(usuarios[u].nombre)}${u === estado.yo ? ' (tú)' : ''}</span></label>`).join('')}</div>
+          <div class="ayuda">Solo aparecen los miembros de «${esc(p.nombre)}». Puede quedar sin asignar.</div></div>
+        <div class="fila-botones"><button type="button" class="btn btn-secundario" data-accion="cerrar">Cancelar</button><button type="submit" class="btn btn-primario">Guardar</button></div>
+      </form>`;
+  }
+  if (c.tipo === 'tipo'){
+    const p = proyectoDe(estado.proyecto);
+    const tp = c.id ? tipoDe(p, c.id) : null;
+    const color = tp ? tp.color : MUESTRAS[p.tipos.length % MUESTRAS.length];
+    cuerpo = `<div class="hoja-cab"><h2>${tp ? 'Editar tipo' : 'Nuevo tipo de tarjeta'}</h2><button class="btn-icono" data-accion="cerrar" aria-label="Cerrar">${I.cerrar}</button></div>
+      <form id="form-tipo" novalidate>
+        <div class="campo"><label for="f-tnombre">Nombre</label><input id="f-tnombre" type="text" maxlength="50" value="${tp ? esc(tp.nombre) : ''}" placeholder="Ej. Difusión"><div class="error" id="e-tnombre" hidden></div></div>
+        <div class="campo"><label for="f-tdesc">Descripción <span style="text-transform:none;font-weight:400">(opcional)</span></label><textarea id="f-tdesc" style="min-height:70px" placeholder="Para qué tarjetas se usa">${tp ? esc(tp.descripcion) : ''}</textarea></div>
+        <div class="campo"><span class="etiqueta">Color</span><div class="muestras" role="group" aria-label="Colores sugeridos">${MUESTRAS.map(m =>
+          `<button type="button" data-color="${m}" style="--tipo:${m}" aria-pressed="${m === color}" aria-label="Color ${m}"></button>`).join('')}
+          <input type="color" id="f-tcolor" value="${color}" aria-label="Otro color"></div>
+          <div class="ayuda">Elige uno sugerido u otro con el selector.</div></div>
+        <div class="campo"><span class="etiqueta">Vista previa</span><span id="vista-tipo">${chipTipo({nombre: tp ? tp.nombre : 'Nombre del tipo', descripcion:'', color})}</span></div>
+        <div class="fila-botones"><button type="button" class="btn btn-secundario" data-accion="cerrar">Cancelar</button><button type="submit" class="btn btn-primario">Guardar</button></div>
+      </form>`;
+  }
+  if (c.tipo === 'nuevo-proyecto'){
+    cuerpo = `<div class="hoja-cab"><h2>Nuevo proyecto</h2><button class="btn-icono" data-accion="cerrar" aria-label="Cerrar">${I.cerrar}</button></div>
+      <form id="form-proyecto" novalidate>
+        <div class="campo"><label for="f-nombre">Nombre</label><input id="f-nombre" type="text" maxlength="150" placeholder="Ej. Feria de empleo 2027"><div class="error" id="e-nombre" hidden>Escribe un nombre.</div></div>
+        <div class="campo"><div class="ayuda">Serás el dueño: podrás invitar a otras personas, decidir qué puede hacer cada una con las tarjetas, y después transferir, archivar o eliminar el proyecto.</div></div>
+        <div class="fila-botones"><button type="button" class="btn btn-secundario" data-accion="cerrar">Cancelar</button><button type="submit" class="btn btn-primario">Crear proyecto</button></div>
+      </form>`;
+  }
+  capa.innerHTML = `<div class="velo" data-accion="cerrar-fondo"><div class="hoja" role="dialog" aria-modal="true"><div class="asa"></div>${cuerpo}</div></div>`;
+}
+
+/* ---------------------------------------------------------------------------
+   Eventos (un solo listener delegado, como en la app real)
+--------------------------------------------------------------------------- */
+document.addEventListener('click', e => {
+  const b = e.target.closest('[data-vista],[data-yo],[data-ir],[data-proyecto],[data-tab],[data-tarjeta],[data-estatus],[data-permiso],[data-filtro-tipo],[data-color],[data-accion],#fab');
+  if (!b) return;
+  if (b.dataset.vista){ estado.vista = b.dataset.vista; marcar('[data-vista]', b); return render(); }
+  if (b.dataset.yo){
+    estado.yo = b.dataset.yo; marcar('[data-yo]', b);
+    if (estado.proyecto && !proyectoDe(estado.proyecto).miembros.includes(estado.yo)) estado.pantalla = 'proyectos';
+    estado.capa = null; return render();
+  }
+  if (b.dataset.ir){ estado.pantalla = b.dataset.ir; estado.capa = null; return render(); }
+  if (b.dataset.proyecto){ estado.proyecto = +b.dataset.proyecto; estado.pantalla = 'tablero'; estado.tab = 'pendiente'; estado.soloMias = false; estado.filtroTipo = null; return render(); }
+  if (b.dataset.tab){ estado.tab = b.dataset.tab; return render(); }
+  if (b.dataset.tarjeta){ estado.capa = {tipo:'detalle', id:+b.dataset.tarjeta}; return render(); }
+  if (b.dataset.filtroTipo !== undefined){ estado.filtroTipo = +b.dataset.filtroTipo || null; return render(); }
+  if (b.dataset.color){ $('#f-tcolor').value = b.dataset.color; vistaTipo(); return; }
+  if (b.dataset.permiso){
+    const [u, k] = b.dataset.permiso.split(':'); const p = proyectoDe(estado.proyecto);
+    p.permisos[u] = p.permisos[u] || {}; p.permisos[u][k] = !p.permisos[u][k];
+    toast(`Permiso actualizado para ${usuarios[u].nombre}.`); return render();
+  }
+  if (b.dataset.estatus){
+    const t = tarjetas.find(x => x.id === estado.capa.id);
+    if (!puede(proyectoDe(t.proyecto), 'estatus')) return;
+    if (t.estatus !== b.dataset.estatus){ t.historial.push({cuando:ahora(), quien:estado.yo, de:t.estatus, a:b.dataset.estatus}); t.estatus = b.dataset.estatus; toast(`Tarjeta movida a ${ESTATUS.find(x => x[0] === t.estatus)[1]}.`); }
+    return render();
+  }
+  if (b.id === 'fab'){ estado.capa = {tipo:'nueva'}; return render(); }
+  const a = b.dataset.accion;
+  if (a === 'cerrar-fondo' && e.target !== b) return;   // clic dentro de la hoja
+  if (a === 'cerrar' || a === 'cerrar-fondo'){ estado.capa = estado.capa && estado.capa.volver ? estado.capa.volver : null; return render(); }
+  if (a === 'nueva'){ estado.capa = {tipo:'nueva'}; return render(); }
+  if (a === 'nuevo-proyecto'){ estado.capa = {tipo:'nuevo-proyecto'}; return render(); }
+  if (a === 'editar'){ estado.capa = {tipo:'editar', id:estado.capa.id}; return render(); }
+  if (a === 'nuevo-tipo'){ estado.capa = {tipo:'tipo', id:null}; return render(); }
+  if (a === 'editar-tipo'){ estado.capa = {tipo:'tipo', id:+b.dataset.tipo}; return render(); }
+  if (a === 'reenviar'){ toast(`Se reenvió la invitación a ${b.dataset.correo}.`); return; }
+  if (a === 'restaurar'){ proyectoDe(estado.proyecto).archivado = false; toast('Proyecto restaurado.'); return render(); }
+  if (a === 'solo-mias'){ estado.soloMias = !estado.soloMias; return render(); }
+  if (a === 'invitar'){
+    const inp = $('#correo-inv'); const v = inp.value.trim().toLowerCase();
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(v)){ inp.focus(); return toast('Escribe un correo válido.'); }
+    const p = proyectoDe(estado.proyecto);
+    if (p.invitaciones.includes(v) || p.miembros.some(u => usuarios[u].correo === v)) return toast('Esa persona ya está invitada o es miembro.');
+    p.invitaciones.push(v); toast('Se envió la invitación.'); return render();
+  }
+  if (a === 'confirmar'){ const c = estado.capa; estado.capa = null; c.hacer(); return render(); }
+});
+
+/* Formularios destructivos: data-confirmar abre el modal (nunca window.confirm). */
+document.addEventListener('submit', e => {
+  const f = e.target; e.preventDefault();
+  if (f.dataset.confirmar){
+    const p = proyectoDe(estado.proyecto);
+    const volver = estado.capa;
+    let hacer, boton = f.querySelector('button').textContent.trim();
+    if (f.dataset.eliminar){ hacer = () => { tarjetas.splice(tarjetas.findIndex(t => t.id === +f.dataset.eliminar), 1); toast('Tarjeta eliminada.'); }; }
+    if (f.dataset.eliminarTipo){ hacer = () => { const id = +f.dataset.eliminarTipo; p.tipos = p.tipos.filter(x => x.id !== id); tarjetas.forEach(t => t.tipos = t.tipos.filter(x => x !== id)); if (estado.filtroTipo === id) estado.filtroTipo = null; toast('Tipo eliminado.'); }; }
+    if (f.dataset.transferir){ hacer = () => { const u = f.dataset.transferir; const antes = p.dueno; p.dueno = u; delete p.permisos[u]; p.permisos[antes] = {crear:true, editar:true, estatus:true, eliminar:true, tipos:true}; toast(`${usuarios[u].nombre} es el nuevo dueño.`); }; }
+    if (f.dataset.archivar){ hacer = () => { p.archivado = true; estado.pantalla = 'tablero'; toast('Proyecto archivado.'); }; }
+    if (f.dataset.eliminarProyecto){ hacer = () => { for (let i = tarjetas.length - 1; i >= 0; i--) if (tarjetas[i].proyecto === p.id) tarjetas.splice(i, 1); proyectos.splice(proyectos.indexOf(p), 1); estado.pantalla = 'proyectos'; estado.proyecto = null; toast('Proyecto eliminado.'); }; }
+    if (f.dataset.quitar){ hacer = () => { const u = f.dataset.quitar; delete p.permisos[u]; p.miembros = p.miembros.filter(x => x !== u); tarjetas.filter(t => t.proyecto === p.id).forEach(t => t.asignados = t.asignados.filter(x => x !== u)); toast('Se quitó a la persona del proyecto.'); }; }
+    if (f.dataset.cancelar){ hacer = () => { p.invitaciones = p.invitaciones.filter(x => x !== f.dataset.cancelar); toast('Invitación cancelada.'); }; }
+    if (f.dataset.salir){ hacer = () => { p.miembros = p.miembros.filter(x => x !== estado.yo); tarjetas.filter(t => t.proyecto === p.id).forEach(t => t.asignados = t.asignados.filter(x => x !== estado.yo)); estado.pantalla = 'proyectos'; toast('Saliste del proyecto.'); }; }
+    estado.capa = {tipo:'confirmar', mensaje:f.dataset.confirmar, boton, hacer, volver:f.dataset.eliminar ? volver : null};
+    return render();
+  }
+  if (f.id === 'form-tarjeta'){
+    const titulo = $('#f-titulo').value.trim(), desc = $('#f-desc').value.trim();
+    const asig = [...f.querySelectorAll('[name=asig]:checked')].map(x => x.value);
+    const tiposSel = [...f.querySelectorAll('[name=tipo]:checked')].map(x => +x.value);
+    $('#e-titulo').hidden = !!titulo; $('#e-desc').hidden = !!desc;
+    if (!titulo || !desc) return;
+    const fv = $('#f-fecha').value; const fecha = fv ? new Date(fv + 'T12:00:00') : null;
+    if (estado.capa.tipo === 'editar'){
+      const t = tarjetas.find(x => x.id === estado.capa.id);
+      Object.assign(t, {titulo, descripcion:desc, fecha, asignados:asig, tipos:tiposSel});
+      estado.capa = {tipo:'detalle', id:t.id}; toast('Tarjeta guardada.');
+    } else {
+      tarjetas.push({id:sigId++, proyecto:estado.proyecto, titulo, descripcion:desc, estatus:'pendiente', fecha, asignados:asig, tipos:tiposSel, creada_por:estado.yo, historial:[{cuando:ahora(), quien:estado.yo, de:null, a:'pendiente'}]});
+      estado.capa = null; estado.tab = 'pendiente'; toast('Tarjeta creada.');
+    }
+    return render();
+  }
+  if (f.id === 'form-tipo'){
+    const p = proyectoDe(estado.proyecto);
+    const nombre = $('#f-tnombre').value.trim(), descripcion = $('#f-tdesc').value.trim(), color = $('#f-tcolor').value.toLowerCase();
+    const err = $('#e-tnombre');
+    const repetido = p.tipos.some(x => x.nombre.toLowerCase() === nombre.toLowerCase() && x.id !== estado.capa.id);
+    err.textContent = !nombre ? 'Escribe un nombre.' : repetido ? 'Ya hay un tipo con ese nombre en este proyecto.' : '';
+    err.hidden = !err.textContent; if (err.textContent) return;
+    if (!/^#[0-9a-f]{6}$/.test(color)) return;
+    if (estado.capa.id) Object.assign(tipoDe(p, estado.capa.id), {nombre, descripcion, color});
+    else p.tipos.push({id:sigTipo++, nombre, descripcion, color});
+    toast(estado.capa.id ? 'Tipo guardado.' : 'Tipo creado.'); estado.capa = null; return render();
+  }
+  if (f.id === 'form-proyecto'){
+    const nombre = $('#f-nombre').value.trim();
+    $('#e-nombre').hidden = !!nombre; if (!nombre) return;
+    const id = Math.max(...proyectos.map(p => p.id)) + 1;
+    proyectos.push({id, nombre, dueno:estado.yo, miembros:[estado.yo], invitaciones:[], archivado:false, permisos:{}, tipos:[]});
+    estado.capa = null; estado.proyecto = id; estado.pantalla = 'tablero'; toast('Proyecto creado.');
+    return render();
+  }
+});
+
+$('#hoy').addEventListener('change', e => {
+  if (!e.target.value) return;
+  const nuevo = new Date(e.target.value + 'T12:00:00');
+  // Las fechas fin se quedan fijas: solo cambia el «hoy» contra el que se comparan.
+  estado.hoy = nuevo; render();
+});
+
+function vistaTipo(){
+  const c = $('#f-tcolor'); if (!c) return;
+  document.querySelectorAll('[data-color]').forEach(x => x.setAttribute('aria-pressed', x.dataset.color === c.value.toLowerCase()));
+  $('#vista-tipo').innerHTML = chipTipo({nombre: $('#f-tnombre').value.trim() || 'Nombre del tipo', descripcion:'', color:c.value});
+}
+document.addEventListener('input', e => { if (['f-tcolor','f-tnombre'].includes(e.target.id)) vistaTipo(); });
+
+function marcar(sel, b){ document.querySelectorAll(sel).forEach(x => x.setAttribute('aria-pressed', x === b)); }
+
+render();
+</script>
+</body>
+</html>

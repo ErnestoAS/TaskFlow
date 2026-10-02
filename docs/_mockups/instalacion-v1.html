@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TaskFlow · maqueta de la página de instalación (v1)</title>
+<style>
+/* =========================================================
+   Maqueta de la portada de TaskFlow (https://sistemas.reduaz.mx/taskflow/):
+   qué es y cómo instalar la app. Exploración: NO aprobada.
+   Colores solo por variable, los mismos de la maqueta de la app.
+========================================================= */
+:root{
+  --primario:#3b5bdb; --primario-osc:#2b44a8; --primario-suave:#e8edff;
+  --fondo:#f4f5f8; --superficie:#ffffff; --texto:#1d2330; --tenue:#6b7280; --linea:#e4e6eb;
+  --sombra:0 1px 2px rgba(16,24,40,.06),0 1px 3px rgba(16,24,40,.08);
+  --sombra-alta:0 16px 40px rgba(16,24,40,.18);
+  --velo:rgba(16,24,40,.45);
+  --pendiente:#5f6672; --pendiente-suave:#eceef2;
+  --en-curso:#1c7ed6;  --en-curso-suave:#e3f0fc;
+  --finalizada:#2f9e44; --finalizada-suave:#e6f4ea;
+  --vencida:#c92a2a;   --vencida-suave:#fdecec;
+  --av1:#5c7cfa; --av2:#20c997; --av3:#f06595;
+  --esc-fondo:#2b2f38; --esc-texto:#e9eaed; --esc-caja:#3a3f4b;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--fondo);color:var(--texto);font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;line-height:1.5}
+button{font-family:inherit;cursor:pointer}
+a{color:var(--primario)}
+.contenedor{max-width:1080px;margin:0 auto;padding:0 20px}
+
+/* ---------- escaparate (solo para presentar) ---------- */
+.escaparate{background:var(--esc-fondo);color:var(--esc-texto);font-size:12.5px;padding:8px 12px;display:flex;gap:10px;flex-wrap:wrap;justify-content:center;align-items:center}
+.escaparate .grupo{display:flex;gap:3px;align-items:center;background:var(--esc-caja);border-radius:9px;padding:3px 5px}
+.escaparate b{padding:0 5px;font-weight:600}
+.escaparate button{border:0;background:transparent;color:inherit;padding:4px 9px;border-radius:7px;font-size:12.5px}
+.escaparate button[aria-pressed="true"]{background:var(--primario)}
+.escaparate .nota{opacity:.7}
+@media (max-width:600px){.escaparate{display:none}}
+
+/* ---------- barra ---------- */
+.barra{background:var(--superficie);border-bottom:1px solid var(--linea);position:sticky;top:0;z-index:5}
+.barra .contenedor{display:flex;align-items:center;gap:18px;height:62px}
+.marca{display:flex;align-items:center;gap:10px;font-weight:700;font-size:17px;color:var(--texto);text-decoration:none}
+.sello{width:34px;height:34px;border-radius:10px;background:var(--primario);color:var(--superficie);display:grid;place-items:center;font-size:13px;letter-spacing:.5px}
+.barra nav{margin-left:auto;display:flex;gap:4px;align-items:center}
+.barra nav a{color:var(--tenue);text-decoration:none;font-size:14px;padding:8px 10px;border-radius:9px}
+.barra nav a:hover{background:var(--fondo);color:var(--texto)}
+@media (max-width:600px){.barra nav a.opcional{display:none}}
+
+/* ---------- botones ---------- */
+.btn{border:0;border-radius:12px;padding:12px 20px;font-weight:600;font-size:15px;display:inline-flex;align-items:center;justify-content:center;gap:8px;text-decoration:none}
+.btn-primario{background:var(--primario);color:var(--superficie)}
+.btn-primario:hover{background:var(--primario-osc)}
+.btn-secundario{background:var(--superficie);color:var(--texto);box-shadow:inset 0 0 0 1px var(--linea)}
+.btn-chico{padding:8px 14px;font-size:14px;border-radius:10px}
+
+/* ---------- portada ---------- */
+.portada{padding:56px 0 40px}
+.portada .contenedor{display:grid;grid-template-columns:1.1fr .9fr;gap:40px;align-items:center}
+@media (max-width:860px){.portada .contenedor{grid-template-columns:1fr}.portada .ilustracion{display:none}}
+.portada h1{font-size:clamp(30px,4.4vw,46px);line-height:1.12;margin:0 0 16px;letter-spacing:-.02em}
+.portada h1 span{color:var(--primario)}
+.portada .intro{font-size:17px;color:var(--tenue);margin:0 0 26px;max-width:520px}
+.portada .acciones{display:flex;gap:10px;flex-wrap:wrap}
+.portada .detalle{font-size:13px;color:var(--tenue);margin-top:14px;display:flex;gap:6px;align-items:center}
+.etiqueta-estado{display:inline-flex;gap:6px;align-items:center;font-size:13px;font-weight:600;padding:4px 10px;border-radius:99px;background:var(--finalizada-suave);color:var(--finalizada)}
+
+/* ilustración: teléfono con un tablero */
+.ilustracion{display:flex;justify-content:center}
+.mini-tel{width:270px;height:500px;border-radius:34px;background:var(--fondo);box-shadow:0 0 0 9px var(--texto),var(--sombra-alta);overflow:hidden;display:flex;flex-direction:column;transform:rotate(3deg)}
+.mini-cab{background:var(--primario);color:var(--superficie);padding:22px 16px 12px;font-weight:650;font-size:14px}
+.mini-cab small{display:block;font-weight:400;opacity:.8;font-size:11px}
+.mini-seg{display:flex;gap:4px;margin:10px;background:var(--superficie);border-radius:10px;padding:3px;font-size:11px;font-weight:600;color:var(--tenue)}
+.mini-seg span{flex:1;text-align:center;padding:6px 0;border-radius:8px}
+.mini-seg span.on{background:var(--en-curso-suave);color:var(--en-curso)}
+.mini-t{background:var(--superficie);border-radius:12px;margin:0 10px 8px;padding:10px;box-shadow:var(--sombra);font-size:12px}
+.mini-t b{display:block;font-size:12.5px;margin-bottom:4px}
+.mini-t .l{height:6px;border-radius:4px;background:var(--linea);margin:4px 0}
+.mini-t .pie{display:flex;justify-content:space-between;align-items:center;margin-top:8px}
+.mini-chip{font-size:10px;font-weight:600;padding:2px 7px;border-radius:99px}
+.mini-av{display:flex}.mini-av i{width:18px;height:18px;border-radius:50%;border:2px solid var(--superficie);margin-left:-5px}
+
+/* ---------- características ---------- */
+.caracteristicas{padding:20px 0 50px}
+.caracteristicas .rejilla{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+@media (max-width:760px){.caracteristicas .rejilla{grid-template-columns:1fr}}
+.caract{background:var(--superficie);border-radius:16px;padding:20px;box-shadow:var(--sombra)}
+.caract .ic{width:42px;height:42px;border-radius:12px;background:var(--primario-suave);color:var(--primario);display:grid;place-items:center;margin-bottom:12px}
+.caract h3{margin:0 0 6px;font-size:16px}
+.caract p{margin:0;color:var(--tenue);font-size:14px}
+
+/* ---------- instalar ---------- */
+section.bloque{padding:50px 0;border-top:1px solid var(--linea);background:var(--superficie)}
+section.bloque.alt{background:var(--fondo)}
+.titulo-seccion{font-size:26px;margin:0 0 6px;letter-spacing:-.01em}
+.sub-seccion{color:var(--tenue);margin:0 0 26px}
+.plataformas{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+@media (max-width:860px){.plataformas{grid-template-columns:1fr}}
+.plataforma{border:1px solid var(--linea);border-radius:18px;padding:20px;background:var(--superficie);position:relative;transition:.15s}
+.plataforma.actual{border-color:var(--primario);box-shadow:0 0 0 3px var(--primario-suave)}
+.plataforma .cab{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+.plataforma .cab .ic{width:40px;height:40px;border-radius:11px;background:var(--fondo);display:grid;place-items:center;color:var(--texto)}
+.plataforma h3{margin:0;font-size:17px}
+.plataforma .navegador{font-size:12.5px;color:var(--tenue)}
+.tu-disp{position:absolute;top:-11px;right:16px;background:var(--primario);color:var(--superficie);font-size:11.5px;font-weight:600;padding:3px 10px;border-radius:99px;display:none}
+.plataforma.actual .tu-disp{display:inline-block}
+ol.pasos{margin:0;padding:0;list-style:none;counter-reset:paso;display:flex;flex-direction:column;gap:10px}
+ol.pasos li{counter-increment:paso;position:relative;padding-left:34px;font-size:14px;min-height:24px}
+ol.pasos li::before{content:counter(paso);position:absolute;left:0;top:0;width:24px;height:24px;border-radius:50%;background:var(--primario-suave);color:var(--primario-osc);font-weight:700;font-size:12px;display:grid;place-items:center}
+.ic-linea{display:inline-flex;vertical-align:-3px;padding:1px 4px;border-radius:6px;background:var(--fondo);border:1px solid var(--linea)}
+.plataforma .boton-plat{margin-top:16px}
+
+/* ---------- primer acceso ---------- */
+.dos-col{display:grid;grid-template-columns:1fr 1fr;gap:28px;align-items:start}
+@media (max-width:860px){.dos-col{grid-template-columns:1fr}}
+.caja{background:var(--superficie);border-radius:18px;padding:22px;box-shadow:var(--sombra)}
+.caja h3{margin:0 0 12px;font-size:17px}
+
+/* ---------- preguntas ---------- */
+details{background:var(--superficie);border:1px solid var(--linea);border-radius:14px;margin-bottom:10px;overflow:hidden}
+summary{padding:15px 18px;font-weight:600;cursor:pointer;list-style:none;display:flex;justify-content:space-between;align-items:center;gap:10px}
+summary::-webkit-details-marker{display:none}
+summary::after{content:"";width:9px;height:9px;border-right:2px solid var(--tenue);border-bottom:2px solid var(--tenue);transform:rotate(45deg);transition:.15s;flex-shrink:0}
+details[open] summary::after{transform:rotate(-135deg)}
+details p{margin:0;padding:0 18px 16px;color:var(--tenue);font-size:14.5px}
+
+footer{padding:28px 0 40px;color:var(--tenue);font-size:13px;text-align:center}
+
+/* ---------- diálogo simulado del navegador ---------- */
+.velo{position:fixed;inset:0;background:var(--velo);display:grid;place-items:center;z-index:50;padding:20px}
+.dialogo{background:var(--superficie);border-radius:16px;padding:20px;max-width:360px;width:100%;box-shadow:var(--sombra-alta)}
+.dialogo .fila{display:flex;gap:12px;align-items:center;margin:12px 0 18px}
+.dialogo .acciones{display:flex;justify-content:flex-end;gap:8px}
+.dialogo small{color:var(--tenue)}
+.nota-sim{font-size:11.5px;color:var(--tenue);margin-top:12px;border-top:1px dashed var(--linea);padding-top:8px}
+</style>
+</head>
+<body>
+
+<!-- Escaparate de presentación: NO es parte de la página. -->
+<div class="escaparate" aria-label="Controles de la maqueta">
+  <div class="grupo"><b>Visitar desde</b>
+    <button data-plat="android" aria-pressed="true">Android</button>
+    <button data-plat="ios" aria-pressed="false">iPhone</button>
+    <button data-plat="compu" aria-pressed="false">Computadora</button>
+  </div>
+  <div class="grupo"><b>App</b>
+    <button data-inst="no" aria-pressed="true">Sin instalar</button>
+    <button data-inst="si" aria-pressed="false">Ya instalada</button>
+  </div>
+  <span class="nota">La página real detecta el dispositivo · maqueta, no aprobada</span>
+</div>
+
+<header class="barra">
+  <div class="contenedor">
+    <a class="marca" href="#"><span class="sello">TF</span>TaskFlow</a>
+    <nav aria-label="Secciones">
+      <a class="opcional" href="#instalar">Instalar</a>
+      <a class="opcional" href="#preguntas">Preguntas</a>
+      <a class="btn btn-chico btn-secundario" href="#" data-sim="abrir">Entrar</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <section class="portada">
+    <div class="contenedor">
+      <div>
+        <h1>Organiza las actividades de tu equipo <span>en tarjetas</span></h1>
+        <p class="intro">Crea proyectos, invita a tu equipo y lleva cada actividad de <b>pendiente</b> a <b>en curso</b> y a <b>finalizada</b>. Funciona en el teléfono y en la computadora, y se instala desde el navegador: no necesitas tienda de aplicaciones.</p>
+        <div class="acciones" id="acciones-portada"></div>
+        <div class="detalle" id="detalle-portada"></div>
+      </div>
+      <div class="ilustracion" aria-hidden="true">
+        <div class="mini-tel">
+          <div class="mini-cab">Semana de la Ciencia<small>3 miembros</small></div>
+          <div class="mini-seg"><span>Pendiente</span><span class="on">En curso</span><span>Finalizada</span></div>
+          <div class="mini-t"><b>Reservar el auditorio</b><div class="l" style="width:92%"></div><div class="l" style="width:64%"></div>
+            <div class="pie"><span class="mini-chip" style="background:var(--vencida-suave);color:var(--vencida)">Vencida</span><span class="mini-av"><i style="background:var(--av1)"></i></span></div></div>
+          <div class="mini-t"><b>Diseñar el cartel</b><div class="l" style="width:84%"></div>
+            <div class="pie"><span class="mini-chip" style="background:var(--en-curso-suave);color:var(--en-curso)">20 oct</span><span class="mini-av"><i style="background:var(--av3)"></i><i style="background:var(--av2)"></i></span></div></div>
+          <div class="mini-t"><b>Programa del evento</b><div class="l" style="width:76%"></div><div class="l" style="width:50%"></div>
+            <div class="pie"><span class="mini-chip" style="background:var(--pendiente-suave);color:var(--pendiente)">27 oct</span><span class="mini-av"><i style="background:var(--av2)"></i></span></div></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="caracteristicas" aria-label="Qué puedes hacer">
+    <div class="contenedor rejilla">
+      <div class="caract"><div class="ic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg></div>
+        <h3>Proyectos y equipos</h3><p>Crea un proyecto e invita por correo a quien participa. Todos los miembros ven todas sus tarjetas.</p></div>
+      <div class="caract"><div class="ic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="5" height="16" rx="1.5"/><rect x="10" y="4" width="5" height="11" rx="1.5"/><rect x="17" y="4" width="4" height="7" rx="1.5"/></svg></div>
+        <h3>Tablero por estatus</h3><p>Pendiente, en curso y finalizada. Cambia el estatus con un toque y asigna cada tarjeta a una o más personas.</p></div>
+      <div class="caract"><div class="ic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18"/></svg></div>
+        <h3>Fechas a la vista</h3><p>Pon fecha de fin cuando haga falta: las tarjetas vencidas resaltan y «Mis tarjetas» reúne lo tuyo de todos los proyectos.</p></div>
+    </div>
+  </section>
+
+  <section class="bloque" id="instalar" aria-labelledby="t-instalar">
+    <div class="contenedor">
+      <h2 class="titulo-seccion" id="t-instalar">Instala la aplicación</h2>
+      <p class="sub-seccion">Abre <b>sistemas.reduaz.mx/taskflow/</b> en tu dispositivo y sigue los pasos. La app queda en tu pantalla de inicio como cualquier otra y se actualiza sola.</p>
+      <div class="plataformas">
+        <article class="plataforma" data-tarjeta-plat="android">
+          <span class="tu-disp">Tu dispositivo</span>
+          <div class="cab"><span class="ic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="2" width="12" height="20" rx="2.5"/><path d="M11 18h2"/></svg></span>
+            <div><h3>Android</h3><div class="navegador">Con Chrome o Edge</div></div></div>
+          <ol class="pasos">
+            <li>Abre esta página en <b>Chrome</b>.</li>
+            <li>Toca <b>«Instalar TaskFlow»</b>; si no aparece, abre el menú <span class="ic-linea" aria-label="tres puntos"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg></span>.</li>
+            <li>Elige <b>«Instalar aplicación»</b> y confirma.</li>
+            <li>Abre TaskFlow desde tu pantalla de inicio.</li>
+          </ol>
+          <div class="boton-plat" data-boton="android"></div>
+        </article>
+        <article class="plataforma" data-tarjeta-plat="ios">
+          <span class="tu-disp">Tu dispositivo</span>
+          <div class="cab"><span class="ic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="2" width="12" height="20" rx="3"/><path d="M10 5h4"/></svg></span>
+            <div><h3>iPhone y iPad</h3><div class="navegador">Con Safari</div></div></div>
+          <ol class="pasos">
+            <li>Abre esta página en <b>Safari</b> (en otros navegadores de iPhone no se puede instalar).</li>
+            <li>Toca <b>Compartir</b> <span class="ic-linea" aria-label="ícono compartir"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M8 7l4-4 4 4"/><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"/></svg></span> en la barra inferior.</li>
+            <li>Desliza y elige <b>«Agregar a pantalla de inicio»</b> <span class="ic-linea" aria-label="ícono agregar"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="4" y="4" width="16" height="16" rx="3"/><path d="M12 8v8M8 12h8"/></svg></span>.</li>
+            <li>Toca <b>«Agregar»</b> y abre TaskFlow desde tu pantalla de inicio.</li>
+          </ol>
+          <div class="boton-plat" data-boton="ios"></div>
+        </article>
+        <article class="plataforma" data-tarjeta-plat="compu">
+          <span class="tu-disp">Tu dispositivo</span>
+          <div class="cab"><span class="ic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/></svg></span>
+            <div><h3>Computadora</h3><div class="navegador">Con Chrome o Edge</div></div></div>
+          <ol class="pasos">
+            <li>Abre esta página en <b>Chrome</b> o <b>Edge</b>.</li>
+            <li>Haz clic en el ícono <b>Instalar</b> <span class="ic-linea" aria-label="ícono instalar"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="13" rx="2"/><path d="M12 8v6M9 11l3 3 3-3"/></svg></span> de la barra de direcciones.</li>
+            <li>Confirma <b>«Instalar»</b>: TaskFlow abre en su propia ventana.</li>
+            <li>También puedes usarlo sin instalar, directo en el navegador.</li>
+          </ol>
+          <div class="boton-plat" data-boton="compu"></div>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <section class="bloque alt" aria-labelledby="t-acceso">
+    <div class="contenedor dos-col">
+      <div>
+        <h2 class="titulo-seccion" id="t-acceso">¿Te invitaron a un proyecto?</h2>
+        <p class="sub-seccion">Quien es dueño de un proyecto te invita con tu correo. No necesitas pedir una cuenta a nadie.</p>
+      </div>
+      <div class="caja">
+        <h3>Tu primer acceso</h3>
+        <ol class="pasos">
+          <li>Abre el correo <b>«Te invitaron a un proyecto en TaskFlow»</b> y toca el enlace.</li>
+          <li>Si es tu primera vez, escribe tu nombre y crea tu contraseña; si ya tienes cuenta, inicia sesión.</li>
+          <li>Entras directo al proyecto y ya ves sus tarjetas.</li>
+          <li>Instala la app con los pasos de arriba para tenerla a la mano.</li>
+        </ol>
+      </div>
+    </div>
+  </section>
+
+  <section class="bloque" id="preguntas" aria-labelledby="t-preguntas">
+    <div class="contenedor" style="max-width:780px">
+      <h2 class="titulo-seccion" id="t-preguntas">Preguntas frecuentes</h2>
+      <p class="sub-seccion">Lo que más suele preguntarse al instalar y empezar.</p>
+      <details><summary>¿Por qué no está en la tienda de aplicaciones?</summary><p>TaskFlow es una aplicación web progresiva: se instala desde el navegador, ocupa muy poco espacio y siempre tienes la versión más reciente, sin descargar actualizaciones.</p></details>
+      <details><summary>No me aparece la opción de instalar</summary><p>Revisa que uses Chrome o Edge (Android y computadora) o Safari (iPhone y iPad), y que no estés en una ventana privada. Si ya la instalaste, la opción no vuelve a aparecer. También puedes usar TaskFlow sin instalar, directamente en el navegador.</p></details>
+      <details><summary>¿Cómo creo un proyecto?</summary><p>Desde «Mis proyectos», toca «Nuevo proyecto». Quedas como dueño y puedes invitar a otras personas desde «Miembros».</p></details>
+      <details><summary>¿Quién ve mis tarjetas?</summary><p>Todos los miembros del proyecto ven todas sus tarjetas. Quien no es miembro no ve el proyecto.</p></details>
+      <details><summary>¿Funciona sin internet?</summary><p>Puedes abrir la app y ver las últimas tarjetas que cargaste. Para crear o cambiar tarjetas necesitas conexión.</p></details>
+      <details><summary>Olvidé mi contraseña</summary><p>En la pantalla de entrada, toca «¿Olvidaste tu contraseña?» y te llegará un enlace a tu correo para crear una nueva.</p></details>
+    </div>
+  </section>
+</main>
+
+<footer><div class="contenedor">TaskFlow · sistemas.reduaz.mx/taskflow/</div></footer>
+
+<div id="capa"></div>
+
+<script>
+const estado = {plat:'android', instalada:false};
+const $ = s => document.querySelector(s);
+const NOMBRES = {android:'Android', ios:'iPhone', compu:'computadora'};
+
+function render(){
+  document.querySelectorAll('[data-tarjeta-plat]').forEach(t => t.classList.toggle('actual', t.dataset.tarjetaPlat === estado.plat));
+  const acc = $('#acciones-portada'), det = $('#detalle-portada');
+  if (estado.instalada){
+    acc.innerHTML = `<a class="btn btn-primario" href="#" data-sim="abrir">Abrir TaskFlow</a>`;
+    det.innerHTML = `<span class="etiqueta-estado">Ya la tienes instalada en este dispositivo</span>`;
+  } else if (estado.plat === 'ios'){
+    acc.innerHTML = `<a class="btn btn-primario" href="#instalar">Ver cómo instalar en iPhone</a><a class="btn btn-secundario" href="#" data-sim="abrir">Usar en el navegador</a>`;
+    det.innerHTML = `En iPhone se instala desde Safari con «Compartir → Agregar a pantalla de inicio».`;
+  } else {
+    acc.innerHTML = `<button class="btn btn-primario" data-sim="instalar">Instalar TaskFlow</button><a class="btn btn-secundario" href="#" data-sim="abrir">Usar en el navegador</a>`;
+    det.innerHTML = `Gratis · se actualiza sola`;
+  }
+  // Botón dentro de la tarjeta de la plataforma actual.
+  document.querySelectorAll('[data-boton]').forEach(b => {
+    const p = b.dataset.boton;
+    b.innerHTML = (p === estado.plat && p !== 'ios' && !estado.instalada) ? `<button class="btn btn-primario btn-chico" data-sim="instalar">Instalar ahora</button>` : '';
+  });
+}
+
+document.addEventListener('click', e => {
+  const b = e.target.closest('[data-plat],[data-inst],[data-sim]');
+  if (!b) return;
+  if (b.dataset.plat){ estado.plat = b.dataset.plat; marcar('[data-plat]', b); return render(); }
+  if (b.dataset.inst){ estado.instalada = b.dataset.inst === 'si'; marcar('[data-inst]', b); return render(); }
+  const s = b.dataset.sim; e.preventDefault();
+  if (s === 'instalar'){
+    $('#capa').innerHTML = `<div class="velo"><div class="dialogo" role="dialog" aria-modal="true">
+      <b>¿Instalar app?</b>
+      <div class="fila"><span class="sello">TF</span><div><b>TaskFlow</b><br><small>sistemas.reduaz.mx</small></div></div>
+      <div class="acciones"><button class="btn btn-secundario btn-chico" data-sim="cancelar">Cancelar</button><button class="btn btn-primario btn-chico" data-sim="aceptar">Instalar</button></div>
+      <div class="nota-sim">Este cuadro lo muestra el navegador (${NOMBRES[estado.plat]}), no la página. En la app real se abre con el evento <code>beforeinstallprompt</code>.</div>
+    </div></div>`;
+  }
+  if (s === 'cancelar'){ $('#capa').innerHTML = ''; }
+  if (s === 'aceptar'){ $('#capa').innerHTML = ''; estado.instalada = true; marcar('[data-inst]', document.querySelector('[data-inst="si"]')); render(); }
+  if (s === 'abrir'){ alertaSuave('En la página real, este botón lleva a sistemas.reduaz.mx/taskflow/app/ (la maqueta de la app es app-v1.html).'); }
+});
+
+function alertaSuave(texto){
+  $('#capa').innerHTML = `<div class="velo"><div class="dialogo" role="dialog" aria-modal="true"><p style="margin:0 0 14px">${texto}</p><div class="acciones"><button class="btn btn-primario btn-chico" data-sim="cancelar">Entendido</button></div></div></div>`;
+}
+function marcar(sel, b){ document.querySelectorAll(sel).forEach(x => x.setAttribute('aria-pressed', x === b)); }
+render();
+</script>
+</body>
+</html>

@@ -25,10 +25,12 @@ CSRF_TRUSTED_ORIGINS = env.list("DJANGO_CSRF_TRUSTED_ORIGINS", default=[])
 LOCAL_APPS = [
     "apps.core",
     "apps.usuarios",
+    "apps.proyectos",
     "apps.tarjetas",
+    "apps.api",
 ]
 
-THIRD_PARTY_APPS: list[str] = []
+THIRD_PARTY_APPS = ["rest_framework"]
 
 DJANGO_APPS = [
     "django.contrib.admin",
@@ -141,6 +143,48 @@ STORAGES = {
     "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
     "staticfiles": {"BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"},
 }
+
+
+# Correo saliente. Producción: SMTP con las variables DJANGO_EMAIL_*; sin ellas, los correos se
+# imprimen en la consola (docker compose logs -f web).
+
+EMAIL_HOST = env("DJANGO_EMAIL_HOST", default="")
+EMAIL_PORT = env.int("DJANGO_EMAIL_PORT", default=587)
+EMAIL_HOST_USER = env("DJANGO_EMAIL_HOST_USER", default="")
+EMAIL_HOST_PASSWORD = env("DJANGO_EMAIL_HOST_PASSWORD", default="")
+EMAIL_USE_TLS = env.bool("DJANGO_EMAIL_USE_TLS", default=True)
+EMAIL_BACKEND = env(
+    "DJANGO_EMAIL_BACKEND",
+    default="django.core.mail.backends.smtp.EmailBackend"
+    if EMAIL_HOST
+    else "django.core.mail.backends.console.EmailBackend",
+)
+DEFAULT_FROM_EMAIL = env("DJANGO_DEFAULT_FROM_EMAIL", default="TaskFlow <no-responder@localhost>")
+SERVER_EMAIL = DEFAULT_FROM_EMAIL
+
+# API (Django REST Framework) de la PWA: misma sesión y CSRF que Django, sin tokens (§6).
+REST_FRAMEWORK = {
+    "DEFAULT_AUTHENTICATION_CLASSES": ["rest_framework.authentication.SessionAuthentication"],
+    "DEFAULT_PERMISSION_CLASSES": ["rest_framework.permissions.IsAuthenticated"],
+    "DEFAULT_RENDERER_CLASSES": ["rest_framework.renderers.JSONRenderer"],
+    "DEFAULT_PARSER_CLASSES": ["rest_framework.parsers.JSONParser"],
+    "EXCEPTION_HANDLER": "apps.api.excepciones.manejar_excepcion",
+    "DEFAULT_THROTTLE_RATES": {"acceso": env("TASKFLOW_LIMITE_ACCESO", default="20/min")},
+    "UNAUTHENTICATED_USER": "django.contrib.auth.models.AnonymousUser",
+}
+
+# Cualquiera puede crear su cuenta desde la app (decidido 2026-10-01, §7). Con False, solo se
+# entra por invitación o con una cuenta creada en el admin.
+TASKFLOW_REGISTRO_ABIERTO = env.bool("TASKFLOW_REGISTRO_ABIERTO", default=True)
+
+# PWA (§5): el build de frontend/ queda en pwa/app/ y WhiteNoise lo sirve en /app/.
+PWA_DIR = Path(env("TASKFLOW_PWA_DIR", default=str(BASE_DIR / "pwa")))
+WHITENOISE_ROOT = PWA_DIR
+WHITENOISE_INDEX_FILE = True
+WHITENOISE_MIMETYPES = {".webmanifest": "application/manifest+json"}
+
+# URL pública de TaskFlow, con su prefijo: se usa en los enlaces de los correos (invitaciones).
+TASKFLOW_URL = env("TASKFLOW_URL", default="http://localhost:8030")
 
 
 # Logging a stdout (Docker)

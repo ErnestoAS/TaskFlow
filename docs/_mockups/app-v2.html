@@ -1,0 +1,914 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TaskFlow · maqueta de la app (v2)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+/* =========================================================
+   Maqueta v2 de la PWA de TaskFlow · paleta navy + coral (2026-10-01).
+   Exploración: NO aprobada. Colores solo por variable (--tf-*), los mismos
+   que irán en static/css/tema.css. Contraste verificado (WCAG AA ≥ 4.5).
+========================================================= */
+:root{
+  /* Marca */
+  --tf-logo:#000955;                 /* color propio del logo: no se cambia */
+  --tf-primary:#172554;              /* navy: identidad, navegación, estructura */
+  --tf-primary-hover:#1e3a8a;
+  --tf-primary-soft:#e8ecf6;
+  --tf-accent:#f97360;               /* coral: acción, progreso, seleccionado (no como texto) */
+  --tf-accent-hover:#fb8a79;
+  --tf-accent-soft:#fff0ed;
+  --tf-accent-text:#c73e2e;          /* coral oscuro para texto sobre fondos claros (4.56) */
+  --tf-on-accent:#172554;            /* texto sobre coral: navy (5.35); blanco daría 2.75 */
+
+  /* Fondos, texto y bordes */
+  --tf-bg:#f5f7fa;
+  --tf-surface:#ffffff;
+  --tf-text:#172033;
+  --tf-text-muted:#64748b;
+  --tf-text-disabled:#94a3b8;
+  --tf-border:#e2e8f0;
+  --tf-sidebar-text:#cbd5e1;
+
+  /* Estatus: punto/indicador · texto · fondo suave */
+  --tf-status-pending:#64748b;  --tf-status-pending-text:#475569;  --tf-status-pending-soft:#f1f5f9;
+  --tf-status-progress:#f97360; --tf-status-progress-text:#c73e2e; --tf-status-progress-soft:#fff0ed;
+  --tf-status-done:#16a34a;     --tf-status-done-text:#15803d;     --tf-status-done-soft:#ecfdf5;
+
+  /* Semánticos */
+  --tf-danger:#dc2626;  --tf-danger-text:#b91c1c;  --tf-danger-soft:#fef2f2;
+  --tf-warning:#d97706; --tf-warning-text:#b45309; --tf-warning-soft:#fffbeb;
+  --tf-info:#3b82f6;    --tf-info-text:#1d4ed8;    --tf-info-soft:#eff6ff;
+
+  /* Prioridades (alta en ámbar: el naranja #F97316 es indistinguible del coral) */
+  --tf-priority-low:#94a3b8;    --tf-priority-low-text:#475569;    --tf-priority-low-soft:#f1f5f9;
+  --tf-priority-medium:#3b82f6; --tf-priority-medium-text:#1d4ed8; --tf-priority-medium-soft:#eff6ff;
+  --tf-priority-high:#d97706;   --tf-priority-high-text:#b45309;   --tf-priority-high-soft:#fffbeb;
+  --tf-priority-urgent:#dc2626; --tf-priority-urgent-text:#b91c1c; --tf-priority-urgent-soft:#fef2f2;
+
+  /* Avatares: escala navy/pizarra, sin colores extra */
+  --av1:#172554; --av2:#1e3a8a; --av3:#334155; --av4:#475569; --av5:#0f3f6e; --av6:#3b4a6b;
+
+  /* Forma */
+  --tf-radius-card:12px; --tf-radius-btn:9px; --tf-radius-modal:16px;
+  --tf-shadow:0 1px 3px rgba(15,23,42,.06);
+  --tf-shadow-float:0 8px 24px rgba(15,23,42,.10);
+  --tf-veil:rgba(15,23,42,.45);
+
+  /* Escaparate (no es parte de la app) */
+  --esc-fondo:#e7eaf0; --esc-texto:#33404d; --esc-caja:#ffffff; --esc-linea:#d5d8de;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  background:var(--esc-fondo);color:var(--tf-text);
+  font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  min-height:100vh;display:flex;flex-direction:column;align-items:center;gap:14px;padding:16px;
+  -webkit-font-smoothing:antialiased;
+}
+button,input,textarea,select{font-family:inherit;font-size:inherit;color:inherit}
+button{cursor:pointer}
+svg{flex-shrink:0}
+:focus-visible{outline:2px solid var(--tf-accent);outline-offset:2px}
+
+/* ---------- escaparate (solo para presentar) ---------- */
+.escaparate{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;align-items:center;font-size:12.5px;color:var(--esc-texto)}
+.escaparate .grupo{display:flex;align-items:center;gap:4px;background:var(--esc-caja);border:1px solid var(--esc-linea);border-radius:10px;padding:4px 6px}
+.escaparate .grupo b{font-weight:600;padding:0 4px}
+.escaparate button{border:0;background:transparent;padding:4px 9px;border-radius:7px}
+.escaparate button[aria-pressed="true"]{background:var(--tf-primary);color:var(--tf-surface)}
+.escaparate input[type=date]{border:0;background:transparent;padding:2px 4px}
+.escaparate .nota{opacity:.75}
+
+/* ---------- marco ---------- */
+.dispositivo{
+  width:390px;height:800px;background:var(--tf-bg);border-radius:38px;overflow:hidden;position:relative;
+  box-shadow:0 0 0 10px var(--tf-text),0 24px 60px rgba(0,0,0,.25);display:flex;flex-direction:column;
+}
+.dispositivo.computadora{width:min(1180px,100%);height:760px;border-radius:14px;box-shadow:0 0 0 1px var(--esc-linea),0 24px 60px rgba(0,0,0,.18);
+  display:grid;grid-template-columns:232px 1fr;grid-template-rows:auto 1fr}
+.computadora .cuerpo{display:contents}
+.computadora .nav-lateral{grid-column:1;grid-row:1 / 3}
+.computadora .cabecera{grid-column:2;grid-row:1}
+.computadora .contenido{grid-column:2;grid-row:2}
+@media (max-width:520px){
+  body{padding:0;background:var(--tf-bg)}
+  .escaparate{display:none}
+  .dispositivo,.dispositivo.computadora{width:100%;height:100vh;border-radius:0;box-shadow:none}
+}
+
+/* ---------- cabecera (blanca, como pide la guía) ---------- */
+.cabecera{background:var(--tf-surface);color:var(--tf-text);border-bottom:1px solid var(--tf-border);padding:14px 14px 12px;display:flex;align-items:center;gap:10px;flex-shrink:0}
+.computadora .cabecera{padding:14px 24px}
+.cabecera .titulos{flex:1;min-width:0}
+.cabecera h1{font-size:17px;margin:0;font-weight:700;letter-spacing:-.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cabecera .sub{font-size:12px;color:var(--tf-text-muted);margin-top:1px}
+.btn-icono{border:0;background:transparent;color:var(--tf-primary);width:36px;height:36px;border-radius:10px;display:grid;place-items:center}
+.btn-icono:hover{background:var(--tf-bg)}
+.sello{width:34px;height:34px;display:grid;place-items:center;color:var(--tf-logo)}
+.sello svg{width:32px;height:auto}
+.computadora .sello{display:none}
+
+/* ---------- contenido ---------- */
+.contenido{flex:1;overflow:auto;padding:14px 14px 90px}
+.computadora .contenido{padding:20px 24px 24px}
+.seccion-titulo{font-size:11.5px;text-transform:uppercase;letter-spacing:.07em;color:var(--tf-text-muted);margin:18px 4px 8px;font-weight:600}
+.seccion-titulo:first-child{margin-top:4px}
+.vacio{color:var(--tf-text-muted);text-align:center;padding:36px 16px;font-size:14px}
+
+/* ---------- proyectos ---------- */
+.lista-proyectos{display:grid;gap:10px}
+.computadora .lista-proyectos{grid-template-columns:repeat(auto-fill,minmax(300px,1fr))}
+.proyecto{background:var(--tf-surface);border-radius:var(--tf-radius-card);border:1px solid var(--tf-border);box-shadow:var(--tf-shadow);padding:14px;text-align:left;width:100%;display:flex;flex-direction:column;gap:10px;transition:border-color .12s,box-shadow .12s}
+.proyecto:hover{border-color:color-mix(in srgb,var(--tf-primary) 30%,var(--tf-border));box-shadow:var(--tf-shadow-float)}
+.proyecto .fila{display:flex;align-items:center;gap:8px}
+.proyecto h3{margin:0;font-size:15.5px;flex:1;font-weight:650}
+.proyecto .conteos{display:flex;gap:6px;flex-wrap:wrap}
+.proyecto .progreso{height:4px;border-radius:99px;background:var(--tf-status-pending-soft);overflow:hidden;display:flex}
+.proyecto .progreso i{display:block;height:100%}
+.etiqueta-rol{font-size:11px;padding:2px 8px;border-radius:99px;background:var(--tf-primary-soft);color:var(--tf-primary);font-weight:600}
+
+/* ---------- chips / badges: punto de color, texto oscuro, fondo suave ---------- */
+.chip{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;font-weight:600;padding:3px 9px;border-radius:9999px;white-space:nowrap;line-height:1.3}
+.punto{width:7px;height:7px;border-radius:50%;background:currentColor;flex-shrink:0}
+.chip.pendiente{background:var(--tf-status-pending-soft);color:var(--tf-status-pending-text)}
+.chip.pendiente .punto{background:var(--tf-status-pending)}
+.chip.en_curso{background:var(--tf-status-progress-soft);color:var(--tf-status-progress-text)}
+.chip.en_curso .punto{background:var(--tf-status-progress)}
+.chip.finalizada{background:var(--tf-status-done-soft);color:var(--tf-status-done-text)}
+.chip.finalizada .punto{background:var(--tf-status-done)}
+.chip.vencida{background:var(--tf-danger-soft);color:var(--tf-danger-text)}
+.chip.por-vencer{background:var(--tf-warning-soft);color:var(--tf-warning-text)}
+.chip.fecha{background:var(--tf-bg);color:var(--tf-text-muted);font-weight:500}
+.chip.prio-baja{background:var(--tf-priority-low-soft);color:var(--tf-priority-low-text)}
+.chip.prio-baja .punto{background:var(--tf-priority-low)}
+.chip.prio-media{background:var(--tf-priority-medium-soft);color:var(--tf-priority-medium-text)}
+.chip.prio-media .punto{background:var(--tf-priority-medium)}
+.chip.prio-alta{background:var(--tf-priority-high-soft);color:var(--tf-priority-high-text)}
+.chip.prio-alta .punto{background:var(--tf-priority-high)}
+.chip.prio-urgente{background:var(--tf-priority-urgent-soft);color:var(--tf-priority-urgent-text)}
+.chip.prio-urgente .punto{background:var(--tf-priority-urgent)}
+
+/* ---------- avatares ---------- */
+.avatares{display:flex}
+.avatar{width:26px;height:26px;border-radius:50%;color:var(--tf-surface);font-size:10px;font-weight:700;display:grid;place-items:center;border:2px solid var(--tf-surface);margin-left:-7px;letter-spacing:.02em}
+.avatares .avatar:first-child{margin-left:0}
+.avatar.grande{width:36px;height:36px;font-size:12.5px;margin:0;border:0}
+.avatar.mas{background:var(--tf-border);color:var(--tf-text-muted)}
+
+/* ---------- tablero ---------- */
+.segmentos{display:flex;background:var(--tf-surface);border:1px solid var(--tf-border);border-radius:12px;padding:4px;gap:4px;position:sticky;top:-14px;z-index:2;margin-bottom:12px}
+.segmentos button{flex:1;border:0;background:transparent;border-radius:9px;padding:8px 4px;font-size:13px;font-weight:600;color:var(--tf-text-muted);display:flex;justify-content:center;align-items:center;gap:6px}
+.segmentos button .punto{opacity:.9}
+.segmentos button.pendiente .punto{background:var(--tf-status-pending)}
+.segmentos button.en_curso .punto{background:var(--tf-status-progress)}
+.segmentos button.finalizada .punto{background:var(--tf-status-done)}
+.segmentos button[aria-pressed="true"].pendiente{background:var(--tf-status-pending-soft);color:var(--tf-status-pending-text)}
+.segmentos button[aria-pressed="true"].en_curso{background:var(--tf-status-progress-soft);color:var(--tf-status-progress-text)}
+.segmentos button[aria-pressed="true"].finalizada{background:var(--tf-status-done-soft);color:var(--tf-status-done-text)}
+.segmentos .num{font-size:11.5px;opacity:.85}
+.filtros{display:flex;justify-content:space-between;align-items:center;margin:0 2px 10px;font-size:13px;color:var(--tf-text-muted)}
+.interruptor{display:flex;align-items:center;gap:8px;border:0;background:transparent;color:var(--tf-text-muted);padding:4px}
+.interruptor .pista{width:32px;height:18px;border-radius:99px;background:var(--tf-border);position:relative;transition:.15s}
+.interruptor .pista::after{content:"";position:absolute;top:2px;left:2px;width:14px;height:14px;border-radius:50%;background:var(--tf-surface);transition:.15s;box-shadow:var(--tf-shadow)}
+.interruptor[aria-pressed="true"] .pista{background:var(--tf-accent)}
+.interruptor[aria-pressed="true"] .pista::after{left:16px}
+.columnas{display:grid;gap:10px}
+.computadora .columnas{grid-template-columns:repeat(3,1fr);gap:18px;align-items:start}
+.columna{display:flex;flex-direction:column;gap:10px}
+/* Columnas sin fondo de color: se distinguen por título, punto, contador y una línea fina. */
+.columna-cab{display:none;align-items:center;gap:8px;font-weight:700;font-size:12px;letter-spacing:.07em;text-transform:uppercase;padding:2px 2px 8px;border-bottom:2px solid var(--tf-border);margin-bottom:2px}
+.columna-cab .punto{width:8px;height:8px}
+.columna-cab.pendiente{border-bottom-color:var(--tf-status-pending)} .columna-cab.pendiente .punto{background:var(--tf-status-pending)}
+.columna-cab.en_curso{border-bottom-color:var(--tf-status-progress)} .columna-cab.en_curso .punto{background:var(--tf-status-progress)}
+.columna-cab.finalizada{border-bottom-color:var(--tf-status-done)} .columna-cab.finalizada .punto{background:var(--tf-status-done)}
+.computadora .columna-cab{display:flex}
+.columna-cab .num{margin-left:auto;color:var(--tf-text-muted);font-weight:600;font-size:12px;background:var(--tf-surface);border:1px solid var(--tf-border);border-radius:99px;padding:1px 8px;letter-spacing:0}
+.computadora .segmentos{display:none}
+
+.tarjeta{position:relative;background:var(--tf-surface);border-radius:var(--tf-radius-card);border:1px solid var(--tf-border);box-shadow:var(--tf-shadow);padding:12px 13px;text-align:left;width:100%;display:flex;flex-direction:column;gap:8px;overflow:hidden;transition:border-color .12s,box-shadow .12s,transform .12s}
+.tarjeta:hover{border-color:color-mix(in srgb,var(--tf-primary) 28%,var(--tf-border));box-shadow:var(--tf-shadow-float)}
+.tarjeta:active{transform:scale(.995)}
+/* Urgente: indicador lateral; la tarjeta sigue blanca. */
+.tarjeta.urgente::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--tf-priority-urgent)}
+.tarjeta h4{margin:0;font-size:14.5px;font-weight:650;line-height:1.3;letter-spacing:-.005em}
+.tarjeta p{margin:0;font-size:13px;color:var(--tf-text-muted);line-height:1.45;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.tarjeta .etiquetas{display:flex;gap:5px;flex-wrap:wrap}
+.tarjeta .pie{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.tarjeta .pie .avatares{margin-left:auto}
+.tarjeta .proyecto-de{font-size:11.5px;color:var(--tf-primary);font-weight:600}
+.tarjeta.terminada h4{color:var(--tf-text-muted);text-decoration:line-through;text-decoration-color:var(--tf-border)}
+
+/* ---------- botones ---------- */
+.fab{position:absolute;right:18px;bottom:84px;width:56px;height:56px;border-radius:16px;border:0;background:var(--tf-accent);color:var(--tf-on-accent);display:grid;place-items:center;box-shadow:var(--tf-shadow-float);transition:background .12s,transform .12s}
+.fab:hover{background:var(--tf-accent-hover)}
+.fab:active{transform:scale(.96)}
+.computadora .fab,.fab[hidden]{display:none}
+.btn{border:0;border-radius:var(--tf-radius-btn);padding:10px 16px;font-weight:600;font-size:14px;display:inline-flex;align-items:center;justify-content:center;gap:7px;transition:background .12s,box-shadow .12s}
+.btn-primario{background:var(--tf-accent);color:var(--tf-on-accent)}
+.btn-primario:hover{background:var(--tf-accent-hover)}
+.btn-secundario{background:var(--tf-surface);color:var(--tf-text);box-shadow:inset 0 0 0 1px var(--tf-border)}
+.btn-secundario:hover{background:var(--tf-bg)}
+.btn-peligro{background:var(--tf-surface);color:var(--tf-danger-text);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--tf-danger) 45%,var(--tf-border))}
+.btn-peligro:hover{background:var(--tf-danger-soft)}
+.btn-peligro-lleno{background:var(--tf-danger-text);color:var(--tf-surface)}
+.btn-chico{padding:6px 11px;font-size:12.5px;border-radius:8px}
+.btn-bloque{width:100%}
+.acciones-cab{display:none;gap:8px}
+.computadora .acciones-cab{display:flex}
+
+/* ---------- navegación ---------- */
+.nav-inferior{position:absolute;left:0;right:0;bottom:0;background:var(--tf-surface);border-top:1px solid var(--tf-border);display:flex;justify-content:space-around;padding:6px 6px 14px}
+.nav-inferior button{position:relative;border:0;background:transparent;display:flex;flex-direction:column;align-items:center;gap:3px;font-size:11px;color:var(--tf-text-muted);padding:6px 12px;border-radius:10px;min-width:84px}
+.nav-inferior button[aria-current="page"]{color:var(--tf-primary);font-weight:650}
+.nav-inferior button[aria-current="page"]::before{content:"";position:absolute;top:-6px;left:50%;width:28px;height:3px;border-radius:0 0 3px 3px;background:var(--tf-accent);transform:translateX(-50%)}
+.nav-lateral{display:none}
+.computadora .nav-inferior{display:none}
+.cuerpo{display:flex;flex-direction:column;flex:1;min-height:0}
+.computadora .nav-lateral{display:flex;flex-direction:column;gap:2px;background:var(--tf-primary);padding:18px 12px}
+.marca-lateral{display:flex;align-items:center;gap:10px;color:var(--tf-surface);padding:2px 8px 18px;font-weight:700;font-size:18px;letter-spacing:-.01em}
+.marca-lateral svg{width:30px;height:auto}
+.nav-lateral .separador{height:1px;background:rgba(255,255,255,.12);margin:10px 8px}
+.nav-lateral .rotulo-nav{font-size:11px;letter-spacing:.07em;text-transform:uppercase;color:var(--tf-sidebar-text);opacity:.7;padding:4px 12px}
+.nav-lateral button{position:relative;border:0;background:transparent;display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:9px;font-size:14px;color:var(--tf-sidebar-text);text-align:left}
+.nav-lateral button:hover{background:rgba(255,255,255,.06);color:var(--tf-surface)}
+.nav-lateral button[aria-current="page"]{background:rgba(249,115,96,.14);color:var(--tf-surface);font-weight:600}
+.nav-lateral button[aria-current="page"]::before{content:"";position:absolute;left:-12px;top:8px;bottom:8px;width:3px;border-radius:0 3px 3px 0;background:var(--tf-accent)}
+
+/* ---------- hoja (detalle / formularios) ---------- */
+.velo{position:absolute;inset:0;background:var(--tf-veil);display:flex;align-items:flex-end;z-index:10;animation:aparecer .15s}
+.computadora .velo{align-items:stretch;justify-content:flex-end}
+.hoja{background:var(--tf-surface);width:100%;max-height:92%;border-radius:var(--tf-radius-modal) var(--tf-radius-modal) 0 0;overflow:auto;padding:8px 18px 22px;animation:subir .18s ease-out}
+.computadora .hoja{width:460px;max-height:none;border-radius:0;padding:22px 26px;animation:entrar .18s ease-out}
+.asa{width:40px;height:5px;border-radius:9px;background:var(--tf-border);margin:4px auto 12px}
+.computadora .asa{display:none}
+.hoja-cab{display:flex;align-items:flex-start;gap:8px;margin-bottom:12px}
+.hoja-cab h2{font-size:18px;margin:0;flex:1;line-height:1.3;font-weight:700;letter-spacing:-.01em}
+.hoja-cab .btn-icono{color:var(--tf-text-muted)}
+.campo{margin-bottom:16px}
+.campo>label,.campo>.etiqueta{display:block;font-size:11.5px;font-weight:600;color:var(--tf-text-muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:.06em}
+.campo input[type=text],.campo input[type=email],.campo input[type=date],.campo textarea{width:100%;border:1px solid var(--tf-border);border-radius:var(--tf-radius-btn);padding:10px 12px;background:var(--tf-surface);font-size:14.5px;transition:border-color .12s,box-shadow .12s}
+.campo input:focus,.campo textarea:focus{outline:none;border-color:var(--tf-accent);box-shadow:0 0 0 3px var(--tf-accent-soft)}
+.campo textarea{min-height:96px;resize:vertical}
+.campo .ayuda{font-size:12px;color:var(--tf-text-muted);margin-top:5px}
+.campo .error{font-size:12px;color:var(--tf-danger-text);margin-top:5px}
+.texto-largo{font-size:14.5px;line-height:1.55;white-space:pre-wrap;margin:0}
+.selector-estatus{display:flex;gap:6px}
+.selector-estatus button{flex:1;border:1px solid var(--tf-border);background:var(--tf-surface);border-radius:var(--tf-radius-btn);padding:9px 4px;font-size:13px;font-weight:600;color:var(--tf-text-muted);display:flex;align-items:center;justify-content:center;gap:6px}
+.selector-estatus button.pendiente .punto{background:var(--tf-status-pending)}
+.selector-estatus button.en_curso .punto{background:var(--tf-status-progress)}
+.selector-estatus button.finalizada .punto{background:var(--tf-status-done)}
+.selector-estatus button[aria-pressed="true"].pendiente{background:var(--tf-status-pending-soft);color:var(--tf-status-pending-text);border-color:var(--tf-status-pending)}
+.selector-estatus button[aria-pressed="true"].en_curso{background:var(--tf-status-progress-soft);color:var(--tf-status-progress-text);border-color:var(--tf-status-progress)}
+.selector-estatus button[aria-pressed="true"].finalizada{background:var(--tf-status-done-soft);color:var(--tf-status-done-text);border-color:var(--tf-status-done)}
+.selector-estatus button:disabled{opacity:.5;cursor:not-allowed}
+/* Prioridad en el formulario: cuatro opciones de radio con apariencia de botón. */
+.elegir-prioridad{display:flex;gap:6px}
+.elegir-prioridad label{flex:1;cursor:pointer}
+.elegir-prioridad input{position:absolute;opacity:0;pointer-events:none}
+.elegir-prioridad .chip{width:100%;justify-content:center;padding:8px 4px;font-size:12.5px;border:1px solid var(--tf-border);background:var(--tf-surface);color:var(--tf-text-muted)}
+.elegir-prioridad input:checked + .chip.prio-baja{background:var(--tf-priority-low-soft);color:var(--tf-priority-low-text);border-color:var(--tf-priority-low)}
+.elegir-prioridad input:checked + .chip.prio-media{background:var(--tf-priority-medium-soft);color:var(--tf-priority-medium-text);border-color:var(--tf-priority-medium)}
+.elegir-prioridad input:checked + .chip.prio-alta{background:var(--tf-priority-high-soft);color:var(--tf-priority-high-text);border-color:var(--tf-priority-high)}
+.elegir-prioridad input:checked + .chip.prio-urgente{background:var(--tf-priority-urgent-soft);color:var(--tf-priority-urgent-text);border-color:var(--tf-priority-urgent)}
+.elegir-prioridad input:focus-visible + .chip{outline:2px solid var(--tf-accent)}
+.personas{display:flex;flex-direction:column;gap:6px}
+.persona{display:flex;align-items:center;gap:10px;padding:6px 4px;border-radius:10px;flex-wrap:wrap}
+.persona .nombre{flex:1;font-size:14px}
+.persona .nombre small{display:block;color:var(--tf-text-muted);font-size:12px}
+.persona input[type=checkbox]{width:18px;height:18px;accent-color:var(--tf-accent)}
+label.persona{cursor:pointer}
+label.persona:hover{background:var(--tf-bg)}
+/* Tipos de tarjeta: el color lo elige el usuario (dato, no diseño) y llega como --tipo en línea. */
+.chip.tipo{background:color-mix(in srgb,var(--tipo) 12%,var(--tf-surface));color:color-mix(in srgb,var(--tipo) 70%,var(--tf-text))}
+.chip.tipo .punto{background:var(--tipo)}
+.tipos-tarjeta{display:flex;gap:5px;flex-wrap:wrap}
+.filtro-tipos{display:flex;gap:6px;overflow-x:auto;margin:0 0 12px;padding-bottom:2px}
+.filtro-tipos button{border:1px solid var(--tf-border);background:var(--tf-surface);border-radius:99px;padding:5px 11px;font-size:12.5px;font-weight:600;color:var(--tf-text-muted);display:inline-flex;gap:6px;align-items:center;white-space:nowrap}
+.filtro-tipos button .punto{background:var(--tipo,var(--tf-text-muted))}
+.filtro-tipos button[aria-pressed="true"]{border-color:var(--tipo,var(--tf-primary));background:color-mix(in srgb,var(--tipo,var(--tf-primary)) 10%,var(--tf-surface));color:var(--tf-text)}
+.elegir-tipos{display:flex;gap:6px;flex-wrap:wrap}
+.elegir-tipos label{cursor:pointer}
+.elegir-tipos input{position:absolute;opacity:0;pointer-events:none}
+.elegir-tipos .chip{border:1px solid transparent;padding:6px 12px;font-size:13px;opacity:.5}
+.elegir-tipos input:checked + .chip{opacity:1;border-color:var(--tipo)}
+.elegir-tipos input:focus-visible + .chip{outline:2px solid var(--tf-accent)}
+.fila-tipo{display:flex;gap:10px;align-items:center;padding:10px 0;border-bottom:1px solid var(--tf-border)}
+.fila-tipo:last-child{border-bottom:0}
+.fila-tipo .nombre{flex:1;font-size:14px;min-width:0}
+.fila-tipo .nombre small{display:block;color:var(--tf-text-muted);font-size:12px}
+.muestra-color{width:28px;height:28px;border-radius:8px;background:var(--tipo);flex-shrink:0}
+.muestras{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.muestras button{width:30px;height:30px;border-radius:50%;border:2px solid var(--tf-surface);background:var(--tipo);box-shadow:0 0 0 1px var(--tf-border)}
+.muestras button[aria-pressed="true"]{box-shadow:0 0 0 2px var(--tf-primary)}
+.muestras input[type=color]{width:42px;height:34px;border:1px solid var(--tf-border);border-radius:8px;padding:2px;background:var(--tf-surface)}
+.historial{list-style:none;margin:0;padding:0 0 0 4px;display:flex;flex-direction:column}
+.historial li{position:relative;padding:0 0 14px 22px;font-size:13.5px;line-height:1.45}
+.historial li::before{content:"";position:absolute;left:4px;top:6px;width:9px;height:9px;border-radius:50%;background:var(--tf-surface);border:2px solid var(--tf-text-muted)}
+.historial li::after{content:"";position:absolute;left:9px;top:18px;bottom:0;width:1px;background:var(--tf-border)}
+.historial li:last-child{padding-bottom:0}
+.historial li:last-child::after{display:none}
+.historial li.pendiente::before{border-color:var(--tf-status-pending)}
+.historial li.en_curso::before{border-color:var(--tf-status-progress)}
+.historial li.finalizada::before{border-color:var(--tf-status-done)}
+.historial .cuando{display:block;font-size:12px;color:var(--tf-text-muted)}
+.historial .flecha{color:var(--tf-text-muted);margin:0 2px}
+.historial .chip{font-size:11px;padding:1px 8px}
+.meta{display:flex;flex-direction:column;gap:4px;font-size:12.5px;color:var(--tf-text-muted);border-top:1px solid var(--tf-border);padding-top:12px;margin-top:6px}
+.fila-botones{display:flex;gap:8px;margin-top:8px}
+.fila-botones .btn{flex:1}
+
+/* ---------- miembros ---------- */
+.tarjeta-blanca{background:var(--tf-surface);border-radius:var(--tf-radius-card);border:1px solid var(--tf-border);box-shadow:var(--tf-shadow);padding:6px 12px}
+.tarjeta-blanca .persona{padding:10px 0;border-bottom:1px solid var(--tf-border);border-radius:0}
+.tarjeta-blanca .persona:last-child{border-bottom:0}
+.invitar{background:var(--tf-surface);border-radius:var(--tf-radius-card);border:1px solid var(--tf-border);box-shadow:var(--tf-shadow);padding:14px}
+.invitar .linea{display:flex;gap:8px}
+.invitar input{flex:1;border:1px solid var(--tf-border);border-radius:var(--tf-radius-btn);padding:10px 12px;min-width:0}
+.invitar input:focus{outline:none;border-color:var(--tf-accent);box-shadow:0 0 0 3px var(--tf-accent-soft)}
+.acciones-persona{display:flex;gap:6px;align-items:center}
+.permisos{display:flex;gap:6px;flex-wrap:wrap;width:100%;padding-left:46px}
+.permisos button,.permisos span{border:1px solid var(--tf-border);background:var(--tf-surface);border-radius:99px;padding:4px 10px;font-size:12px;font-weight:600;color:var(--tf-text-muted);display:inline-flex;gap:5px;align-items:center}
+.permisos button svg{display:none}
+.permisos button[aria-pressed="true"],.permisos span.si{background:var(--tf-accent-soft);border-color:var(--tf-accent);color:var(--tf-primary)}
+.permisos button[aria-pressed="true"] svg,.permisos span.si svg{display:inline;color:var(--tf-accent-text)}
+.permisos .rotulo{border:0;padding:4px 0;background:transparent;font-weight:500}
+.banner{display:flex;gap:10px;align-items:center;background:var(--tf-status-pending-soft);color:var(--tf-text);border-radius:12px;padding:10px 12px;font-size:13px;margin-bottom:12px}
+.banner span{flex:1}
+.proyecto.archivado{opacity:.75}
+.aviso{font-size:13px;color:var(--tf-text-muted);background:var(--tf-surface);border:1px solid var(--tf-border);border-radius:12px;padding:10px 12px;display:flex;gap:8px;align-items:flex-start}
+
+/* ---------- confirmación y toast ---------- */
+.modal{position:absolute;inset:0;background:var(--tf-veil);display:grid;place-items:center;z-index:20;padding:24px;animation:aparecer .12s}
+.modal .caja{background:var(--tf-surface);border-radius:var(--tf-radius-modal);padding:20px;max-width:340px;width:100%;box-shadow:var(--tf-shadow-float)}
+.modal p{margin:0 0 16px;font-size:15px;line-height:1.45}
+.toast{position:absolute;left:50%;bottom:92px;transform:translateX(-50%);background:var(--tf-primary);color:var(--tf-surface);padding:10px 16px;border-radius:10px;font-size:13.5px;z-index:30;box-shadow:var(--tf-shadow-float);white-space:nowrap;animation:aparecer .15s}
+.computadora .toast{bottom:24px}
+
+@keyframes aparecer{from{opacity:0}to{opacity:1}}
+@keyframes subir{from{transform:translateY(40px);opacity:.4}to{transform:none;opacity:1}}
+@keyframes entrar{from{transform:translateX(40px);opacity:.4}to{transform:none;opacity:1}}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+
+<!-- Escaparate de presentación: NO es parte de la app. -->
+<div class="escaparate" aria-label="Controles de la maqueta">
+  <div class="grupo"><b>Vista</b>
+    <button data-vista="telefono" aria-pressed="true">Teléfono</button>
+    <button data-vista="computadora" aria-pressed="false">Computadora</button>
+  </div>
+  <div class="grupo"><b>Entrar como</b>
+    <button data-yo="ana" aria-pressed="true">Ana</button>
+    <button data-yo="luis" aria-pressed="false">Luis</button>
+  </div>
+  <div class="grupo"><b>Hoy</b><input type="date" id="hoy" value="2026-10-15"></div>
+  <span class="nota">Maqueta v2 · paleta navy + coral · datos inventados · no aprobada</span>
+</div>
+
+<div class="dispositivo" id="dispositivo">
+  <header class="cabecera" id="cabecera"></header>
+  <div class="cuerpo">
+    <nav class="nav-lateral" id="nav-lateral" aria-label="Navegación principal"></nav>
+    <main class="contenido" id="contenido"></main>
+  </div>
+  <button class="fab" id="fab" aria-label="Nueva tarjeta" hidden></button>
+  <nav class="nav-inferior" id="nav-inferior" aria-label="Navegación principal"></nav>
+  <div id="capa"></div>
+</div>
+
+<script>
+/* ---------------------------------------------------------------------------
+   Íconos (SVG en línea, nunca emojis)
+--------------------------------------------------------------------------- */
+const LOGO = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="-13 184 1543 1209" aria-hidden="true"> <g transform="translate(0.000000,1500.000000) scale(0.100000,-0.100000)" fill="currentColor" stroke="none"> <path d="M11580 12848 c-47 -5 -692 -13 -1435 -18 -837 -5 -1379 -12 -1425 -18 -44 -6 -299 -11 -620 -11 -544 -1 -545 -1 -558 -22 -11 -17 -20 -20 -45 -16 -23 3 -39 -1 -56 -14 -13 -10 -33 -19 -46 -19 -12 0 -47 -13 -78 -30 -31 -16 -65 -30 -76 -30 -34 0 -160 -67 -206 -109 -25 -23 -50 -41 -57 -41 -6 0 -53 -40 -104 -90 -50 -49 -98 -90 -105 -90 -20 0 -186 -169 -207 -210 -10 -21 -32 -42 -53 -53 -41 -20 -269 -248 -269 -270 0 -15 -112 -127 -127 -127 -12 0 -235 -226 -454 -460 -206 -219 -475 -502 -784 -825 -132 -139 -328 -344 -435 -456 -107 -113 -274 -288 -371 -389 -97 -102 -220 -234 -275 -295 -54 -60 -144 -157 -199 -215 -55 -58 -146 -158 -202 -222 -107 -122 -129 -141 -203 -178 -135 -69 -336 -66 -471 6 -65 35 -122 91 -349 343 -96 107 -220 242 -275 300 -55 59 -149 162 -210 230 -103 117 -195 217 -509 551 -104 110 -135 150 -169 219 l-42 84 0 121 c0 133 13 180 86 303 157 264 524 361 771 204 38 -24 551 -549 777 -795 104 -113 176 -176 200 -176 25 0 8 -17 761 750 316 322 716 727 890 901 332 333 521 532 530 556 3 8 119 128 256 266 138 139 253 262 257 275 l5 22 -356 0 c-247 0 -400 -5 -497 -15 -116 -12 -357 -15 -1390 -16 -687 0 -1290 -5 -1340 -10 -49 -5 -160 -12 -245 -15 -105 -5 -161 -11 -175 -20 -11 -8 -42 -14 -70 -14 -28 0 -59 -7 -69 -15 -11 -8 -39 -15 -62 -15 -24 0 -45 -4 -49 -10 -3 -5 -20 -14 -38 -19 -110 -33 -323 -137 -375 -182 -10 -8 -45 -29 -77 -45 -64 -32 -349 -298 -361 -337 -4 -12 -21 -38 -38 -57 -74 -82 -236 -375 -236 -425 0 -12 -5 -26 -11 -32 -6 -6 -14 -26 -19 -44 -5 -19 -18 -59 -30 -89 -12 -30 -25 -77 -29 -105 -4 -27 -12 -59 -18 -70 -6 -11 -13 -110 -17 -220 -4 -110 -10 -245 -13 -300 -4 -55 -6 -327 -6 -605 1 -278 2 -593 2 -700 -2 -686 12 -1109 37 -1144 8 -11 14 -36 14 -55 0 -19 14 -63 30 -98 17 -34 30 -68 30 -75 0 -6 20 -44 45 -84 25 -39 45 -76 45 -81 0 -5 18 -27 41 -48 22 -22 47 -54 55 -72 16 -32 121 -135 195 -190 49 -37 234 -133 255 -133 8 0 42 -13 76 -30 34 -16 78 -30 98 -30 20 0 45 -7 56 -15 25 -19 1666 -23 1724 -4 21 7 143 14 295 16 199 4 264 8 280 19 11 8 42 14 70 14 30 0 59 6 71 15 10 8 35 15 54 15 19 0 44 7 54 15 11 8 32 15 47 15 15 0 42 8 61 17 18 9 45 22 60 30 14 7 32 13 40 13 8 0 30 11 49 25 19 14 57 37 86 51 29 13 64 35 79 49 15 14 31 25 37 25 5 0 40 20 78 45 38 25 72 45 77 45 4 0 26 18 47 41 22 23 65 58 97 80 67 46 658 634 694 690 13 21 36 45 51 53 33 17 114 100 171 176 22 30 138 151 257 269 118 117 215 218 215 225 0 7 104 118 231 247 127 129 248 257 269 285 21 28 62 71 90 95 29 24 75 65 103 90 29 25 86 62 127 81 110 51 160 75 209 103 24 14 54 25 66 25 11 0 30 7 41 15 10 8 41 15 67 15 26 0 60 6 75 14 21 10 129 15 492 20 256 4 542 11 635 16 94 5 719 10 1390 10 897 0 1313 4 1570 15 253 11 666 15 1490 15 986 1 1143 3 1159 15 13 10 43 15 86 15 43 0 73 5 86 15 10 8 31 15 45 15 14 0 34 7 45 15 10 8 27 15 36 15 24 0 148 58 173 80 11 10 48 33 83 52 69 37 325 280 338 321 3 12 14 31 24 42 30 33 125 226 144 290 9 33 21 68 27 77 5 10 9 40 9 68 0 38 5 54 20 67 29 25 31 278 3 299 -13 9 -20 32 -24 86 -6 72 -17 115 -45 171 -8 16 -14 35 -14 43 0 8 -4 22 -9 32 -5 9 -19 38 -31 64 -12 26 -31 62 -43 80 -12 18 -41 65 -65 104 -42 71 -217 254 -242 254 -7 0 -28 14 -47 30 -18 17 -37 30 -42 30 -4 0 -39 20 -77 45 -37 25 -73 45 -80 45 -6 0 -17 7 -24 15 -7 8 -27 15 -44 15 -17 0 -40 7 -50 15 -11 8 -31 15 -45 15 -14 0 -35 7 -45 15 -11 8 -38 15 -60 15 -23 1 -52 7 -66 15 -29 17 -2195 19 -2350 3z"/> <path d="M9200 8520 c-69 -4 -529 -8 -1024 -9 -773 -1 -901 -4 -919 -16 -12 -8 -40 -15 -62 -15 -22 0 -49 -7 -59 -15 -11 -8 -37 -15 -57 -15 -21 0 -50 -6 -66 -14 -57 -28 -104 -46 -123 -46 -10 0 -21 -4 -24 -9 -4 -5 -25 -18 -49 -29 -136 -63 -189 -92 -223 -123 -11 -10 -26 -19 -32 -19 -7 0 -33 -19 -58 -42 -26 -24 -61 -52 -80 -63 -28 -17 -175 -160 -827 -802 -15 -16 -121 -122 -236 -238 -114 -115 -226 -223 -250 -238 -23 -15 -50 -42 -59 -60 -9 -18 -51 -65 -92 -104 -41 -40 -80 -78 -87 -85 -41 -44 -246 -246 -346 -341 -174 -165 -227 -221 -224 -232 5 -15 1862 -13 1992 3 73 8 596 12 1910 12 1130 1 1840 5 1890 11 45 6 495 12 1025 15 797 5 948 8 967 20 12 8 39 14 60 14 37 0 139 33 157 51 6 5 20 9 32 9 26 0 176 74 194 95 7 8 37 26 66 40 53 25 274 234 274 259 0 5 18 31 40 57 22 26 45 58 50 71 13 28 29 54 56 93 26 38 54 113 54 146 0 14 7 34 15 45 8 10 15 37 15 59 0 22 7 51 15 65 11 19 14 69 14 215 0 146 -3 196 -14 215 -8 14 -15 45 -15 70 0 25 -7 54 -15 64 -8 11 -15 32 -15 46 0 23 -49 127 -117 249 -14 25 -40 63 -59 85 -19 22 -34 45 -34 51 0 16 -165 175 -182 175 -8 0 -30 16 -49 36 -18 20 -76 56 -127 81 -50 25 -95 49 -98 54 -3 5 -17 9 -32 9 -15 0 -36 7 -46 15 -11 8 -34 15 -50 15 -17 0 -40 7 -50 15 -11 8 -30 15 -43 15 -13 0 -37 7 -52 15 -24 12 -220 15 -1352 19 -728 3 -1353 7 -1389 9 -36 3 -121 1 -190 -3z"/> <path d="M3620 4808 c-14 -5 -50 -14 -80 -18 -57 -8 -105 -22 -153 -46 -16 -8 -37 -14 -47 -14 -10 0 -31 -7 -47 -15 -15 -7 -49 -23 -75 -35 -117 -50 -144 -67 -222 -141 -46 -44 -91 -79 -100 -79 -9 0 -25 -14 -34 -31 -9 -18 -29 -47 -44 -64 -16 -18 -28 -37 -28 -43 0 -6 -16 -29 -35 -52 -19 -23 -35 -48 -35 -54 0 -7 -9 -21 -20 -31 -22 -20 -70 -118 -70 -144 0 -9 -7 -25 -15 -35 -8 -11 -15 -27 -15 -37 0 -9 -7 -30 -15 -45 -8 -16 -15 -40 -15 -54 0 -15 -6 -32 -12 -38 -15 -15 -31 -250 -30 -447 0 -71 0 -173 0 -225 -3 -357 12 -781 28 -804 8 -11 14 -39 14 -61 0 -22 7 -49 15 -59 8 -11 15 -29 15 -40 0 -53 129 -267 232 -384 92 -105 195 -202 215 -202 5 0 38 -19 74 -43 80 -54 126 -77 153 -77 12 0 30 -6 41 -13 30 -20 108 -47 136 -47 14 0 34 -7 45 -15 12 -9 43 -15 84 -15 37 0 77 -6 94 -15 36 -19 123 -19 156 0 14 8 50 14 81 15 31 0 70 7 85 15 16 8 47 15 69 15 22 0 49 7 59 15 11 8 31 15 44 15 37 0 206 87 264 135 28 25 57 45 64 45 16 0 192 177 222 225 14 22 32 45 39 51 21 18 61 92 113 209 27 61 40 100 40 124 0 15 7 36 15 47 8 10 15 34 15 52 0 19 6 48 14 65 8 18 16 72 18 120 3 88 3 89 40 122 l37 34 2111 0 c1875 1 2113 2 2133 16 12 8 34 15 49 15 15 0 42 6 60 14 110 48 150 68 194 98 28 18 72 44 97 58 26 13 50 33 53 43 3 10 24 30 45 44 22 15 47 40 56 56 8 16 33 50 56 74 38 41 72 97 123 203 64 133 74 160 74 207 0 28 6 58 15 69 21 28 21 280 0 308 -9 11 -15 42 -15 70 -1 28 -7 62 -15 76 -8 14 -14 33 -15 44 0 26 -97 216 -125 246 -12 14 -25 34 -29 45 -11 37 -197 212 -266 250 -202 110 -287 148 -395 172 -86 20 -5588 31 -5635 11z"/> </g> </svg>`;
+
+const I = {
+  carpetas:'<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>',
+  check:'<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="m8 12 3 3 5-6"/></svg>',
+  persona:'<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>',
+  personas:'<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M16 4.6a3.5 3.5 0 0 1 0 6.8"/><path d="M18.5 20a6.5 6.5 0 0 0-3-5.5"/></svg>',
+  atras:'<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>',
+  mas:'<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>',
+  masChico:'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>',
+  cerrar:'<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>',
+  calendario:'<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18"/></svg>',
+  alerta:'<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4M12 17h.01"/><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg>',
+  correo:'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg>',
+  palomita:'<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 5 5 9-10"/></svg>',
+  archivo:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="4" rx="1"/><path d="M5 8v11a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8M10 12h4"/></svg>',
+  punto:'<svg width="8" height="8" viewBox="0 0 8 8" aria-hidden="true"><circle cx="4" cy="4" r="3" fill="currentColor" opacity=".6"/></svg>',
+  info:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg>',
+};
+
+/* ---------------------------------------------------------------------------
+   Datos inventados
+--------------------------------------------------------------------------- */
+const usuarios = {
+  ana:   {nombre:'Ana López',    correo:'ana.lopez@ejemplo.mx',   color:'--av1'},
+  luis:  {nombre:'Luis Pérez',   correo:'luis.perez@ejemplo.mx',  color:'--av2'},
+  maria: {nombre:'María Ruiz',   correo:'maria.ruiz@ejemplo.mx',  color:'--av3'},
+  jorge: {nombre:'Jorge Díaz',   correo:'jorge.diaz@ejemplo.mx',  color:'--av4'},
+  sofia: {nombre:'Sofía Méndez', correo:'sofia.mendez@ejemplo.mx',color:'--av5'},
+};
+
+const proyectos = [
+  // permisos: lo que el dueño concede a cada miembro sobre las tarjetas (el dueño siempre puede todo).
+  {id:1, nombre:'Semana de la Ciencia 2026', dueno:'ana', miembros:['ana','luis','maria'], invitaciones:['sofia.mendez@ejemplo.mx'], archivado:false,
+   permisos:{luis:{crear:true, editar:true, estatus:true, eliminar:false, tipos:true}, maria:{crear:true, editar:false, estatus:true, eliminar:false, tipos:false}},
+   tipos:[{id:1, nombre:'Logística', descripcion:'Espacios, equipo y servicios.', color:'#0ea5e9'},
+          {id:2, nombre:'Difusión', descripcion:'Carteles, redes sociales y comunicados.', color:'#ec4899'},
+          {id:3, nombre:'Académico', descripcion:'', color:'#6366f1'},
+          {id:4, nombre:'Reunión', descripcion:'Juntas y acuerdos.', color:'#8b5cf6'}]},
+  {id:2, nombre:'Mantenimiento del laboratorio', dueno:'luis', miembros:['luis','ana','jorge'], invitaciones:[], archivado:false,
+   permisos:{ana:{crear:true, editar:true, estatus:true, eliminar:true, tipos:true}, jorge:{crear:false, editar:false, estatus:true, eliminar:false, tipos:false}},
+   tipos:[{id:5, nombre:'Mantenimiento', descripcion:'Preventivo o correctivo.', color:'#64748b'},
+          {id:6, nombre:'Compras', descripcion:'Requiere orden de compra.', color:'#78716c'}]},
+  {id:3, nombre:'Revista institucional', dueno:'maria', miembros:['maria','luis'], invitaciones:[], archivado:false,
+   permisos:{luis:{crear:true, editar:true, estatus:true, eliminar:false, tipos:false}},
+   tipos:[{id:7, nombre:'Edición', descripcion:'', color:'#6366f1'}]},
+  {id:4, nombre:'Congreso regional 2025', dueno:'ana', miembros:['ana','luis'], invitaciones:[], archivado:true,
+   permisos:{luis:{crear:true, editar:true, estatus:true, eliminar:false, tipos:false}},
+   tipos:[{id:8, nombre:'Logística', descripcion:'', color:'#0ea5e9'}]},
+];
+
+// Fechas relativas al «hoy» del escaparate (días de diferencia).
+let sigId = 100;
+const tarjetas = [
+  {id:1, proyecto:1, titulo:'Reservar el auditorio', descripcion:'Confirmar con Servicios Generales el auditorio central para los tres días del evento, con proyector y sonido.', estatus:'en_curso', prioridad:'urgente', fin:-2, asignados:['ana'], creada_por:'ana', tipos:[1, 4]},
+  {id:2, proyecto:1, titulo:'Convocatoria de ponentes', descripcion:'Redactar y publicar la convocatoria. Incluir formato de resumen y fecha límite de recepción.', estatus:'finalizada', prioridad:'alta', fin:-10, asignados:['luis','maria'], creada_por:'ana', tipos:[2, 3]},
+  {id:3, proyecto:1, titulo:'Diseñar el cartel', descripcion:'Versión impresa tamaño doble carta y versión para redes sociales.', estatus:'en_curso', prioridad:'alta', fin:1, asignados:['maria'], creada_por:'luis', tipos:[2]},
+  {id:4, proyecto:1, titulo:'Lista de constancias', descripcion:'Generar la lista de asistentes que recibirán constancia al final del evento.', estatus:'pendiente', prioridad:'media', fin:12, asignados:['luis'], creada_por:'ana', tipos:[3]},
+  {id:5, proyecto:1, titulo:'Coffee break', descripcion:'Cotizar con tres proveedores y elegir el menú.', estatus:'pendiente', prioridad:'baja', fin:null, asignados:[], creada_por:'maria', tipos:[1]},
+  {id:6, proyecto:1, titulo:'Programa del evento', descripcion:'Armar el programa con horarios, salas y ponentes confirmados.', estatus:'pendiente', prioridad:'alta', fin:5, asignados:['ana','maria','luis'], creada_por:'ana', tipos:[1, 3]},
+  {id:7, proyecto:2, titulo:'Inventario de reactivos', descripcion:'Contar existencias y marcar los que caducan antes de diciembre.', estatus:'en_curso', prioridad:'urgente', fin:0, asignados:['jorge'], creada_por:'luis', tipos:[5]},
+  {id:8, proyecto:2, titulo:'Calibrar balanzas', descripcion:'Calibración semestral de las cuatro balanzas analíticas.', estatus:'pendiente', prioridad:'media', fin:-1, asignados:['ana','jorge'], creada_por:'luis', tipos:[5]},
+  {id:9, proyecto:2, titulo:'Cambiar filtros de la campana', descripcion:'Solicitar los filtros a compras y programar el cambio.', estatus:'finalizada', prioridad:'baja', fin:-20, asignados:['luis'], creada_por:'luis', tipos:[5, 6]},
+  {id:10, proyecto:3, titulo:'Revisión de artículos del número 12', descripcion:'Asignar revisores a los ocho artículos recibidos.', estatus:'en_curso', prioridad:'media', fin:7, asignados:['luis'], creada_por:'maria', tipos:[7]},
+  {id:12, proyecto:4, titulo:'Memorias del congreso', descripcion:'Compilar y publicar las memorias en PDF.', estatus:'finalizada', prioridad:'media', fin:-300, asignados:['luis'], creada_por:'ana', tipos:[]},
+  {id:13, proyecto:4, titulo:'Constancias de ponentes', descripcion:'Enviar las constancias por correo.', estatus:'finalizada', prioridad:'baja', fin:-320, asignados:['ana'], creada_por:'ana', tipos:[8]},
+  {id:11, proyecto:3, titulo:'Maquetación', descripcion:'Maquetar el número una vez aprobados los artículos.', estatus:'pendiente', prioridad:'baja', fin:30, asignados:['maria'], creada_por:'maria', tipos:[7]},
+];
+
+/* ---------------------------------------------------------------------------
+   Estado de la maqueta
+--------------------------------------------------------------------------- */
+const estado = {
+  vista:'telefono', yo:'ana', hoy:new Date('2026-10-15T12:00:00'),
+  pantalla:'proyectos',   // proyectos | tablero | miembros | mis | perfil
+  proyecto:null, tab:'pendiente', soloMias:false, filtroTipo:null,
+  capa:null,              // {tipo:'detalle', id} | {tipo:'nueva'} | {tipo:'nuevo-proyecto'} | {tipo:'confirmar', ...}
+};
+const ESTATUS = [['pendiente','Pendiente'],['en_curso','En curso'],['finalizada','Finalizada']];
+const PRIORIDADES = [['baja','Baja'],['media','Media'],['alta','Alta'],['urgente','Urgente']];
+const ORDEN_PRIO = {urgente:0, alta:1, media:2, baja:3};
+
+/* ---------------------------------------------------------------------------
+   Utilidades
+--------------------------------------------------------------------------- */
+const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const $ = s => document.querySelector(s);
+const iniciales = id => usuarios[id].nombre.split(' ').map(p => p[0]).slice(0,2).join('');
+const avatar = (id, grande) => `<span class="avatar${grande ? ' grande' : ''}" style="background:var(${usuarios[id].color})" title="${esc(usuarios[id].nombre)}">${iniciales(id)}</span>`;
+function avatares(ids, max = 3){
+  const extra = ids.length - max;
+  return `<span class="avatares">${ids.slice(0, max).map(i => avatar(i)).join('')}${extra > 0 ? `<span class="avatar mas">+${extra}</span>` : ''}</span>`;
+}
+const fechaDe = dias => { if (dias === null) return null; const d = new Date(estado.hoy); d.setDate(d.getDate() + dias); return d; };
+const diasEntre = d => Math.round((new Date(d.toDateString()) - new Date(estado.hoy.toDateString())) / 864e5);
+const MESES = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+const corta = d => `${d.getDate()} ${MESES[d.getMonth()]}`;
+const iso = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+
+function chipFecha(t){
+  if (!t.fecha) return '';
+  const dif = diasEntre(t.fecha);
+  if (t.estatus !== 'finalizada' && dif < 0) return `<span class="chip vencida">${I.alerta} Vencida · ${corta(t.fecha)}</span>`;
+  if (t.estatus !== 'finalizada' && dif === 0) return `<span class="chip por-vencer">${I.calendario} Vence hoy</span>`;
+  if (t.estatus !== 'finalizada' && dif === 1) return `<span class="chip por-vencer">${I.calendario} Vence mañana</span>`;
+  return `<span class="chip fecha">${I.calendario} ${corta(t.fecha)}</span>`;
+}
+const esVencida = t => t.fecha && t.estatus !== 'finalizada' && diasEntre(t.fecha) < 0;
+const proyectoDe = id => proyectos.find(p => p.id === id);
+const misProyectos = () => proyectos.filter(p => p.miembros.includes(estado.yo));
+const PERMISOS = [['crear','Crear'],['editar','Editar'],['estatus','Cambiar estatus'],['eliminar','Eliminar'],['tipos','Gestionar tipos']];
+const PERMISOS_NUEVO = {crear:true, editar:true, estatus:true, eliminar:false, tipos:false};   // lo que recibe quien acepta una invitación
+// Crear, editar, cambiar estatus y eliminar tarjetas, y gestionar los tipos del proyecto: permisos que el dueño concede a cada miembro.
+let sigTipo = 100;
+// Colores sugeridos para tipos: los de la guía de TaskFlow (desarrollo, reunión, soporte, mantenimiento, diseño, administración).
+const MUESTRAS = ['#6366f1','#8b5cf6','#0ea5e9','#64748b','#ec4899','#78716c'];
+const tipoDe = (p, id) => p.tipos.find(x => x.id === id);
+const chipTipo = tp => `<span class="chip tipo" style="--tipo:${tp.color}" title="${esc(tp.descripcion || tp.nombre)}"><span class="punto"></span>${esc(tp.nombre)}</span>`;
+const puede = (p, accion) => !p.archivado && (p.dueno === estado.yo || !!(p.permisos[estado.yo] || {})[accion]);
+const puedeEliminar = t => puede(proyectoDe(t.proyecto), 'eliminar');
+
+function toast(texto){
+  document.querySelectorAll('.toast').forEach(t => t.remove());
+  const el = document.createElement('div');
+  el.className = 'toast'; el.setAttribute('role','status'); el.textContent = texto;
+  $('#dispositivo').appendChild(el);
+  setTimeout(() => el.remove(), 2200);
+}
+
+/* Las fechas viven como objetos Date a partir de los días relativos. */
+tarjetas.forEach(t => { t.fecha = fechaDe(t.fin); });
+
+/* Historial de estatus: cada cambio guarda cuándo (fecha y hora), quién, de qué estatus y a cuál.
+   La creación es la primera entrada (de: null). Se siembra relativo al «hoy» inicial. */
+function momento(dias, hora, minuto){ const d = fechaDe(dias); d.setHours(hora, minuto, 0, 0); return d; }
+tarjetas.forEach(t => {
+  const quien = t.asignados[0] || t.creada_por;
+  t.historial = [{cuando:momento(-12, 9, 14), quien:t.creada_por, de:null, a:'pendiente'}];
+  if (t.estatus !== 'pendiente') t.historial.push({cuando:momento(-7, 11, 32), quien, de:'pendiente', a:'en_curso'});
+  if (t.estatus === 'finalizada') t.historial.push({cuando:momento(-3, 17, 5), quien, de:'en_curso', a:'finalizada'});
+});
+// Ejemplo de tarjeta finalizada que se reabrió y se volvió a finalizar.
+(() => { const t = tarjetas.find(x => x.id === 2); const p = t.historial.pop();
+  t.historial.push({cuando:momento(-6, 16, 48), quien:'maria', de:'en_curso', a:'finalizada'},
+                   {cuando:momento(-5, 8, 20), quien:'ana', de:'finalizada', a:'en_curso'},
+                   {cuando:momento(-4, 13, 57), quien:'luis', de:'en_curso', a:'finalizada'}); })();
+// «Ahora» en la maqueta: la fecha del escaparate con la hora real del equipo.
+function ahora(){ const d = new Date(estado.hoy), r = new Date(); d.setHours(r.getHours(), r.getMinutes(), r.getSeconds(), 0); return d; }
+const MESES_H = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+const fechaHora = d => `${d.getDate()} ${MESES_H[d.getMonth()]} ${d.getFullYear()} · ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+const nombreEstatus = e => ESTATUS.find(x => x[0] === e)[1];
+const chipPrioridad = p => `<span class="chip prio-${p}"><span class="punto"></span>${PRIORIDADES.find(x => x[0] === p)[1]}</span>`;
+const chipEstatus = e => `<span class="chip ${e}"><span class="punto"></span>${nombreEstatus(e)}</span>`;
+
+/* ---------------------------------------------------------------------------
+   Render
+--------------------------------------------------------------------------- */
+function render(){
+  const disp = $('#dispositivo');
+  disp.classList.toggle('computadora', estado.vista === 'computadora');
+  renderCabecera(); renderNav(); renderContenido(); renderCapa();
+  const fab = $('#fab');
+  fab.hidden = estado.pantalla !== 'tablero' || !puede(proyectoDe(estado.proyecto), 'crear');
+  fab.innerHTML = I.mas;
+}
+
+function renderCabecera(){
+  const c = $('#cabecera');
+  if (estado.pantalla === 'tablero' || estado.pantalla === 'miembros'){
+    const p = proyectoDe(estado.proyecto);
+    const sub = estado.pantalla === 'miembros' ? 'Miembros y ajustes' : p.archivado ? 'Archivado · solo lectura' : `${p.miembros.length} miembros · ${p.dueno === estado.yo ? 'eres dueña/o' : 'dueño: ' + usuarios[p.dueno].nombre}`;
+    c.innerHTML = `
+      <button class="btn-icono" data-ir="${estado.pantalla === 'miembros' ? 'tablero' : 'proyectos'}" aria-label="Regresar">${I.atras}</button>
+      <div class="titulos"><h1>${esc(p.nombre)}</h1><div class="sub">${esc(sub)}</div></div>
+      <div class="acciones-cab">${estado.pantalla === 'tablero' ? `<button class="btn btn-chico btn-secundario" data-ir="miembros">${I.personas} Miembros</button>${!puede(p, 'crear') ? '' : `<button class="btn btn-chico btn-primario" data-accion="nueva">${I.masChico} Nueva tarjeta</button>`}` : ''}</div>
+      ${estado.pantalla === 'tablero' ? `<button class="btn-icono" data-ir="miembros" aria-label="Miembros del proyecto" style="${estado.vista === 'computadora' ? 'display:none' : ''}">${I.personas}</button>` : ''}`;
+  } else {
+    const titulos = {proyectos:'Mis proyectos', mis:'Mis tarjetas', perfil:'Perfil'};
+    c.innerHTML = `<span class="sello">${LOGO}</span>
+      <div class="titulos"><h1>TaskFlow</h1><div class="sub">${titulos[estado.pantalla]}</div></div>
+      ${estado.pantalla === 'proyectos' ? `<div class="acciones-cab"><button class="btn btn-chico btn-secundario" data-accion="nuevo-proyecto">${I.masChico} Nuevo proyecto</button></div>` : ''}`;
+  }
+}
+
+function renderNav(){
+  const items = [['proyectos','Proyectos',I.carpetas],['mis','Mis tarjetas',I.check],['perfil','Perfil',I.persona]];
+  const activa = ['tablero','miembros'].includes(estado.pantalla) ? (estado.vista === 'computadora' ? null : 'proyectos') : estado.pantalla;
+  const html = items.map(([id, txt, ic]) => `<button data-ir="${id}" ${activa === id ? 'aria-current="page"' : ''}>${ic}<span>${txt}</span></button>`).join('');
+  $('#nav-inferior').innerHTML = html;
+  $('#nav-lateral').innerHTML = `<div class="marca-lateral">${LOGO}<span>TaskFlow</span></div>${html}
+    <div class="separador"></div><div class="rotulo-nav">Mis proyectos</div>
+    ${misProyectos().filter(p => !p.archivado).map(p => `<button data-proyecto="${p.id}" ${['tablero','miembros'].includes(estado.pantalla) && estado.proyecto === p.id ? 'aria-current="page"' : ''}>${I.punto}<span>${esc(p.nombre)}</span></button>`).join('')}`;
+}
+
+function htmlTarjeta(t, conProyecto){
+  return `<button class="tarjeta${t.prioridad === 'urgente' && t.estatus !== 'finalizada' ? ' urgente' : ''}${t.estatus === 'finalizada' ? ' terminada' : ''}" data-tarjeta="${t.id}">
+    ${conProyecto ? `<span class="proyecto-de">${esc(proyectoDe(t.proyecto).nombre)}</span>` : ''}
+    <h4>${esc(t.titulo)}</h4>
+    <p>${esc(t.descripcion)}</p>
+    <div class="etiquetas">${t.tipos.map(id => chipTipo(tipoDe(proyectoDe(t.proyecto), id))).join('')}${t.estatus !== 'finalizada' ? chipPrioridad(t.prioridad) : ''}</div>
+    <div class="pie">${conProyecto ? `<span class="chip ${t.estatus}"><span class="punto"></span>${ESTATUS.find(e => e[0] === t.estatus)[1]}</span>` : ''}${chipFecha(t)}${t.asignados.length ? avatares(t.asignados) : '<span class="chip fecha" style="margin-left:auto">Sin asignar</span>'}</div>
+  </button>`;
+}
+
+function renderContenido(){
+  const m = $('#contenido');
+  if (estado.pantalla === 'proyectos'){
+    const lista = misProyectos().filter(p => !p.archivado), archivados = misProyectos().filter(p => p.archivado);
+    const tarjetaProyecto = p => {
+        const ts = tarjetas.filter(t => t.proyecto === p.id);
+        const n = e => ts.filter(t => t.estatus === e).length;
+        const venc = ts.filter(esVencida).length;
+        return `<button class="proyecto${p.archivado ? ' archivado' : ''}" data-proyecto="${p.id}">
+          <div class="fila"><h3>${esc(p.nombre)}</h3>${p.archivado ? '<span class="chip pendiente">Archivado</span>' : ''}${p.dueno === estado.yo ? '<span class="etiqueta-rol">Dueña/o</span>' : ''}</div>
+          <div class="progreso" aria-hidden="true">${ts.length ? `<i style="width:${n('finalizada') / ts.length * 100}%;background:var(--tf-status-done)"></i><i style="width:${n('en_curso') / ts.length * 100}%;background:var(--tf-status-progress)"></i>` : ''}</div>
+          <div class="conteos">
+            <span class="chip pendiente"><span class="punto"></span>${n('pendiente')} pendiente${n('pendiente') === 1 ? '' : 's'}</span>
+            <span class="chip en_curso"><span class="punto"></span>${n('en_curso')} en curso</span>
+            <span class="chip finalizada"><span class="punto"></span>${n('finalizada')} finalizada${n('finalizada') === 1 ? '' : 's'}</span>
+            ${venc ? `<span class="chip vencida">${I.alerta} ${venc} vencida${venc > 1 ? 's' : ''}</span>` : ''}
+          </div>
+          <div class="fila">${avatares(p.miembros, 5)}<span style="font-size:12px;color:var(--tf-text-muted);margin-left:auto">Dueño: ${esc(usuarios[p.dueno].nombre)}</span></div>
+        </button>`;};
+    m.innerHTML = `<div class="seccion-titulo">Proyectos en los que participas</div>
+      <div class="lista-proyectos">${lista.map(tarjetaProyecto).join('') || '<div class="vacio">Aún no participas en ningún proyecto.</div>'}</div>
+      ${archivados.length ? `<div class="seccion-titulo">Archivados · ${archivados.length}</div><div class="lista-proyectos">${archivados.map(tarjetaProyecto).join('')}</div>` : ''}
+      <div style="margin-top:14px;${estado.vista === 'computadora' ? 'display:none' : ''}"><button class="btn btn-secundario btn-bloque" data-accion="nuevo-proyecto">${I.masChico} Nuevo proyecto</button></div>
+      <div class="aviso" style="margin-top:14px">${I.info}<span>Solo ves los proyectos de los que eres miembro. Cualquier usuario puede crear un proyecto; quien lo crea es su dueño y puede invitar a otras personas.</span></div>`;
+    return;
+  }
+  if (estado.pantalla === 'tablero'){
+    let ts = tarjetas.filter(t => t.proyecto === estado.proyecto);
+    if (estado.soloMias) ts = ts.filter(t => t.asignados.includes(estado.yo));
+    if (estado.filtroTipo) ts = ts.filter(t => t.tipos.includes(estado.filtroTipo));
+    const orden = (a, b) => (ORDEN_PRIO[a.prioridad] - ORDEN_PRIO[b.prioridad]) || ((a.fecha ? a.fecha : Infinity) - (b.fecha ? b.fecha : Infinity));
+    const de = e => ts.filter(t => t.estatus === e).sort(orden);
+    const compu = estado.vista === 'computadora';
+    const pr = proyectoDe(estado.proyecto);
+    m.innerHTML = `
+      ${pr.archivado ? `<div class="banner">${I.archivo}<span>Proyecto archivado: se puede consultar, pero nadie puede crear, editar ni mover tarjetas.</span>${pr.dueno === estado.yo ? '<button class="btn btn-chico btn-secundario" data-accion="restaurar">Restaurar</button>' : ''}</div>` : ''}
+      <div class="segmentos" role="group" aria-label="Estatus">${ESTATUS.map(([e, txt]) =>
+        `<button class="${e}" data-tab="${e}" aria-pressed="${estado.tab === e}"><span class="punto"></span>${txt}<span class="num">${de(e).length}</span></button>`).join('')}</div>
+      <div class="filtros"><span>${ts.length} tarjeta${ts.length === 1 ? '' : 's'}${estado.soloMias ? ' asignadas a ti' : ''}</span>
+        <button class="interruptor" data-accion="solo-mias" aria-pressed="${estado.soloMias}"><span class="pista"></span>Solo mías</button></div>
+      ${pr.tipos.length ? `<div class="filtro-tipos" role="group" aria-label="Filtrar por tipo"><button data-filtro-tipo="0" aria-pressed="${!estado.filtroTipo}">Todos los tipos</button>${pr.tipos.map(tp =>
+        `<button data-filtro-tipo="${tp.id}" style="--tipo:${tp.color}" aria-pressed="${estado.filtroTipo === tp.id}"><span class="punto"></span>${esc(tp.nombre)}</button>`).join('')}</div>` : ''}
+      <div class="columnas">${ESTATUS.filter(([e]) => compu || e === estado.tab).map(([e, txt]) => `
+        <section class="columna" aria-label="${txt}">
+          <div class="columna-cab ${e}"><span class="punto"></span>${txt}<span class="num">${de(e).length}</span></div>
+          ${de(e).map(t => htmlTarjeta(t)).join('') || `<div class="vacio">Sin tarjetas ${txt.toLowerCase() === 'pendiente' ? 'pendientes' : txt.toLowerCase() === 'en curso' ? 'en curso' : 'finalizadas'}.</div>`}
+        </section>`).join('')}</div>`;
+    return;
+  }
+  if (estado.pantalla === 'miembros'){
+    const p = proyectoDe(estado.proyecto);
+    const soyDueno = p.dueno === estado.yo;
+    const nTarjetas = tarjetas.filter(t => t.proyecto === p.id).length;
+    const permisosDe = u => {
+      if (u === p.dueno) return '';
+      const pu = p.permisos[u] || {};
+      if (soyDueno && !p.archivado) return `<div class="permisos" role="group" aria-label="Permisos de ${esc(usuarios[u].nombre)}">${PERMISOS.map(([k, txt]) =>
+        `<button data-permiso="${u}:${k}" aria-pressed="${!!pu[k]}">${I.palomita}${txt}</button>`).join('')}</div>`;
+      const dados = PERMISOS.filter(([k]) => pu[k]);
+      return `<div class="permisos"><span class="rotulo">Puede:</span>${dados.length ? dados.map(([, txt]) => `<span class="si">${I.palomita}${txt}</span>`).join('') : '<span>Solo ver tarjetas</span>'}</div>`;
+    };
+    m.innerHTML = `
+      ${soyDueno && !p.archivado ? `<div class="invitar">
+        <div class="campo" style="margin:0">
+          <label for="correo-inv">Invitar por correo</label>
+          <div class="linea"><input id="correo-inv" type="email" placeholder="nombre@ejemplo.mx"><button class="btn btn-primario" data-accion="invitar">Invitar</button></div>
+          <div class="ayuda">Le llega un correo con un enlace que no vence. Si aún no tiene cuenta, la crea desde ahí y entra directo al proyecto con permiso de crear, editar y cambiar estatus (puedes cambiarlo abajo).</div>
+        </div></div>` : !soyDueno ? `<div class="aviso">${I.info}<span>Solo el dueño del proyecto (${esc(usuarios[p.dueno].nombre)}) puede invitar, quitar personas y decidir qué puede hacer cada miembro con las tarjetas.</span></div>` : ''}
+      <div class="seccion-titulo">Miembros · ${p.miembros.length}</div>
+      <div class="tarjeta-blanca">${p.miembros.map(u => `
+        <div class="persona">${avatar(u, true)}<div class="nombre">${esc(usuarios[u].nombre)}${u === estado.yo ? ' (tú)' : ''}<small>${esc(usuarios[u].correo)}</small></div>
+          ${u === p.dueno ? '<span class="etiqueta-rol">Dueña/o</span>' : soyDueno ? `<div class="acciones-persona">
+            <form data-confirmar="¿Transferir «${esc(p.nombre)}» a ${esc(usuarios[u].nombre)}? Será el nuevo dueño y tú quedarás como miembro con todos los permisos sobre las tarjetas. Solo esa persona podrá devolvértelo." data-transferir="${u}"><button class="btn btn-chico btn-secundario">Hacer dueño</button></form>
+            ${p.archivado ? '' : `<form data-confirmar="¿Quitar a ${esc(usuarios[u].nombre)} del proyecto? Dejará de ver sus tarjetas y se le quitará de las que tenga asignadas." data-quitar="${u}"><button class="btn btn-chico btn-peligro">Quitar</button></form>`}</div>` : ''}
+          ${permisosDe(u)}
+        </div>`).join('')}</div>
+      ${p.invitaciones.length ? `<div class="seccion-titulo">Invitaciones pendientes · ${p.invitaciones.length}</div>
+      <div class="tarjeta-blanca">${p.invitaciones.map(c => `
+        <div class="persona"><span class="avatar grande mas">${I.correo}</span><div class="nombre">${esc(c)}<small>Enviada, sin aceptar · no vence</small></div>
+        ${soyDueno ? `<div class="acciones-persona"><button class="btn btn-chico btn-secundario" data-accion="reenviar" data-correo="${esc(c)}">Reenviar</button><form data-confirmar="¿Cancelar la invitación a ${esc(c)}? El enlace que recibió dejará de funcionar." data-cancelar="${esc(c)}"><button class="btn btn-chico btn-peligro">Cancelar</button></form></div>` : ''}</div>`).join('')}</div>` : ''}
+      <div class="seccion-titulo">Tipos de tarjeta · ${p.tipos.length}</div>
+      <div class="tarjeta-blanca">${p.tipos.map(tp => {
+        const n = tarjetas.filter(t => t.proyecto === p.id && t.tipos.includes(tp.id)).length;
+        return `<div class="fila-tipo"><span class="muestra-color" style="--tipo:${tp.color}"></span>
+          <div class="nombre">${esc(tp.nombre)}<small>${tp.descripcion ? esc(tp.descripcion) + ' · ' : ''}${n} tarjeta${n === 1 ? '' : 's'}</small></div>
+          ${puede(p, 'tipos') ? `<div class="acciones-persona"><button class="btn btn-chico btn-secundario" data-accion="editar-tipo" data-tipo="${tp.id}">Editar</button>
+            <form data-confirmar="¿Eliminar el tipo «${esc(tp.nombre)}»? Se quitará de ${n} tarjeta${n === 1 ? '' : 's'}; las tarjetas no se borran." data-eliminar-tipo="${tp.id}"><button class="btn btn-chico btn-peligro">Eliminar</button></form></div>` : ''}
+        </div>`;}).join('') || '<div class="vacio" style="padding:16px">Este proyecto aún no tiene tipos.</div>'}
+        ${puede(p, 'tipos') ? `<div style="padding:10px 0 8px"><button class="btn btn-secundario btn-bloque" data-accion="nuevo-tipo">${I.masChico} Nuevo tipo</button></div>` : ''}
+      </div>
+      ${!puede(p, 'tipos') && !p.archivado ? `<div class="ayuda" style="font-size:12px;color:var(--tf-text-muted);margin:6px 4px 0">Crear y editar tipos lo puede el dueño o quien tenga el permiso «Gestionar tipos».</div>` : ''}
+      <div class="seccion-titulo">Proyecto</div>
+      ${soyDueno ? `<div class="tarjeta-blanca" style="padding:14px;display:flex;flex-direction:column;gap:10px">
+        ${p.archivado
+          ? '<button class="btn btn-secundario btn-bloque" data-accion="restaurar">Restaurar proyecto</button>'
+          : `<form data-confirmar="¿Archivar «${esc(p.nombre)}»? Queda en solo lectura para todos sus miembros: nadie podrá crear, editar ni mover tarjetas. Puedes restaurarlo cuando quieras." data-archivar="1"><button class="btn btn-secundario btn-bloque">${I.archivo} Archivar proyecto</button></form>`}
+        <form data-confirmar="¿Eliminar «${esc(p.nombre)}» y sus ${nTarjetas} tarjetas? Se borra para todos sus miembros y no se puede deshacer." data-eliminar-proyecto="1"><button class="btn btn-peligro btn-bloque">Eliminar proyecto</button></form>
+        <div class="ayuda" style="font-size:12px;color:var(--tf-text-muted)">Para salir del proyecto, primero transfiérelo a otro miembro con «Hacer dueño».</div>
+      </div>` : `<form data-confirmar="¿Salir de «${esc(p.nombre)}»? Dejarás de ver sus tarjetas y se te quitará de las que tengas asignadas." data-salir="1"><button class="btn btn-peligro btn-bloque">Salir del proyecto</button></form>`}`;
+    return;
+  }
+  if (estado.pantalla === 'mis'){
+    const ids = misProyectos().filter(p => !p.archivado).map(p => p.id);
+    const ts = tarjetas.filter(t => ids.includes(t.proyecto) && t.asignados.includes(estado.yo) && t.estatus !== 'finalizada')
+      .sort((a, b) => (a.fecha ? a.fecha : Infinity) - (b.fecha ? b.fecha : Infinity));
+    const venc = ts.filter(esVencida), resto = ts.filter(t => !esVencida(t));
+    m.innerHTML = `${venc.length ? `<div class="seccion-titulo">Vencidas · ${venc.length}</div><div class="columnas" style="display:grid;gap:10px">${venc.map(t => htmlTarjeta(t, true)).join('')}</div>` : ''}
+      <div class="seccion-titulo">Por hacer · ${resto.length}</div>
+      <div class="columnas" style="display:grid;gap:10px">${resto.map(t => htmlTarjeta(t, true)).join('') || '<div class="vacio">No tienes tarjetas pendientes.</div>'}</div>
+      <div class="aviso" style="margin-top:14px">${I.info}<span>Tarjetas asignadas a ti en todos tus proyectos que aún no están finalizadas, ordenadas por fecha de fin.</span></div>`;
+    return;
+  }
+  if (estado.pantalla === 'perfil'){
+    const u = usuarios[estado.yo];
+    m.innerHTML = `<div class="tarjeta-blanca" style="padding:16px"><div class="persona" style="border:0">${avatar(estado.yo, true)}<div class="nombre"><b>${esc(u.nombre)}</b><small>${esc(u.correo)}</small></div></div></div>
+      <div class="seccion-titulo">Cuenta</div>
+      <div class="tarjeta-blanca"><div class="persona"><div class="nombre">Cambiar contraseña</div></div><div class="persona"><div class="nombre">Instalar la app<small>Pasos en la página de instalación</small></div></div></div>
+      <div style="margin-top:18px"><button class="btn btn-secundario btn-bloque">Cerrar sesión</button></div>`;
+  }
+}
+
+function renderCapa(){
+  const capa = $('#capa');
+  const c = estado.capa;
+  if (!c){ capa.innerHTML = ''; return; }
+  if (c.tipo === 'confirmar'){
+    capa.innerHTML = `<div class="modal" role="dialog" aria-modal="true"><div class="caja"><p>${c.mensaje}</p>
+      <div class="fila-botones"><button class="btn btn-secundario" data-accion="cerrar">Cancelar</button><button class="btn btn-peligro-lleno" data-accion="confirmar">${esc(c.boton)}</button></div></div></div>`;
+    return;
+  }
+  let cuerpo = '';
+  if (c.tipo === 'detalle'){
+    const t = tarjetas.find(x => x.id === c.id);
+    const p = proyectoDe(t.proyecto);
+    cuerpo = `<div class="hoja-cab"><h2>${esc(t.titulo)}</h2><button class="btn-icono" data-accion="cerrar" aria-label="Cerrar">${I.cerrar}</button></div>
+      <div class="campo"><span class="etiqueta">Estatus</span><div class="selector-estatus" role="group" aria-label="Cambiar estatus">${ESTATUS.map(([e, txt]) =>
+        `<button class="${e}" data-estatus="${e}" aria-pressed="${t.estatus === e}" ${puede(p, 'estatus') ? '' : 'disabled'}><span class="punto"></span>${txt}</button>`).join('')}</div></div>
+      <div class="campo"><span class="etiqueta">Prioridad</span>${chipPrioridad(t.prioridad)}</div>
+      <div class="campo"><span class="etiqueta">Tipos</span>${t.tipos.length ? `<div class="tipos-tarjeta">${t.tipos.map(id => chipTipo(tipoDe(p, id))).join('')}</div>` : '<span style="color:var(--tf-text-muted);font-size:14px">Sin tipo</span>'}</div>
+      <div class="campo"><span class="etiqueta">Descripción</span><p class="texto-largo">${esc(t.descripcion)}</p></div>
+      <div class="campo"><span class="etiqueta">Fecha fin</span>${t.fecha ? chipFecha(t) : '<span style="color:var(--tf-text-muted);font-size:14px">Sin fecha</span>'}</div>
+      <div class="campo"><span class="etiqueta">Historial de estatus · ${t.historial.length}</span><ul class="historial">${[...t.historial].reverse().map(h => `
+        <li class="${h.a}">${esc(usuarios[h.quien] ? usuarios[h.quien].nombre : 'Usuario eliminado')}${h.quien === estado.yo ? ' (tú)' : ''} ${h.de ? `la movió <span class="flecha">de</span> ${chipEstatus(h.de)} <span class="flecha">a</span> ${chipEstatus(h.a)}` : `la creó en ${chipEstatus(h.a)}`}<span class="cuando">${fechaHora(h.cuando)}</span></li>`).join('')}</ul></div>
+      <div class="campo"><span class="etiqueta">Asignada a · ${t.asignados.length}</span><div class="personas">${t.asignados.map(u => `<div class="persona">${avatar(u, true)}<div class="nombre">${esc(usuarios[u].nombre)}${u === estado.yo ? ' (tú)' : ''}</div></div>`).join('') || '<span style="color:var(--tf-text-muted);font-size:14px">Sin asignar</span>'}</div></div>
+      <div class="fila-botones">${puede(p, 'editar') ? '<button class="btn btn-secundario" data-accion="editar">Editar</button>' : ''}
+        ${puedeEliminar(t) ? `<form style="flex:1;display:flex" data-confirmar="¿Eliminar la tarjeta «${esc(t.titulo)}»? Esta acción no se puede deshacer." data-eliminar="${t.id}"><button class="btn btn-peligro" style="flex:1">Eliminar</button></form>` : ''}</div>
+      <div class="meta"><span>Proyecto: ${esc(p.nombre)}</span><span>Creada por ${esc(usuarios[t.creada_por].nombre)}</span>${p.archivado ? '<span>Proyecto archivado: solo lectura.</span>' : (!puede(p, 'estatus') || !puede(p, 'editar') || !puede(p, 'eliminar')) ? `<span>Lo que no ves disponible depende de los permisos que te dio el dueño (${esc(usuarios[p.dueno].nombre)}).</span>` : ''}</div>`;
+  }
+  if (c.tipo === 'nueva' || c.tipo === 'editar'){
+    const t = c.tipo === 'editar' ? tarjetas.find(x => x.id === c.id) : null;
+    const p = proyectoDe(t ? t.proyecto : estado.proyecto);
+    const asig = t ? t.asignados : [];
+    cuerpo = `<div class="hoja-cab"><h2>${t ? 'Editar tarjeta' : 'Nueva tarjeta'}</h2><button class="btn-icono" data-accion="cerrar" aria-label="Cerrar">${I.cerrar}</button></div>
+      <form id="form-tarjeta" novalidate>
+        <div class="campo"><label for="f-titulo">Título</label><input id="f-titulo" type="text" maxlength="200" value="${t ? esc(t.titulo) : ''}" placeholder="¿Qué hay que hacer?"><div class="error" id="e-titulo" hidden>Escribe un título.</div></div>
+        <div class="campo"><label for="f-desc">Descripción</label><textarea id="f-desc" placeholder="Detalles, criterios de terminado…">${t ? esc(t.descripcion) : ''}</textarea><div class="error" id="e-desc" hidden>Escribe una descripción.</div></div>
+        <div class="campo"><span class="etiqueta">Prioridad</span><div class="elegir-prioridad" role="radiogroup" aria-label="Prioridad">${PRIORIDADES.map(([k, txt]) => `
+          <label><input type="radio" name="prioridad" value="${k}" ${(t ? t.prioridad : 'media') === k ? 'checked' : ''}><span class="chip prio-${k}"><span class="punto"></span>${txt}</span></label>`).join('')}</div></div>
+        <div class="campo"><label for="f-fecha">Fecha fin <span style="text-transform:none;font-weight:400">(opcional)</span></label><input id="f-fecha" type="date" value="${t && t.fecha ? iso(t.fecha) : ''}"></div>
+        <div class="campo"><span class="etiqueta">Tipos <span style="text-transform:none;font-weight:400">(opcional, uno o más)</span></span>${p.tipos.length ? `<div class="elegir-tipos">${p.tipos.map(tp => `
+          <label><input type="checkbox" name="tipo" value="${tp.id}" ${t && t.tipos.includes(tp.id) ? 'checked' : ''}>${chipTipo(tp).replace('class="chip tipo"', 'class="chip tipo"')}</label>`).join('')}</div>` : '<div class="ayuda">Este proyecto aún no tiene tipos.</div>'}</div>
+        <div class="campo"><span class="etiqueta">Asignar a <span style="text-transform:none;font-weight:400">(opcional)</span></span><div class="personas">${p.miembros.map(u => `
+          <label class="persona"><input type="checkbox" name="asig" value="${u}" ${asig.includes(u) ? 'checked' : ''}>${avatar(u, true)}<span class="nombre">${esc(usuarios[u].nombre)}${u === estado.yo ? ' (tú)' : ''}</span></label>`).join('')}</div>
+          <div class="ayuda">Solo aparecen los miembros de «${esc(p.nombre)}». Puede quedar sin asignar.</div></div>
+        <div class="fila-botones"><button type="button" class="btn btn-secundario" data-accion="cerrar">Cancelar</button><button type="submit" class="btn btn-primario">Guardar</button></div>
+      </form>`;
+  }
+  if (c.tipo === 'tipo'){
+    const p = proyectoDe(estado.proyecto);
+    const tp = c.id ? tipoDe(p, c.id) : null;
+    const color = tp ? tp.color : MUESTRAS[p.tipos.length % MUESTRAS.length];
+    cuerpo = `<div class="hoja-cab"><h2>${tp ? 'Editar tipo' : 'Nuevo tipo de tarjeta'}</h2><button class="btn-icono" data-accion="cerrar" aria-label="Cerrar">${I.cerrar}</button></div>
+      <form id="form-tipo" novalidate>
+        <div class="campo"><label for="f-tnombre">Nombre</label><input id="f-tnombre" type="text" maxlength="50" value="${tp ? esc(tp.nombre) : ''}" placeholder="Ej. Difusión"><div class="error" id="e-tnombre" hidden></div></div>
+        <div class="campo"><label for="f-tdesc">Descripción <span style="text-transform:none;font-weight:400">(opcional)</span></label><textarea id="f-tdesc" style="min-height:70px" placeholder="Para qué tarjetas se usa">${tp ? esc(tp.descripcion) : ''}</textarea></div>
+        <div class="campo"><span class="etiqueta">Color</span><div class="muestras" role="group" aria-label="Colores sugeridos">${MUESTRAS.map(m =>
+          `<button type="button" data-color="${m}" style="--tipo:${m}" aria-pressed="${m === color}" aria-label="Color ${m}"></button>`).join('')}
+          <input type="color" id="f-tcolor" value="${color}" aria-label="Otro color"></div>
+          <div class="ayuda">Elige uno sugerido u otro con el selector.</div></div>
+        <div class="campo"><span class="etiqueta">Vista previa</span><span id="vista-tipo">${chipTipo({nombre: tp ? tp.nombre : 'Nombre del tipo', descripcion:'', color})}</span></div>
+        <div class="fila-botones"><button type="button" class="btn btn-secundario" data-accion="cerrar">Cancelar</button><button type="submit" class="btn btn-primario">Guardar</button></div>
+      </form>`;
+  }
+  if (c.tipo === 'nuevo-proyecto'){
+    cuerpo = `<div class="hoja-cab"><h2>Nuevo proyecto</h2><button class="btn-icono" data-accion="cerrar" aria-label="Cerrar">${I.cerrar}</button></div>
+      <form id="form-proyecto" novalidate>
+        <div class="campo"><label for="f-nombre">Nombre</label><input id="f-nombre" type="text" maxlength="150" placeholder="Ej. Feria de empleo 2027"><div class="error" id="e-nombre" hidden>Escribe un nombre.</div></div>
+        <div class="campo"><div class="ayuda">Serás el dueño: podrás invitar a otras personas, decidir qué puede hacer cada una con las tarjetas, y después transferir, archivar o eliminar el proyecto.</div></div>
+        <div class="fila-botones"><button type="button" class="btn btn-secundario" data-accion="cerrar">Cancelar</button><button type="submit" class="btn btn-primario">Crear proyecto</button></div>
+      </form>`;
+  }
+  capa.innerHTML = `<div class="velo" data-accion="cerrar-fondo"><div class="hoja" role="dialog" aria-modal="true"><div class="asa"></div>${cuerpo}</div></div>`;
+}
+
+/* ---------------------------------------------------------------------------
+   Eventos (un solo listener delegado, como en la app real)
+--------------------------------------------------------------------------- */
+document.addEventListener('click', e => {
+  const b = e.target.closest('[data-vista],[data-yo],[data-ir],[data-proyecto],[data-tab],[data-tarjeta],[data-estatus],[data-permiso],[data-filtro-tipo],[data-color],[data-accion],#fab');
+  if (!b) return;
+  if (b.dataset.vista){ estado.vista = b.dataset.vista; marcar('[data-vista]', b); return render(); }
+  if (b.dataset.yo){
+    estado.yo = b.dataset.yo; marcar('[data-yo]', b);
+    if (estado.proyecto && !proyectoDe(estado.proyecto).miembros.includes(estado.yo)) estado.pantalla = 'proyectos';
+    estado.capa = null; return render();
+  }
+  if (b.dataset.ir){ estado.pantalla = b.dataset.ir; estado.capa = null; return render(); }
+  if (b.dataset.proyecto){ estado.proyecto = +b.dataset.proyecto; estado.pantalla = 'tablero'; estado.tab = 'pendiente'; estado.soloMias = false; estado.filtroTipo = null; return render(); }
+  if (b.dataset.tab){ estado.tab = b.dataset.tab; return render(); }
+  if (b.dataset.tarjeta){ estado.capa = {tipo:'detalle', id:+b.dataset.tarjeta}; return render(); }
+  if (b.dataset.filtroTipo !== undefined){ estado.filtroTipo = +b.dataset.filtroTipo || null; return render(); }
+  if (b.dataset.color){ $('#f-tcolor').value = b.dataset.color; vistaTipo(); return; }
+  if (b.dataset.permiso){
+    const [u, k] = b.dataset.permiso.split(':'); const p = proyectoDe(estado.proyecto);
+    p.permisos[u] = p.permisos[u] || {}; p.permisos[u][k] = !p.permisos[u][k];
+    toast(`Permiso actualizado para ${usuarios[u].nombre}.`); return render();
+  }
+  if (b.dataset.estatus){
+    const t = tarjetas.find(x => x.id === estado.capa.id);
+    if (!puede(proyectoDe(t.proyecto), 'estatus')) return;
+    if (t.estatus !== b.dataset.estatus){ t.historial.push({cuando:ahora(), quien:estado.yo, de:t.estatus, a:b.dataset.estatus}); t.estatus = b.dataset.estatus; toast(`Tarjeta movida a ${ESTATUS.find(x => x[0] === t.estatus)[1]}.`); }
+    return render();
+  }
+  if (b.id === 'fab'){ estado.capa = {tipo:'nueva'}; return render(); }
+  const a = b.dataset.accion;
+  if (a === 'cerrar-fondo' && e.target !== b) return;   // clic dentro de la hoja
+  if (a === 'cerrar' || a === 'cerrar-fondo'){ estado.capa = estado.capa && estado.capa.volver ? estado.capa.volver : null; return render(); }
+  if (a === 'nueva'){ estado.capa = {tipo:'nueva'}; return render(); }
+  if (a === 'nuevo-proyecto'){ estado.capa = {tipo:'nuevo-proyecto'}; return render(); }
+  if (a === 'editar'){ estado.capa = {tipo:'editar', id:estado.capa.id}; return render(); }
+  if (a === 'nuevo-tipo'){ estado.capa = {tipo:'tipo', id:null}; return render(); }
+  if (a === 'editar-tipo'){ estado.capa = {tipo:'tipo', id:+b.dataset.tipo}; return render(); }
+  if (a === 'reenviar'){ toast(`Se reenvió la invitación a ${b.dataset.correo}.`); return; }
+  if (a === 'restaurar'){ proyectoDe(estado.proyecto).archivado = false; toast('Proyecto restaurado.'); return render(); }
+  if (a === 'solo-mias'){ estado.soloMias = !estado.soloMias; return render(); }
+  if (a === 'invitar'){
+    const inp = $('#correo-inv'); const v = inp.value.trim().toLowerCase();
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(v)){ inp.focus(); return toast('Escribe un correo válido.'); }
+    const p = proyectoDe(estado.proyecto);
+    if (p.invitaciones.includes(v) || p.miembros.some(u => usuarios[u].correo === v)) return toast('Esa persona ya está invitada o es miembro.');
+    p.invitaciones.push(v); toast('Se envió la invitación.'); return render();
+  }
+  if (a === 'confirmar'){ const c = estado.capa; estado.capa = null; c.hacer(); return render(); }
+});
+
+/* Formularios destructivos: data-confirmar abre el modal (nunca window.confirm). */
+document.addEventListener('submit', e => {
+  const f = e.target; e.preventDefault();
+  if (f.dataset.confirmar){
+    const p = proyectoDe(estado.proyecto);
+    const volver = estado.capa;
+    let hacer, boton = f.querySelector('button').textContent.trim();
+    if (f.dataset.eliminar){ hacer = () => { tarjetas.splice(tarjetas.findIndex(t => t.id === +f.dataset.eliminar), 1); toast('Tarjeta eliminada.'); }; }
+    if (f.dataset.eliminarTipo){ hacer = () => { const id = +f.dataset.eliminarTipo; p.tipos = p.tipos.filter(x => x.id !== id); tarjetas.forEach(t => t.tipos = t.tipos.filter(x => x !== id)); if (estado.filtroTipo === id) estado.filtroTipo = null; toast('Tipo eliminado.'); }; }
+    if (f.dataset.transferir){ hacer = () => { const u = f.dataset.transferir; const antes = p.dueno; p.dueno = u; delete p.permisos[u]; p.permisos[antes] = {crear:true, editar:true, estatus:true, eliminar:true, tipos:true}; toast(`${usuarios[u].nombre} es el nuevo dueño.`); }; }
+    if (f.dataset.archivar){ hacer = () => { p.archivado = true; estado.pantalla = 'tablero'; toast('Proyecto archivado.'); }; }
+    if (f.dataset.eliminarProyecto){ hacer = () => { for (let i = tarjetas.length - 1; i >= 0; i--) if (tarjetas[i].proyecto === p.id) tarjetas.splice(i, 1); proyectos.splice(proyectos.indexOf(p), 1); estado.pantalla = 'proyectos'; estado.proyecto = null; toast('Proyecto eliminado.'); }; }
+    if (f.dataset.quitar){ hacer = () => { const u = f.dataset.quitar; delete p.permisos[u]; p.miembros = p.miembros.filter(x => x !== u); tarjetas.filter(t => t.proyecto === p.id).forEach(t => t.asignados = t.asignados.filter(x => x !== u)); toast('Se quitó a la persona del proyecto.'); }; }
+    if (f.dataset.cancelar){ hacer = () => { p.invitaciones = p.invitaciones.filter(x => x !== f.dataset.cancelar); toast('Invitación cancelada.'); }; }
+    if (f.dataset.salir){ hacer = () => { p.miembros = p.miembros.filter(x => x !== estado.yo); tarjetas.filter(t => t.proyecto === p.id).forEach(t => t.asignados = t.asignados.filter(x => x !== estado.yo)); estado.pantalla = 'proyectos'; toast('Saliste del proyecto.'); }; }
+    estado.capa = {tipo:'confirmar', mensaje:f.dataset.confirmar, boton, hacer, volver:f.dataset.eliminar ? volver : null};
+    return render();
+  }
+  if (f.id === 'form-tarjeta'){
+    const titulo = $('#f-titulo').value.trim(), desc = $('#f-desc').value.trim();
+    const asig = [...f.querySelectorAll('[name=asig]:checked')].map(x => x.value);
+    const tiposSel = [...f.querySelectorAll('[name=tipo]:checked')].map(x => +x.value);
+    const prioridad = f.querySelector('[name=prioridad]:checked').value;
+    $('#e-titulo').hidden = !!titulo; $('#e-desc').hidden = !!desc;
+    if (!titulo || !desc) return;
+    const fv = $('#f-fecha').value; const fecha = fv ? new Date(fv + 'T12:00:00') : null;
+    if (estado.capa.tipo === 'editar'){
+      const t = tarjetas.find(x => x.id === estado.capa.id);
+      Object.assign(t, {titulo, descripcion:desc, prioridad, fecha, asignados:asig, tipos:tiposSel});
+      estado.capa = {tipo:'detalle', id:t.id}; toast('Tarjeta guardada.');
+    } else {
+      tarjetas.push({id:sigId++, proyecto:estado.proyecto, titulo, descripcion:desc, estatus:'pendiente', prioridad, fecha, asignados:asig, tipos:tiposSel, creada_por:estado.yo, historial:[{cuando:ahora(), quien:estado.yo, de:null, a:'pendiente'}]});
+      estado.capa = null; estado.tab = 'pendiente'; toast('Tarjeta creada.');
+    }
+    return render();
+  }
+  if (f.id === 'form-tipo'){
+    const p = proyectoDe(estado.proyecto);
+    const nombre = $('#f-tnombre').value.trim(), descripcion = $('#f-tdesc').value.trim(), color = $('#f-tcolor').value.toLowerCase();
+    const err = $('#e-tnombre');
+    const repetido = p.tipos.some(x => x.nombre.toLowerCase() === nombre.toLowerCase() && x.id !== estado.capa.id);
+    err.textContent = !nombre ? 'Escribe un nombre.' : repetido ? 'Ya hay un tipo con ese nombre en este proyecto.' : '';
+    err.hidden = !err.textContent; if (err.textContent) return;
+    if (!/^#[0-9a-f]{6}$/.test(color)) return;
+    if (estado.capa.id) Object.assign(tipoDe(p, estado.capa.id), {nombre, descripcion, color});
+    else p.tipos.push({id:sigTipo++, nombre, descripcion, color});
+    toast(estado.capa.id ? 'Tipo guardado.' : 'Tipo creado.'); estado.capa = null; return render();
+  }
+  if (f.id === 'form-proyecto'){
+    const nombre = $('#f-nombre').value.trim();
+    $('#e-nombre').hidden = !!nombre; if (!nombre) return;
+    const id = Math.max(...proyectos.map(p => p.id)) + 1;
+    proyectos.push({id, nombre, dueno:estado.yo, miembros:[estado.yo], invitaciones:[], archivado:false, permisos:{}, tipos:[]});
+    estado.capa = null; estado.proyecto = id; estado.pantalla = 'tablero'; toast('Proyecto creado.');
+    return render();
+  }
+});
+
+$('#hoy').addEventListener('change', e => {
+  if (!e.target.value) return;
+  const nuevo = new Date(e.target.value + 'T12:00:00');
+  // Las fechas fin se quedan fijas: solo cambia el «hoy» contra el que se comparan.
+  estado.hoy = nuevo; render();
+});
+
+function vistaTipo(){
+  const c = $('#f-tcolor'); if (!c) return;
+  document.querySelectorAll('[data-color]').forEach(x => x.setAttribute('aria-pressed', x.dataset.color === c.value.toLowerCase()));
+  $('#vista-tipo').innerHTML = chipTipo({nombre: $('#f-tnombre').value.trim() || 'Nombre del tipo', descripcion:'', color:c.value});
+}
+document.addEventListener('input', e => { if (['f-tcolor','f-tnombre'].includes(e.target.id)) vistaTipo(); });
+
+function marcar(sel, b){ document.querySelectorAll(sel).forEach(x => x.setAttribute('aria-pressed', x === b)); }
+
+render();
+</script>
+</body>
+</html>

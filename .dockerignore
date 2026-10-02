@@ -16,3 +16,6 @@ compose*.yaml
 Dockerfile
 .dockerignore
 .github
+frontend/node_modules
+frontend/dist
+pwa

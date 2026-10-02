@@ -1,0 +1,221 @@
+"""
+Proyectos, sus miembros, invitaciones y tipos de tarjeta (§4.5 de la propuesta).
+
+Las reglas de negocio (quién puede qué) viven en `servicios.py`, no aquí: los modelos solo
+guardan datos y las restricciones que la base de datos sí puede garantizar.
+"""
+
+import secrets
+
+from django.conf import settings
+from django.core.validators import RegexValidator
+from django.db import models
+from django.db.models import Q
+from django.db.models.functions import Lower
+from django.utils import timezone
+
+from apps.core.models import TimeStampedModel
+
+# Los cinco permisos que el dueño concede a cada miembro. El nombre es el sufijo del campo
+# `puede_<permiso>` de MiembroProyecto; el dueño siempre los tiene todos.
+PERMISOS = ("crear", "editar", "cambiar_estatus", "eliminar", "gestionar_tipos")
+
+validar_color = RegexValidator(
+    r"^#[0-9a-f]{6}$", "El color debe tener el formato #rrggbb (p. ej. #3b5bdb)."
+)
+
+
+class ProyectoQuerySet(models.QuerySet):
+    def de_usuario(self, usuario):
+        """Proyectos de los que `usuario` es miembro (incluye los que es dueño)."""
+        return self.filter(miembros__usuario=usuario)
+
+    def activos(self):
+        return self.filter(archivado_en__isnull=True)
+
+    def archivados(self):
+        return self.filter(archivado_en__isnull=False)
+
+
+class Proyecto(TimeStampedModel):
+    nombre = models.CharField("nombre", max_length=150)
+    creado_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        verbose_name="creado por",
+        on_delete=models.PROTECT,
+        related_name="proyectos_creados",
+        help_text="Quién lo creó. El dueño actual está en sus miembros (puede haber cambiado).",
+    )
+    archivado_en = models.DateTimeField(
+        "archivado en",
+        null=True,
+        blank=True,
+        help_text="Vacío = activo. Archivado = solo lectura para todos sus miembros.",
+    )
+
+    objects = ProyectoQuerySet.as_manager()
+
+    class Meta:
+        verbose_name = "proyecto"
+        verbose_name_plural = "proyectos"
+        ordering = ["nombre"]
+
+    def __str__(self):
+        return self.nombre
+
+    @property
+    def archivado(self) -> bool:
+        return self.archivado_en is not None
+
+    @property
+    def dueno(self):
+        membresia = self.miembros.filter(rol=MiembroProyecto.Rol.DUENO).select_related("usuario")
+        return membresia.first().usuario if membresia.exists() else None
+
+
+class MiembroProyecto(models.Model):
+    class Rol(models.TextChoices):
+        DUENO = "dueno", "Dueño"
+        MIEMBRO = "miembro", "Miembro"
+
+    proyecto = models.ForeignKey(
+        Proyecto, verbose_name="proyecto", on_delete=models.CASCADE, related_name="miembros"
+    )
+    usuario = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        verbose_name="usuario",
+        on_delete=models.CASCADE,
+        related_name="membresias",
+    )
+    rol = models.CharField("rol", max_length=10, choices=Rol.choices, default=Rol.MIEMBRO)
+    # Permisos sobre las tarjetas. Para el dueño se ignoran: puede todo. Los valores por omisión
+    # son los que recibe quien acepta una invitación (decidido 2026-10-01).
+    puede_crear = models.BooleanField("puede crear tarjetas", default=True)
+    puede_editar = models.BooleanField("puede editar tarjetas", default=True)
+    puede_cambiar_estatus = models.BooleanField("puede cambiar estatus", default=True)
+    puede_eliminar = models.BooleanField("puede eliminar tarjetas", default=False)
+    puede_gestionar_tipos = models.BooleanField("puede gestionar tipos", default=False)
+    unido_en = models.DateTimeField("unido en", auto_now_add=True)
+
+    class Meta:
+        verbose_name = "miembro"
+        verbose_name_plural = "miembros"
+        ordering = ["rol", "usuario__email"]  # el dueño primero ("dueno" < "miembro")
+        constraints = [
+            models.UniqueConstraint(fields=["proyecto", "usuario"], name="miembro_unico"),
+            # Un solo dueño por proyecto. Transferir = bajar al dueño actual y luego subir al
+            # nuevo, en ese orden y en una transacción (servicios.transferir).
+            models.UniqueConstraint(
+                fields=["proyecto"], condition=Q(rol="dueno"), name="proyecto_un_solo_dueno"
+            ),
+            models.CheckConstraint(
+                condition=Q(rol__in=["dueno", "miembro"]), name="miembro_rol_valido"
+            ),
+        ]
+
+    def __str__(self):
+        return f"{self.usuario} en {self.proyecto} ({self.get_rol_display()})"
+
+    @property
+    def es_dueno(self) -> bool:
+        return self.rol == self.Rol.DUENO
+
+    def puede(self, permiso: str) -> bool:
+        if permiso not in PERMISOS:
+            raise ValueError(f"Permiso desconocido: {permiso}")
+        return self.es_dueno or getattr(self, f"puede_{permiso}")
+
+
+def generar_token() -> str:
+    return secrets.token_urlsafe(32)
+
+
+class Invitacion(models.Model):
+    class Estado(models.TextChoices):
+        PENDIENTE = "pendiente", "Pendiente"
+        ACEPTADA = "aceptada", "Aceptada"
+        CANCELADA = "cancelada", "Cancelada"
+
+    proyecto = models.ForeignKey(
+        Proyecto, verbose_name="proyecto", on_delete=models.CASCADE, related_name="invitaciones"
+    )
+    correo = models.EmailField("correo")
+    invitada_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        verbose_name="invitada por",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="invitaciones_enviadas",
+    )
+    token = models.CharField(
+        "token", max_length=64, unique=True, default=generar_token, editable=False
+    )
+    estado = models.CharField(
+        "estado", max_length=10, choices=Estado.choices, default=Estado.PENDIENTE
+    )
+    creada_en = models.DateTimeField("creada en", auto_now_add=True)
+    enviada_en = models.DateTimeField("último envío", default=timezone.now)
+    veces_enviada = models.PositiveSmallIntegerField("veces enviada", default=1)
+    respondida_en = models.DateTimeField("respondida en", null=True, blank=True)
+    aceptada_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        verbose_name="aceptada por",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="invitaciones_aceptadas",
+    )
+
+    class Meta:
+        verbose_name = "invitación"
+        verbose_name_plural = "invitaciones"
+        ordering = ["-creada_en"]
+        constraints = [
+            # Una sola invitación pendiente por proyecto y correo. Sin vencimiento (decidido
+            # 2026-10-01): queda pendiente hasta que se acepta o el dueño la cancela.
+            models.UniqueConstraint(
+                "proyecto",
+                Lower("correo"),
+                condition=Q(estado="pendiente"),
+                name="invitacion_pendiente_unica",
+            ),
+        ]
+
+    def __str__(self):
+        return f"{self.correo} a {self.proyecto} ({self.get_estado_display()})"
+
+    def save(self, *args, **kwargs):
+        self.correo = (self.correo or "").strip().lower()
+        super().save(*args, **kwargs)
+
+
+class TipoTarjeta(TimeStampedModel):
+    proyecto = models.ForeignKey(
+        Proyecto, verbose_name="proyecto", on_delete=models.CASCADE, related_name="tipos"
+    )
+    nombre = models.CharField("nombre", max_length=50)
+    descripcion = models.TextField("descripción", blank=True)
+    # Único color que viene del usuario: se valida aquí y en la base de datos (§4.5).
+    color = models.CharField("color", max_length=7, validators=[validar_color])
+
+    class Meta:
+        verbose_name = "tipo de tarjeta"
+        verbose_name_plural = "tipos de tarjeta"
+        ordering = ["nombre"]
+        constraints = [
+            models.UniqueConstraint(
+                "proyecto", Lower("nombre"), name="tipo_nombre_unico_en_proyecto"
+            ),
+            models.CheckConstraint(
+                condition=Q(color__regex=r"^#[0-9a-f]{6}$"), name="tipo_color_valido"
+            ),
+        ]
+
+    def __str__(self):
+        return self.nombre
+
+    def save(self, *args, **kwargs):
+        self.nombre = (self.nombre or "").strip()
+        self.color = (self.color or "").strip().lower()
+        super().save(*args, **kwargs)

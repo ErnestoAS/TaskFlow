@@ -1,0 +1,18 @@
+{% load static %}<!doctype html>
+<html lang="es-MX">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#172554">
+  <title>{% block titulo %}TaskFlow{% endblock %}</title>
+  <link rel="icon" href="{% static 'img/marca/taskflow-simbolo.svg' %}" type="image/svg+xml">
+  {# Colores y fuentes: fuente única (docs/identidad-visual.md). Nada de hex sueltos en plantillas. #}
+  <link rel="stylesheet" href="{% static 'css/fuentes.css' %}">
+  <link rel="stylesheet" href="{% static 'css/tema.css' %}">
+  {% block estilos %}{% endblock %}
+</head>
+<body>
+  {% block contenido %}{% endblock %}
+  {% block scripts %}{% endblock %}
+</body>
+</html>

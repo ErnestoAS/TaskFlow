@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TaskFlow · maqueta de la página de instalación (v2)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+/* =========================================================
+   Maqueta de la portada de TaskFlow (https://sistemas.reduaz.mx/taskflow/):
+   qué es y cómo instalar la app. Exploración: NO aprobada.
+   Colores solo por variable, los mismos de la maqueta de la app.
+========================================================= */
+:root{
+  /* Paleta TaskFlow navy + coral (2026-10-01): mismos valores que app-v2.html (--tf-*). */
+  --logo:#000955;
+  --primario:#172554; --primario-osc:#1e3a8a; --primario-suave:#e8ecf6;
+  --acento:#f97360; --acento-hover:#fb8a79; --acento-suave:#fff0ed; --acento-texto:#c73e2e; --sobre-acento:#172554;
+  --fondo:#f5f7fa; --superficie:#ffffff; --texto:#172033; --tenue:#64748b; --linea:#e2e8f0;
+  --sombra:0 1px 3px rgba(15,23,42,.06);
+  --sombra-alta:0 8px 24px rgba(15,23,42,.10);
+  --velo:rgba(15,23,42,.45);
+  --pendiente:#475569; --pendiente-suave:#f1f5f9;
+  --en-curso:#c73e2e;  --en-curso-suave:#fff0ed;
+  --finalizada:#15803d; --finalizada-suave:#ecfdf5;
+  --vencida:#b91c1c;   --vencida-suave:#fef2f2;
+  --urgente:#dc2626;
+  --av1:#172554; --av2:#1e3a8a; --av3:#334155;
+  --esc-fondo:#172554; --esc-texto:#e2e8f0; --esc-caja:#1e3a8a;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--fondo);color:var(--texto);font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;line-height:1.5}
+button{font-family:inherit;cursor:pointer}
+a{color:var(--primario)}
+.contenedor{max-width:1080px;margin:0 auto;padding:0 20px}
+
+/* ---------- escaparate (solo para presentar) ---------- */
+.escaparate{background:var(--esc-fondo);color:var(--esc-texto);font-size:12.5px;padding:8px 12px;display:flex;gap:10px;flex-wrap:wrap;justify-content:center;align-items:center}
+.escaparate .grupo{display:flex;gap:3px;align-items:center;background:var(--esc-caja);border-radius:9px;padding:3px 5px}
+.escaparate b{padding:0 5px;font-weight:600}
+.escaparate button{border:0;background:transparent;color:inherit;padding:4px 9px;border-radius:7px;font-size:12.5px}
+.escaparate button[aria-pressed="true"]{background:var(--primario)}
+.escaparate .nota{opacity:.7}
+@media (max-width:600px){.escaparate{display:none}}
+
+/* ---------- barra ---------- */
+.barra{background:var(--superficie);border-bottom:1px solid var(--linea);position:sticky;top:0;z-index:5}
+.barra .contenedor{display:flex;align-items:center;gap:18px;height:62px}
+.marca{display:flex;align-items:center;gap:10px;font-weight:700;font-size:17px;color:var(--texto);text-decoration:none}
+.sello{width:34px;height:34px;border-radius:10px;background:var(--primario);color:var(--superficie);display:grid;place-items:center;font-size:13px;letter-spacing:.5px}
+.barra nav{margin-left:auto;display:flex;gap:4px;align-items:center}
+.barra nav a{color:var(--tenue);text-decoration:none;font-size:14px;padding:8px 10px;border-radius:9px}
+.barra nav a:hover{background:var(--fondo);color:var(--texto)}
+@media (max-width:600px){.barra nav a.opcional{display:none}}
+
+/* ---------- botones ---------- */
+.btn{border:0;border-radius:12px;padding:12px 20px;font-weight:600;font-size:15px;display:inline-flex;align-items:center;justify-content:center;gap:8px;text-decoration:none}
+.btn-primario{background:var(--primario);color:var(--superficie)}
+.btn-primario:hover{background:var(--primario-osc)}
+.btn-secundario{background:var(--superficie);color:var(--texto);box-shadow:inset 0 0 0 1px var(--linea)}
+.btn-chico{padding:8px 14px;font-size:14px;border-radius:10px}
+
+/* ---------- portada ---------- */
+.portada{padding:56px 0 40px}
+.portada .contenedor{display:grid;grid-template-columns:1.1fr .9fr;gap:40px;align-items:center}
+@media (max-width:860px){.portada .contenedor{grid-template-columns:1fr}.portada .ilustracion{display:none}}
+.portada h1{font-size:clamp(30px,4.4vw,46px);line-height:1.12;margin:0 0 16px;letter-spacing:-.02em}
+.portada h1 span{color:var(--primario)}
+.portada .intro{font-size:17px;color:var(--tenue);margin:0 0 26px;max-width:520px}
+.portada .acciones{display:flex;gap:10px;flex-wrap:wrap}
+.portada .detalle{font-size:13px;color:var(--tenue);margin-top:14px;display:flex;gap:6px;align-items:center}
+.etiqueta-estado{display:inline-flex;gap:6px;align-items:center;font-size:13px;font-weight:600;padding:4px 10px;border-radius:99px;background:var(--finalizada-suave);color:var(--finalizada)}
+
+/* ilustración: teléfono con un tablero */
+.ilustracion{display:flex;justify-content:center}
+.mini-tel{width:270px;height:500px;border-radius:34px;background:var(--fondo);box-shadow:0 0 0 9px var(--texto),var(--sombra-alta);overflow:hidden;display:flex;flex-direction:column;transform:rotate(3deg)}
+.mini-cab{background:var(--primario);color:var(--superficie);padding:22px 16px 12px;font-weight:650;font-size:14px}
+.mini-cab small{display:block;font-weight:400;opacity:.8;font-size:11px}
+.mini-seg{display:flex;gap:4px;margin:10px;background:var(--superficie);border-radius:10px;padding:3px;font-size:11px;font-weight:600;color:var(--tenue)}
+.mini-seg span{flex:1;text-align:center;padding:6px 0;border-radius:8px}
+.mini-seg span.on{background:var(--en-curso-suave);color:var(--en-curso)}
+.mini-t{background:var(--superficie);border-radius:12px;margin:0 10px 8px;padding:10px;box-shadow:var(--sombra);font-size:12px}
+.mini-t b{display:block;font-size:12.5px;margin-bottom:4px}
+.mini-t .l{height:6px;border-radius:4px;background:var(--linea);margin:4px 0}
+.mini-t .pie{display:flex;justify-content:space-between;align-items:center;margin-top:8px}
+.mini-chip{font-size:10px;font-weight:600;padding:2px 7px;border-radius:99px}
+.mini-av{display:flex}.mini-av i{width:18px;height:18px;border-radius:50%;border:2px solid var(--superficie);margin-left:-5px}
+
+/* ---------- características ---------- */
+.caracteristicas{padding:20px 0 50px}
+.caracteristicas .rejilla{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+@media (max-width:760px){.caracteristicas .rejilla{grid-template-columns:1fr}}
+.caract{background:var(--superficie);border-radius:16px;padding:20px;box-shadow:var(--sombra)}
+.caract .ic{width:42px;height:42px;border-radius:12px;background:var(--primario-suave);color:var(--primario);display:grid;place-items:center;margin-bottom:12px}
+.caract h3{margin:0 0 6px;font-size:16px}
+.caract p{margin:0;color:var(--tenue);font-size:14px}
+
+/* ---------- instalar ---------- */
+section.bloque{padding:50px 0;border-top:1px solid var(--linea);background:var(--superficie)}
+section.bloque.alt{background:var(--fondo)}
+.titulo-seccion{font-size:26px;margin:0 0 6px;letter-spacing:-.01em}
+.sub-seccion{color:var(--tenue);margin:0 0 26px}
+.plataformas{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+@media (max-width:860px){.plataformas{grid-template-columns:1fr}}
+.plataforma{border:1px solid var(--linea);border-radius:18px;padding:20px;background:var(--superficie);position:relative;transition:.15s}
+.plataforma.actual{border-color:var(--primario);box-shadow:0 0 0 3px var(--primario-suave)}
+.plataforma .cab{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+.plataforma .cab .ic{width:40px;height:40px;border-radius:11px;background:var(--fondo);display:grid;place-items:center;color:var(--texto)}
+.plataforma h3{margin:0;font-size:17px}
+.plataforma .navegador{font-size:12.5px;color:var(--tenue)}
+.tu-disp{position:absolute;top:-11px;right:16px;background:var(--primario);color:var(--superficie);font-size:11.5px;font-weight:600;padding:3px 10px;border-radius:99px;display:none}
+.plataforma.actual .tu-disp{display:inline-block}
+ol.pasos{margin:0;padding:0;list-style:none;counter-reset:paso;display:flex;flex-direction:column;gap:10px}
+ol.pasos li{counter-increment:paso;position:relative;padding-left:34px;font-size:14px;min-height:24px}
+ol.pasos li::before{content:counter(paso);position:absolute;left:0;top:0;width:24px;height:24px;border-radius:50%;background:var(--primario-suave);color:var(--primario-osc);font-weight:700;font-size:12px;display:grid;place-items:center}
+.ic-linea{display:inline-flex;vertical-align:-3px;padding:1px 4px;border-radius:6px;background:var(--fondo);border:1px solid var(--linea)}
+.plataforma .boton-plat{margin-top:16px}
+
+/* ---------- primer acceso ---------- */
+.dos-col{display:grid;grid-template-columns:1fr 1fr;gap:28px;align-items:start}
+@media (max-width:860px){.dos-col{grid-template-columns:1fr}}
+.caja{background:var(--superficie);border-radius:18px;padding:22px;box-shadow:var(--sombra)}
+.caja h3{margin:0 0 12px;font-size:17px}
+
+/* ---------- preguntas ---------- */
+details{background:var(--superficie);border:1px solid var(--linea);border-radius:14px;margin-bottom:10px;overflow:hidden}
+summary{padding:15px 18px;font-weight:600;cursor:pointer;list-style:none;display:flex;justify-content:space-between;align-items:center;gap:10px}
+summary::-webkit-details-marker{display:none}
+summary::after{content:"";width:9px;height:9px;border-right:2px solid var(--tenue);border-bottom:2px solid var(--tenue);transform:rotate(45deg);transition:.15s;flex-shrink:0}
+details[open] summary::after{transform:rotate(-135deg)}
+details p{margin:0;padding:0 18px 16px;color:var(--tenue);font-size:14.5px}
+
+footer{padding:28px 0 40px;color:var(--tenue);font-size:13px;text-align:center}
+
+/* ---------- diálogo simulado del navegador ---------- */
+.velo{position:fixed;inset:0;background:var(--velo);display:grid;place-items:center;z-index:50;padding:20px}
+.dialogo{background:var(--superficie);border-radius:16px;padding:20px;max-width:360px;width:100%;box-shadow:var(--sombra-alta)}
+.dialogo .fila{display:flex;gap:12px;align-items:center;margin:12px 0 18px}
+.dialogo .acciones{display:flex;justify-content:flex-end;gap:8px}
+.dialogo small{color:var(--tenue)}
+.nota-sim{font-size:11.5px;color:var(--tenue);margin-top:12px;border-top:1px dashed var(--linea);padding-top:8px}
+
+/* ---------- v2: paleta navy + coral ---------- */
+body{-webkit-font-smoothing:antialiased}
+:focus-visible{outline:2px solid var(--acento);outline-offset:2px}
+.escaparate button[aria-pressed="true"]{background:var(--acento);color:var(--sobre-acento)}
+.sello{background:none;width:36px;height:36px;color:var(--logo);border-radius:0}
+.sello svg{width:34px;height:auto}
+.btn{border-radius:9px;transition:background .12s}
+.btn-primario{background:var(--acento);color:var(--sobre-acento)}
+.btn-primario:hover{background:var(--acento-hover)}
+.btn-secundario:hover{background:var(--fondo)}
+.portada h1 span{color:var(--primario);text-decoration:underline;text-decoration-color:var(--acento);text-decoration-thickness:.12em;text-underline-offset:.12em}
+.portada .marca-grande{color:var(--logo);width:88px;margin-bottom:18px}
+.portada .marca-grande svg{width:100%;height:auto}
+.etiqueta-estado{background:var(--finalizada-suave);color:var(--finalizada)}
+.mini-tel{background:var(--fondo)}
+.mini-cab{background:var(--superficie);color:var(--texto);border-bottom:1px solid var(--linea)}
+.mini-cab small{color:var(--tenue);opacity:1}
+.mini-seg{border:1px solid var(--linea)}
+.mini-t{border:1px solid var(--linea);box-shadow:none;position:relative;overflow:hidden}
+.mini-t.urgente::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--urgente)}
+.caract{border:1px solid var(--linea);box-shadow:var(--sombra)}
+.caract .ic{background:var(--acento-suave);color:var(--acento-texto)}
+.plataforma{border-radius:12px}
+.plataforma.actual{border-color:var(--acento);box-shadow:0 0 0 3px var(--acento-suave)}
+.tu-disp{background:var(--acento);color:var(--sobre-acento)}
+ol.pasos li::before{background:var(--primario);color:var(--superficie)}
+.caja{border:1px solid var(--linea)}
+details{border-radius:12px}
+details[open] summary{color:var(--primario)}
+summary::after{border-color:var(--acento-texto)}
+footer .marca-pie{display:inline-flex;align-items:center;gap:8px;color:var(--logo)}
+footer .marca-pie svg{width:22px;height:auto}
+</style>
+</head>
+<body>
+
+<!-- Escaparate de presentación: NO es parte de la página. -->
+<div class="escaparate" aria-label="Controles de la maqueta">
+  <div class="grupo"><b>Visitar desde</b>
+    <button data-plat="android" aria-pressed="true">Android</button>
+    <button data-plat="ios" aria-pressed="false">iPhone</button>
+    <button data-plat="compu" aria-pressed="false">Computadora</button>
+  </div>
+  <div class="grupo"><b>App</b>
+    <button data-inst="no" aria-pressed="true">Sin instalar</button>
+    <button data-inst="si" aria-pressed="false">Ya instalada</button>
+  </div>
+  <span class="nota">Maqueta v2 · paleta navy + coral · la página real detecta el dispositivo · no aprobada</span>
+</div>
+
+<header class="barra">
+  <div class="contenedor">
+    <a class="marca" href="#"><span class="sello"><svg xmlns="http://www.w3.org/2000/svg" viewBox="-13 184 1543 1209" aria-hidden="true"> <g transform="translate(0.000000,1500.000000) scale(0.100000,-0.100000)" fill="currentColor" stroke="none"> <path d="M11580 12848 c-47 -5 -692 -13 -1435 -18 -837 -5 -1379 -12 -1425 -18 -44 -6 -299 -11 -620 -11 -544 -1 -545 -1 -558 -22 -11 -17 -20 -20 -45 -16 -23 3 -39 -1 -56 -14 -13 -10 -33 -19 -46 -19 -12 0 -47 -13 -78 -30 -31 -16 -65 -30 -76 -30 -34 0 -160 -67 -206 -109 -25 -23 -50 -41 -57 -41 -6 0 -53 -40 -104 -90 -50 -49 -98 -90 -105 -90 -20 0 -186 -169 -207 -210 -10 -21 -32 -42 -53 -53 -41 -20 -269 -248 -269 -270 0 -15 -112 -127 -127 -127 -12 0 -235 -226 -454 -460 -206 -219 -475 -502 -784 -825 -132 -139 -328 -344 -435 -456 -107 -113 -274 -288 -371 -389 -97 -102 -220 -234 -275 -295 -54 -60 -144 -157 -199 -215 -55 -58 -146 -158 -202 -222 -107 -122 -129 -141 -203 -178 -135 -69 -336 -66 -471 6 -65 35 -122 91 -349 343 -96 107 -220 242 -275 300 -55 59 -149 162 -210 230 -103 117 -195 217 -509 551 -104 110 -135 150 -169 219 l-42 84 0 121 c0 133 13 180 86 303 157 264 524 361 771 204 38 -24 551 -549 777 -795 104 -113 176 -176 200 -176 25 0 8 -17 761 750 316 322 716 727 890 901 332 333 521 532 530 556 3 8 119 128 256 266 138 139 253 262 257 275 l5 22 -356 0 c-247 0 -400 -5 -497 -15 -116 -12 -357 -15 -1390 -16 -687 0 -1290 -5 -1340 -10 -49 -5 -160 -12 -245 -15 -105 -5 -161 -11 -175 -20 -11 -8 -42 -14 -70 -14 -28 0 -59 -7 -69 -15 -11 -8 -39 -15 -62 -15 -24 0 -45 -4 -49 -10 -3 -5 -20 -14 -38 -19 -110 -33 -323 -137 -375 -182 -10 -8 -45 -29 -77 -45 -64 -32 -349 -298 -361 -337 -4 -12 -21 -38 -38 -57 -74 -82 -236 -375 -236 -425 0 -12 -5 -26 -11 -32 -6 -6 -14 -26 -19 -44 -5 -19 -18 -59 -30 -89 -12 -30 -25 -77 -29 -105 -4 -27 -12 -59 -18 -70 -6 -11 -13 -110 -17 -220 -4 -110 -10 -245 -13 -300 -4 -55 -6 -327 -6 -605 1 -278 2 -593 2 -700 -2 -686 12 -1109 37 -1144 8 -11 14 -36 14 -55 0 -19 14 -63 30 -98 17 -34 30 -68 30 -75 0 -6 20 -44 45 -84 25 -39 45 -76 45 -81 0 -5 18 -27 41 -48 22 -22 47 -54 55 -72 16 -32 121 -135 195 -190 49 -37 234 -133 255 -133 8 0 42 -13 76 -30 34 -16 78 -30 98 -30 20 0 45 -7 56 -15 25 -19 1666 -23 1724 -4 21 7 143 14 295 16 199 4 264 8 280 19 11 8 42 14 70 14 30 0 59 6 71 15 10 8 35 15 54 15 19 0 44 7 54 15 11 8 32 15 47 15 15 0 42 8 61 17 18 9 45 22 60 30 14 7 32 13 40 13 8 0 30 11 49 25 19 14 57 37 86 51 29 13 64 35 79 49 15 14 31 25 37 25 5 0 40 20 78 45 38 25 72 45 77 45 4 0 26 18 47 41 22 23 65 58 97 80 67 46 658 634 694 690 13 21 36 45 51 53 33 17 114 100 171 176 22 30 138 151 257 269 118 117 215 218 215 225 0 7 104 118 231 247 127 129 248 257 269 285 21 28 62 71 90 95 29 24 75 65 103 90 29 25 86 62 127 81 110 51 160 75 209 103 24 14 54 25 66 25 11 0 30 7 41 15 10 8 41 15 67 15 26 0 60 6 75 14 21 10 129 15 492 20 256 4 542 11 635 16 94 5 719 10 1390 10 897 0 1313 4 1570 15 253 11 666 15 1490 15 986 1 1143 3 1159 15 13 10 43 15 86 15 43 0 73 5 86 15 10 8 31 15 45 15 14 0 34 7 45 15 10 8 27 15 36 15 24 0 148 58 173 80 11 10 48 33 83 52 69 37 325 280 338 321 3 12 14 31 24 42 30 33 125 226 144 290 9 33 21 68 27 77 5 10 9 40 9 68 0 38 5 54 20 67 29 25 31 278 3 299 -13 9 -20 32 -24 86 -6 72 -17 115 -45 171 -8 16 -14 35 -14 43 0 8 -4 22 -9 32 -5 9 -19 38 -31 64 -12 26 -31 62 -43 80 -12 18 -41 65 -65 104 -42 71 -217 254 -242 254 -7 0 -28 14 -47 30 -18 17 -37 30 -42 30 -4 0 -39 20 -77 45 -37 25 -73 45 -80 45 -6 0 -17 7 -24 15 -7 8 -27 15 -44 15 -17 0 -40 7 -50 15 -11 8 -31 15 -45 15 -14 0 -35 7 -45 15 -11 8 -38 15 -60 15 -23 1 -52 7 -66 15 -29 17 -2195 19 -2350 3z"/> <path d="M9200 8520 c-69 -4 -529 -8 -1024 -9 -773 -1 -901 -4 -919 -16 -12 -8 -40 -15 -62 -15 -22 0 -49 -7 -59 -15 -11 -8 -37 -15 -57 -15 -21 0 -50 -6 -66 -14 -57 -28 -104 -46 -123 -46 -10 0 -21 -4 -24 -9 -4 -5 -25 -18 -49 -29 -136 -63 -189 -92 -223 -123 -11 -10 -26 -19 -32 -19 -7 0 -33 -19 -58 -42 -26 -24 -61 -52 -80 -63 -28 -17 -175 -160 -827 -802 -15 -16 -121 -122 -236 -238 -114 -115 -226 -223 -250 -238 -23 -15 -50 -42 -59 -60 -9 -18 -51 -65 -92 -104 -41 -40 -80 -78 -87 -85 -41 -44 -246 -246 -346 -341 -174 -165 -227 -221 -224 -232 5 -15 1862 -13 1992 3 73 8 596 12 1910 12 1130 1 1840 5 1890 11 45 6 495 12 1025 15 797 5 948 8 967 20 12 8 39 14 60 14 37 0 139 33 157 51 6 5 20 9 32 9 26 0 176 74 194 95 7 8 37 26 66 40 53 25 274 234 274 259 0 5 18 31 40 57 22 26 45 58 50 71 13 28 29 54 56 93 26 38 54 113 54 146 0 14 7 34 15 45 8 10 15 37 15 59 0 22 7 51 15 65 11 19 14 69 14 215 0 146 -3 196 -14 215 -8 14 -15 45 -15 70 0 25 -7 54 -15 64 -8 11 -15 32 -15 46 0 23 -49 127 -117 249 -14 25 -40 63 -59 85 -19 22 -34 45 -34 51 0 16 -165 175 -182 175 -8 0 -30 16 -49 36 -18 20 -76 56 -127 81 -50 25 -95 49 -98 54 -3 5 -17 9 -32 9 -15 0 -36 7 -46 15 -11 8 -34 15 -50 15 -17 0 -40 7 -50 15 -11 8 -30 15 -43 15 -13 0 -37 7 -52 15 -24 12 -220 15 -1352 19 -728 3 -1353 7 -1389 9 -36 3 -121 1 -190 -3z"/> <path d="M3620 4808 c-14 -5 -50 -14 -80 -18 -57 -8 -105 -22 -153 -46 -16 -8 -37 -14 -47 -14 -10 0 -31 -7 -47 -15 -15 -7 -49 -23 -75 -35 -117 -50 -144 -67 -222 -141 -46 -44 -91 -79 -100 -79 -9 0 -25 -14 -34 -31 -9 -18 -29 -47 -44 -64 -16 -18 -28 -37 -28 -43 0 -6 -16 -29 -35 -52 -19 -23 -35 -48 -35 -54 0 -7 -9 -21 -20 -31 -22 -20 -70 -118 -70 -144 0 -9 -7 -25 -15 -35 -8 -11 -15 -27 -15 -37 0 -9 -7 -30 -15 -45 -8 -16 -15 -40 -15 -54 0 -15 -6 -32 -12 -38 -15 -15 -31 -250 -30 -447 0 -71 0 -173 0 -225 -3 -357 12 -781 28 -804 8 -11 14 -39 14 -61 0 -22 7 -49 15 -59 8 -11 15 -29 15 -40 0 -53 129 -267 232 -384 92 -105 195 -202 215 -202 5 0 38 -19 74 -43 80 -54 126 -77 153 -77 12 0 30 -6 41 -13 30 -20 108 -47 136 -47 14 0 34 -7 45 -15 12 -9 43 -15 84 -15 37 0 77 -6 94 -15 36 -19 123 -19 156 0 14 8 50 14 81 15 31 0 70 7 85 15 16 8 47 15 69 15 22 0 49 7 59 15 11 8 31 15 44 15 37 0 206 87 264 135 28 25 57 45 64 45 16 0 192 177 222 225 14 22 32 45 39 51 21 18 61 92 113 209 27 61 40 100 40 124 0 15 7 36 15 47 8 10 15 34 15 52 0 19 6 48 14 65 8 18 16 72 18 120 3 88 3 89 40 122 l37 34 2111 0 c1875 1 2113 2 2133 16 12 8 34 15 49 15 15 0 42 6 60 14 110 48 150 68 194 98 28 18 72 44 97 58 26 13 50 33 53 43 3 10 24 30 45 44 22 15 47 40 56 56 8 16 33 50 56 74 38 41 72 97 123 203 64 133 74 160 74 207 0 28 6 58 15 69 21 28 21 280 0 308 -9 11 -15 42 -15 70 -1 28 -7 62 -15 76 -8 14 -14 33 -15 44 0 26 -97 216 -125 246 -12 14 -25 34 -29 45 -11 37 -197 212 -266 250 -202 110 -287 148 -395 172 -86 20 -5588 31 -5635 11z"/> </g> </svg></span>TaskFlow</a>
+    <nav aria-label="Secciones">
+      <a class="opcional" href="#instalar">Instalar</a>
+      <a class="opcional" href="#preguntas">Preguntas</a>
+      <a class="btn btn-chico btn-secundario" href="#" data-sim="abrir">Entrar</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <section class="portada">
+    <div class="contenedor">
+      <div>
+        <div class="marca-grande"><svg xmlns="http://www.w3.org/2000/svg" viewBox="-13 184 1543 1209" aria-hidden="true"> <g transform="translate(0.000000,1500.000000) scale(0.100000,-0.100000)" fill="currentColor" stroke="none"> <path d="M11580 12848 c-47 -5 -692 -13 -1435 -18 -837 -5 -1379 -12 -1425 -18 -44 -6 -299 -11 -620 -11 -544 -1 -545 -1 -558 -22 -11 -17 -20 -20 -45 -16 -23 3 -39 -1 -56 -14 -13 -10 -33 -19 -46 -19 -12 0 -47 -13 -78 -30 -31 -16 -65 -30 -76 -30 -34 0 -160 -67 -206 -109 -25 -23 -50 -41 -57 -41 -6 0 -53 -40 -104 -90 -50 -49 -98 -90 -105 -90 -20 0 -186 -169 -207 -210 -10 -21 -32 -42 -53 -53 -41 -20 -269 -248 -269 -270 0 -15 -112 -127 -127 -127 -12 0 -235 -226 -454 -460 -206 -219 -475 -502 -784 -825 -132 -139 -328 -344 -435 -456 -107 -113 -274 -288 -371 -389 -97 -102 -220 -234 -275 -295 -54 -60 -144 -157 -199 -215 -55 -58 -146 -158 -202 -222 -107 -122 -129 -141 -203 -178 -135 -69 -336 -66 -471 6 -65 35 -122 91 -349 343 -96 107 -220 242 -275 300 -55 59 -149 162 -210 230 -103 117 -195 217 -509 551 -104 110 -135 150 -169 219 l-42 84 0 121 c0 133 13 180 86 303 157 264 524 361 771 204 38 -24 551 -549 777 -795 104 -113 176 -176 200 -176 25 0 8 -17 761 750 316 322 716 727 890 901 332 333 521 532 530 556 3 8 119 128 256 266 138 139 253 262 257 275 l5 22 -356 0 c-247 0 -400 -5 -497 -15 -116 -12 -357 -15 -1390 -16 -687 0 -1290 -5 -1340 -10 -49 -5 -160 -12 -245 -15 -105 -5 -161 -11 -175 -20 -11 -8 -42 -14 -70 -14 -28 0 -59 -7 -69 -15 -11 -8 -39 -15 -62 -15 -24 0 -45 -4 -49 -10 -3 -5 -20 -14 -38 -19 -110 -33 -323 -137 -375 -182 -10 -8 -45 -29 -77 -45 -64 -32 -349 -298 -361 -337 -4 -12 -21 -38 -38 -57 -74 -82 -236 -375 -236 -425 0 -12 -5 -26 -11 -32 -6 -6 -14 -26 -19 -44 -5 -19 -18 -59 -30 -89 -12 -30 -25 -77 -29 -105 -4 -27 -12 -59 -18 -70 -6 -11 -13 -110 -17 -220 -4 -110 -10 -245 -13 -300 -4 -55 -6 -327 -6 -605 1 -278 2 -593 2 -700 -2 -686 12 -1109 37 -1144 8 -11 14 -36 14 -55 0 -19 14 -63 30 -98 17 -34 30 -68 30 -75 0 -6 20 -44 45 -84 25 -39 45 -76 45 -81 0 -5 18 -27 41 -48 22 -22 47 -54 55 -72 16 -32 121 -135 195 -190 49 -37 234 -133 255 -133 8 0 42 -13 76 -30 34 -16 78 -30 98 -30 20 0 45 -7 56 -15 25 -19 1666 -23 1724 -4 21 7 143 14 295 16 199 4 264 8 280 19 11 8 42 14 70 14 30 0 59 6 71 15 10 8 35 15 54 15 19 0 44 7 54 15 11 8 32 15 47 15 15 0 42 8 61 17 18 9 45 22 60 30 14 7 32 13 40 13 8 0 30 11 49 25 19 14 57 37 86 51 29 13 64 35 79 49 15 14 31 25 37 25 5 0 40 20 78 45 38 25 72 45 77 45 4 0 26 18 47 41 22 23 65 58 97 80 67 46 658 634 694 690 13 21 36 45 51 53 33 17 114 100 171 176 22 30 138 151 257 269 118 117 215 218 215 225 0 7 104 118 231 247 127 129 248 257 269 285 21 28 62 71 90 95 29 24 75 65 103 90 29 25 86 62 127 81 110 51 160 75 209 103 24 14 54 25 66 25 11 0 30 7 41 15 10 8 41 15 67 15 26 0 60 6 75 14 21 10 129 15 492 20 256 4 542 11 635 16 94 5 719 10 1390 10 897 0 1313 4 1570 15 253 11 666 15 1490 15 986 1 1143 3 1159 15 13 10 43 15 86 15 43 0 73 5 86 15 10 8 31 15 45 15 14 0 34 7 45 15 10 8 27 15 36 15 24 0 148 58 173 80 11 10 48 33 83 52 69 37 325 280 338 321 3 12 14 31 24 42 30 33 125 226 144 290 9 33 21 68 27 77 5 10 9 40 9 68 0 38 5 54 20 67 29 25 31 278 3 299 -13 9 -20 32 -24 86 -6 72 -17 115 -45 171 -8 16 -14 35 -14 43 0 8 -4 22 -9 32 -5 9 -19 38 -31 64 -12 26 -31 62 -43 80 -12 18 -41 65 -65 104 -42 71 -217 254 -242 254 -7 0 -28 14 -47 30 -18 17 -37 30 -42 30 -4 0 -39 20 -77 45 -37 25 -73 45 -80 45 -6 0 -17 7 -24 15 -7 8 -27 15 -44 15 -17 0 -40 7 -50 15 -11 8 -31 15 -45 15 -14 0 -35 7 -45 15 -11 8 -38 15 -60 15 -23 1 -52 7 -66 15 -29 17 -2195 19 -2350 3z"/> <path d="M9200 8520 c-69 -4 -529 -8 -1024 -9 -773 -1 -901 -4 -919 -16 -12 -8 -40 -15 -62 -15 -22 0 -49 -7 -59 -15 -11 -8 -37 -15 -57 -15 -21 0 -50 -6 -66 -14 -57 -28 -104 -46 -123 -46 -10 0 -21 -4 -24 -9 -4 -5 -25 -18 -49 -29 -136 -63 -189 -92 -223 -123 -11 -10 -26 -19 -32 -19 -7 0 -33 -19 -58 -42 -26 -24 -61 -52 -80 -63 -28 -17 -175 -160 -827 -802 -15 -16 -121 -122 -236 -238 -114 -115 -226 -223 -250 -238 -23 -15 -50 -42 -59 -60 -9 -18 -51 -65 -92 -104 -41 -40 -80 -78 -87 -85 -41 -44 -246 -246 -346 -341 -174 -165 -227 -221 -224 -232 5 -15 1862 -13 1992 3 73 8 596 12 1910 12 1130 1 1840 5 1890 11 45 6 495 12 1025 15 797 5 948 8 967 20 12 8 39 14 60 14 37 0 139 33 157 51 6 5 20 9 32 9 26 0 176 74 194 95 7 8 37 26 66 40 53 25 274 234 274 259 0 5 18 31 40 57 22 26 45 58 50 71 13 28 29 54 56 93 26 38 54 113 54 146 0 14 7 34 15 45 8 10 15 37 15 59 0 22 7 51 15 65 11 19 14 69 14 215 0 146 -3 196 -14 215 -8 14 -15 45 -15 70 0 25 -7 54 -15 64 -8 11 -15 32 -15 46 0 23 -49 127 -117 249 -14 25 -40 63 -59 85 -19 22 -34 45 -34 51 0 16 -165 175 -182 175 -8 0 -30 16 -49 36 -18 20 -76 56 -127 81 -50 25 -95 49 -98 54 -3 5 -17 9 -32 9 -15 0 -36 7 -46 15 -11 8 -34 15 -50 15 -17 0 -40 7 -50 15 -11 8 -30 15 -43 15 -13 0 -37 7 -52 15 -24 12 -220 15 -1352 19 -728 3 -1353 7 -1389 9 -36 3 -121 1 -190 -3z"/> <path d="M3620 4808 c-14 -5 -50 -14 -80 -18 -57 -8 -105 -22 -153 -46 -16 -8 -37 -14 -47 -14 -10 0 -31 -7 -47 -15 -15 -7 -49 -23 -75 -35 -117 -50 -144 -67 -222 -141 -46 -44 -91 -79 -100 -79 -9 0 -25 -14 -34 -31 -9 -18 -29 -47 -44 -64 -16 -18 -28 -37 -28 -43 0 -6 -16 -29 -35 -52 -19 -23 -35 -48 -35 -54 0 -7 -9 -21 -20 -31 -22 -20 -70 -118 -70 -144 0 -9 -7 -25 -15 -35 -8 -11 -15 -27 -15 -37 0 -9 -7 -30 -15 -45 -8 -16 -15 -40 -15 -54 0 -15 -6 -32 -12 -38 -15 -15 -31 -250 -30 -447 0 -71 0 -173 0 -225 -3 -357 12 -781 28 -804 8 -11 14 -39 14 -61 0 -22 7 -49 15 -59 8 -11 15 -29 15 -40 0 -53 129 -267 232 -384 92 -105 195 -202 215 -202 5 0 38 -19 74 -43 80 -54 126 -77 153 -77 12 0 30 -6 41 -13 30 -20 108 -47 136 -47 14 0 34 -7 45 -15 12 -9 43 -15 84 -15 37 0 77 -6 94 -15 36 -19 123 -19 156 0 14 8 50 14 81 15 31 0 70 7 85 15 16 8 47 15 69 15 22 0 49 7 59 15 11 8 31 15 44 15 37 0 206 87 264 135 28 25 57 45 64 45 16 0 192 177 222 225 14 22 32 45 39 51 21 18 61 92 113 209 27 61 40 100 40 124 0 15 7 36 15 47 8 10 15 34 15 52 0 19 6 48 14 65 8 18 16 72 18 120 3 88 3 89 40 122 l37 34 2111 0 c1875 1 2113 2 2133 16 12 8 34 15 49 15 15 0 42 6 60 14 110 48 150 68 194 98 28 18 72 44 97 58 26 13 50 33 53 43 3 10 24 30 45 44 22 15 47 40 56 56 8 16 33 50 56 74 38 41 72 97 123 203 64 133 74 160 74 207 0 28 6 58 15 69 21 28 21 280 0 308 -9 11 -15 42 -15 70 -1 28 -7 62 -15 76 -8 14 -14 33 -15 44 0 26 -97 216 -125 246 -12 14 -25 34 -29 45 -11 37 -197 212 -266 250 -202 110 -287 148 -395 172 -86 20 -5588 31 -5635 11z"/> </g> </svg></div>
+        <h1>Organiza las actividades de tu equipo <span>en tarjetas</span></h1>
+        <p class="intro">Crea proyectos, invita a tu equipo y lleva cada actividad de <b>pendiente</b> a <b>en curso</b> y a <b>finalizada</b>. Funciona en el teléfono y en la computadora, y se instala desde el navegador: no necesitas tienda de aplicaciones.</p>
+        <div class="acciones" id="acciones-portada"></div>
+        <div class="detalle" id="detalle-portada"></div>
+      </div>
+      <div class="ilustracion" aria-hidden="true">
+        <div class="mini-tel">
+          <div class="mini-cab">Semana de la Ciencia<small>3 miembros · eres dueña</small></div>
+          <div class="mini-seg"><span>Pendiente</span><span class="on">En curso</span><span>Finalizada</span></div>
+          <div class="mini-t urgente"><b>Reservar el auditorio</b><div class="l" style="width:92%"></div><div class="l" style="width:64%"></div>
+            <div class="pie"><span class="mini-chip" style="background:var(--vencida-suave);color:var(--vencida)">Vencida</span><span class="mini-av"><i style="background:var(--av1)"></i></span></div></div>
+          <div class="mini-t"><b>Diseñar el cartel</b><div class="l" style="width:84%"></div>
+            <div class="pie"><span class="mini-chip" style="background:var(--en-curso-suave);color:var(--en-curso)">20 oct</span><span class="mini-av"><i style="background:var(--av3)"></i><i style="background:var(--av2)"></i></span></div></div>
+          <div class="mini-t"><b>Programa del evento</b><div class="l" style="width:76%"></div><div class="l" style="width:50%"></div>
+            <div class="pie"><span class="mini-chip" style="background:var(--pendiente-suave);color:var(--pendiente)">27 oct</span><span class="mini-av"><i style="background:var(--av2)"></i></span></div></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="caracteristicas" aria-label="Qué puedes hacer">
+    <div class="contenedor rejilla">
+      <div class="caract"><div class="ic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg></div>
+        <h3>Proyectos y equipos</h3><p>Crea un proyecto e invita por correo a quien participa. Todos los miembros ven todas sus tarjetas.</p></div>
+      <div class="caract"><div class="ic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="5" height="16" rx="1.5"/><rect x="10" y="4" width="5" height="11" rx="1.5"/><rect x="17" y="4" width="4" height="7" rx="1.5"/></svg></div>
+        <h3>Tablero por estatus</h3><p>Pendiente, en curso y finalizada. Cambia el estatus con un toque y asigna cada tarjeta a una o más personas.</p></div>
+      <div class="caract"><div class="ic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18"/></svg></div>
+        <h3>Fechas a la vista</h3><p>Pon fecha de fin cuando haga falta: las tarjetas vencidas resaltan y «Mis tarjetas» reúne lo tuyo de todos los proyectos.</p></div>
+    </div>
+  </section>
+
+  <section class="bloque" id="instalar" aria-labelledby="t-instalar">
+    <div class="contenedor">
+      <h2 class="titulo-seccion" id="t-instalar">Instala la aplicación</h2>
+      <p class="sub-seccion">Abre <b>sistemas.reduaz.mx/taskflow/</b> en tu dispositivo y sigue los pasos. La app queda en tu pantalla de inicio como cualquier otra y se actualiza sola.</p>
+      <div class="plataformas">
+        <article class="plataforma" data-tarjeta-plat="android">
+          <span class="tu-disp">Tu dispositivo</span>
+          <div class="cab"><span class="ic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="2" width="12" height="20" rx="2.5"/><path d="M11 18h2"/></svg></span>
+            <div><h3>Android</h3><div class="navegador">Con Chrome o Edge</div></div></div>
+          <ol class="pasos">
+            <li>Abre esta página en <b>Chrome</b>.</li>
+            <li>Toca <b>«Instalar TaskFlow»</b>; si no aparece, abre el menú <span class="ic-linea" aria-label="tres puntos"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg></span>.</li>
+            <li>Elige <b>«Instalar aplicación»</b> y confirma.</li>
+            <li>Abre TaskFlow desde tu pantalla de inicio.</li>
+          </ol>
+          <div class="boton-plat" data-boton="android"></div>
+        </article>
+        <article class="plataforma" data-tarjeta-plat="ios">
+          <span class="tu-disp">Tu dispositivo</span>
+          <div class="cab"><span class="ic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="2" width="12" height="20" rx="3"/><path d="M10 5h4"/></svg></span>
+            <div><h3>iPhone y iPad</h3><div class="navegador">Con Safari</div></div></div>
+          <ol class="pasos">
+            <li>Abre esta página en <b>Safari</b> (en otros navegadores de iPhone no se puede instalar).</li>
+            <li>Toca <b>Compartir</b> <span class="ic-linea" aria-label="ícono compartir"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M8 7l4-4 4 4"/><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"/></svg></span> en la barra inferior.</li>
+            <li>Desliza y elige <b>«Agregar a pantalla de inicio»</b> <span class="ic-linea" aria-label="ícono agregar"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="4" y="4" width="16" height="16" rx="3"/><path d="M12 8v8M8 12h8"/></svg></span>.</li>
+            <li>Toca <b>«Agregar»</b> y abre TaskFlow desde tu pantalla de inicio.</li>
+          </ol>
+          <div class="boton-plat" data-boton="ios"></div>
+        </article>
+        <article class="plataforma" data-tarjeta-plat="compu">
+          <span class="tu-disp">Tu dispositivo</span>
+          <div class="cab"><span class="ic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/></svg></span>
+            <div><h3>Computadora</h3><div class="navegador">Con Chrome o Edge</div></div></div>
+          <ol class="pasos">
+            <li>Abre esta página en <b>Chrome</b> o <b>Edge</b>.</li>
+            <li>Haz clic en el ícono <b>Instalar</b> <span class="ic-linea" aria-label="ícono instalar"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="13" rx="2"/><path d="M12 8v6M9 11l3 3 3-3"/></svg></span> de la barra de direcciones.</li>
+            <li>Confirma <b>«Instalar»</b>: TaskFlow abre en su propia ventana.</li>
+            <li>También puedes usarlo sin instalar, directo en el navegador.</li>
+          </ol>
+          <div class="boton-plat" data-boton="compu"></div>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <section class="bloque alt" aria-labelledby="t-acceso">
+    <div class="contenedor dos-col">
+      <div>
+        <h2 class="titulo-seccion" id="t-acceso">¿Te invitaron a un proyecto?</h2>
+        <p class="sub-seccion">Quien es dueño de un proyecto te invita con tu correo. No necesitas pedir una cuenta a nadie.</p>
+      </div>
+      <div class="caja">
+        <h3>Tu primer acceso</h3>
+        <ol class="pasos">
+          <li>Abre el correo <b>«Te invitaron a un proyecto en TaskFlow»</b> y toca el enlace.</li>
+          <li>Si es tu primera vez, escribe tu nombre y crea tu contraseña; si ya tienes cuenta, inicia sesión.</li>
+          <li>Entras directo al proyecto y ya ves sus tarjetas.</li>
+          <li>Instala la app con los pasos de arriba para tenerla a la mano.</li>
+        </ol>
+      </div>
+    </div>
+  </section>
+
+  <section class="bloque" id="preguntas" aria-labelledby="t-preguntas">
+    <div class="contenedor" style="max-width:780px">
+      <h2 class="titulo-seccion" id="t-preguntas">Preguntas frecuentes</h2>
+      <p class="sub-seccion">Lo que más suele preguntarse al instalar y empezar.</p>
+      <details><summary>¿Por qué no está en la tienda de aplicaciones?</summary><p>TaskFlow es una aplicación web progresiva: se instala desde el navegador, ocupa muy poco espacio y siempre tienes la versión más reciente, sin descargar actualizaciones.</p></details>
+      <details><summary>No me aparece la opción de instalar</summary><p>Revisa que uses Chrome o Edge (Android y computadora) o Safari (iPhone y iPad), y que no estés en una ventana privada. Si ya la instalaste, la opción no vuelve a aparecer. También puedes usar TaskFlow sin instalar, directamente en el navegador.</p></details>
+      <details><summary>¿Cómo creo un proyecto?</summary><p>Desde «Mis proyectos», toca «Nuevo proyecto». Quedas como dueño y puedes invitar a otras personas desde «Miembros».</p></details>
+      <details><summary>¿Quién ve mis tarjetas?</summary><p>Todos los miembros del proyecto ven todas sus tarjetas. Quien no es miembro no ve el proyecto.</p></details>
+      <details><summary>¿Funciona sin internet?</summary><p>Puedes abrir la app y ver las últimas tarjetas que cargaste. Para crear o cambiar tarjetas necesitas conexión.</p></details>
+      <details><summary>Olvidé mi contraseña</summary><p>En la pantalla de entrada, toca «¿Olvidaste tu contraseña?» y te llegará un enlace a tu correo para crear una nueva.</p></details>
+    </div>
+  </section>
+</main>
+
+<footer><div class="contenedor"><span class="marca-pie"><svg xmlns="http://www.w3.org/2000/svg" viewBox="-13 184 1543 1209" aria-hidden="true"> <g transform="translate(0.000000,1500.000000) scale(0.100000,-0.100000)" fill="currentColor" stroke="none"> <path d="M11580 12848 c-47 -5 -692 -13 -1435 -18 -837 -5 -1379 -12 -1425 -18 -44 -6 -299 -11 -620 -11 -544 -1 -545 -1 -558 -22 -11 -17 -20 -20 -45 -16 -23 3 -39 -1 -56 -14 -13 -10 -33 -19 -46 -19 -12 0 -47 -13 -78 -30 -31 -16 -65 -30 -76 -30 -34 0 -160 -67 -206 -109 -25 -23 -50 -41 -57 -41 -6 0 -53 -40 -104 -90 -50 -49 -98 -90 -105 -90 -20 0 -186 -169 -207 -210 -10 -21 -32 -42 -53 -53 -41 -20 -269 -248 -269 -270 0 -15 -112 -127 -127 -127 -12 0 -235 -226 -454 -460 -206 -219 -475 -502 -784 -825 -132 -139 -328 -344 -435 -456 -107 -113 -274 -288 -371 -389 -97 -102 -220 -234 -275 -295 -54 -60 -144 -157 -199 -215 -55 -58 -146 -158 -202 -222 -107 -122 -129 -141 -203 -178 -135 -69 -336 -66 -471 6 -65 35 -122 91 -349 343 -96 107 -220 242 -275 300 -55 59 -149 162 -210 230 -103 117 -195 217 -509 551 -104 110 -135 150 -169 219 l-42 84 0 121 c0 133 13 180 86 303 157 264 524 361 771 204 38 -24 551 -549 777 -795 104 -113 176 -176 200 -176 25 0 8 -17 761 750 316 322 716 727 890 901 332 333 521 532 530 556 3 8 119 128 256 266 138 139 253 262 257 275 l5 22 -356 0 c-247 0 -400 -5 -497 -15 -116 -12 -357 -15 -1390 -16 -687 0 -1290 -5 -1340 -10 -49 -5 -160 -12 -245 -15 -105 -5 -161 -11 -175 -20 -11 -8 -42 -14 -70 -14 -28 0 -59 -7 -69 -15 -11 -8 -39 -15 -62 -15 -24 0 -45 -4 -49 -10 -3 -5 -20 -14 -38 -19 -110 -33 -323 -137 -375 -182 -10 -8 -45 -29 -77 -45 -64 -32 -349 -298 -361 -337 -4 -12 -21 -38 -38 -57 -74 -82 -236 -375 -236 -425 0 -12 -5 -26 -11 -32 -6 -6 -14 -26 -19 -44 -5 -19 -18 -59 -30 -89 -12 -30 -25 -77 -29 -105 -4 -27 -12 -59 -18 -70 -6 -11 -13 -110 -17 -220 -4 -110 -10 -245 -13 -300 -4 -55 -6 -327 -6 -605 1 -278 2 -593 2 -700 -2 -686 12 -1109 37 -1144 8 -11 14 -36 14 -55 0 -19 14 -63 30 -98 17 -34 30 -68 30 -75 0 -6 20 -44 45 -84 25 -39 45 -76 45 -81 0 -5 18 -27 41 -48 22 -22 47 -54 55 -72 16 -32 121 -135 195 -190 49 -37 234 -133 255 -133 8 0 42 -13 76 -30 34 -16 78 -30 98 -30 20 0 45 -7 56 -15 25 -19 1666 -23 1724 -4 21 7 143 14 295 16 199 4 264 8 280 19 11 8 42 14 70 14 30 0 59 6 71 15 10 8 35 15 54 15 19 0 44 7 54 15 11 8 32 15 47 15 15 0 42 8 61 17 18 9 45 22 60 30 14 7 32 13 40 13 8 0 30 11 49 25 19 14 57 37 86 51 29 13 64 35 79 49 15 14 31 25 37 25 5 0 40 20 78 45 38 25 72 45 77 45 4 0 26 18 47 41 22 23 65 58 97 80 67 46 658 634 694 690 13 21 36 45 51 53 33 17 114 100 171 176 22 30 138 151 257 269 118 117 215 218 215 225 0 7 104 118 231 247 127 129 248 257 269 285 21 28 62 71 90 95 29 24 75 65 103 90 29 25 86 62 127 81 110 51 160 75 209 103 24 14 54 25 66 25 11 0 30 7 41 15 10 8 41 15 67 15 26 0 60 6 75 14 21 10 129 15 492 20 256 4 542 11 635 16 94 5 719 10 1390 10 897 0 1313 4 1570 15 253 11 666 15 1490 15 986 1 1143 3 1159 15 13 10 43 15 86 15 43 0 73 5 86 15 10 8 31 15 45 15 14 0 34 7 45 15 10 8 27 15 36 15 24 0 148 58 173 80 11 10 48 33 83 52 69 37 325 280 338 321 3 12 14 31 24 42 30 33 125 226 144 290 9 33 21 68 27 77 5 10 9 40 9 68 0 38 5 54 20 67 29 25 31 278 3 299 -13 9 -20 32 -24 86 -6 72 -17 115 -45 171 -8 16 -14 35 -14 43 0 8 -4 22 -9 32 -5 9 -19 38 -31 64 -12 26 -31 62 -43 80 -12 18 -41 65 -65 104 -42 71 -217 254 -242 254 -7 0 -28 14 -47 30 -18 17 -37 30 -42 30 -4 0 -39 20 -77 45 -37 25 -73 45 -80 45 -6 0 -17 7 -24 15 -7 8 -27 15 -44 15 -17 0 -40 7 -50 15 -11 8 -31 15 -45 15 -14 0 -35 7 -45 15 -11 8 -38 15 -60 15 -23 1 -52 7 -66 15 -29 17 -2195 19 -2350 3z"/> <path d="M9200 8520 c-69 -4 -529 -8 -1024 -9 -773 -1 -901 -4 -919 -16 -12 -8 -40 -15 -62 -15 -22 0 -49 -7 -59 -15 -11 -8 -37 -15 -57 -15 -21 0 -50 -6 -66 -14 -57 -28 -104 -46 -123 -46 -10 0 -21 -4 -24 -9 -4 -5 -25 -18 -49 -29 -136 -63 -189 -92 -223 -123 -11 -10 -26 -19 -32 -19 -7 0 -33 -19 -58 -42 -26 -24 -61 -52 -80 -63 -28 -17 -175 -160 -827 -802 -15 -16 -121 -122 -236 -238 -114 -115 -226 -223 -250 -238 -23 -15 -50 -42 -59 -60 -9 -18 -51 -65 -92 -104 -41 -40 -80 -78 -87 -85 -41 -44 -246 -246 -346 -341 -174 -165 -227 -221 -224 -232 5 -15 1862 -13 1992 3 73 8 596 12 1910 12 1130 1 1840 5 1890 11 45 6 495 12 1025 15 797 5 948 8 967 20 12 8 39 14 60 14 37 0 139 33 157 51 6 5 20 9 32 9 26 0 176 74 194 95 7 8 37 26 66 40 53 25 274 234 274 259 0 5 18 31 40 57 22 26 45 58 50 71 13 28 29 54 56 93 26 38 54 113 54 146 0 14 7 34 15 45 8 10 15 37 15 59 0 22 7 51 15 65 11 19 14 69 14 215 0 146 -3 196 -14 215 -8 14 -15 45 -15 70 0 25 -7 54 -15 64 -8 11 -15 32 -15 46 0 23 -49 127 -117 249 -14 25 -40 63 -59 85 -19 22 -34 45 -34 51 0 16 -165 175 -182 175 -8 0 -30 16 -49 36 -18 20 -76 56 -127 81 -50 25 -95 49 -98 54 -3 5 -17 9 -32 9 -15 0 -36 7 -46 15 -11 8 -34 15 -50 15 -17 0 -40 7 -50 15 -11 8 -30 15 -43 15 -13 0 -37 7 -52 15 -24 12 -220 15 -1352 19 -728 3 -1353 7 -1389 9 -36 3 -121 1 -190 -3z"/> <path d="M3620 4808 c-14 -5 -50 -14 -80 -18 -57 -8 -105 -22 -153 -46 -16 -8 -37 -14 -47 -14 -10 0 -31 -7 -47 -15 -15 -7 -49 -23 -75 -35 -117 -50 -144 -67 -222 -141 -46 -44 -91 -79 -100 -79 -9 0 -25 -14 -34 -31 -9 -18 -29 -47 -44 -64 -16 -18 -28 -37 -28 -43 0 -6 -16 -29 -35 -52 -19 -23 -35 -48 -35 -54 0 -7 -9 -21 -20 -31 -22 -20 -70 -118 -70 -144 0 -9 -7 -25 -15 -35 -8 -11 -15 -27 -15 -37 0 -9 -7 -30 -15 -45 -8 -16 -15 -40 -15 -54 0 -15 -6 -32 -12 -38 -15 -15 -31 -250 -30 -447 0 -71 0 -173 0 -225 -3 -357 12 -781 28 -804 8 -11 14 -39 14 -61 0 -22 7 -49 15 -59 8 -11 15 -29 15 -40 0 -53 129 -267 232 -384 92 -105 195 -202 215 -202 5 0 38 -19 74 -43 80 -54 126 -77 153 -77 12 0 30 -6 41 -13 30 -20 108 -47 136 -47 14 0 34 -7 45 -15 12 -9 43 -15 84 -15 37 0 77 -6 94 -15 36 -19 123 -19 156 0 14 8 50 14 81 15 31 0 70 7 85 15 16 8 47 15 69 15 22 0 49 7 59 15 11 8 31 15 44 15 37 0 206 87 264 135 28 25 57 45 64 45 16 0 192 177 222 225 14 22 32 45 39 51 21 18 61 92 113 209 27 61 40 100 40 124 0 15 7 36 15 47 8 10 15 34 15 52 0 19 6 48 14 65 8 18 16 72 18 120 3 88 3 89 40 122 l37 34 2111 0 c1875 1 2113 2 2133 16 12 8 34 15 49 15 15 0 42 6 60 14 110 48 150 68 194 98 28 18 72 44 97 58 26 13 50 33 53 43 3 10 24 30 45 44 22 15 47 40 56 56 8 16 33 50 56 74 38 41 72 97 123 203 64 133 74 160 74 207 0 28 6 58 15 69 21 28 21 280 0 308 -9 11 -15 42 -15 70 -1 28 -7 62 -15 76 -8 14 -14 33 -15 44 0 26 -97 216 -125 246 -12 14 -25 34 -29 45 -11 37 -197 212 -266 250 -202 110 -287 148 -395 172 -86 20 -5588 31 -5635 11z"/> </g> </svg><b>TaskFlow</b></span> · sistemas.reduaz.mx/taskflow/</div></footer>
+
+<div id="capa"></div>
+
+<script>
+const LOGO = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="-13 184 1543 1209" aria-hidden="true"> <g transform="translate(0.000000,1500.000000) scale(0.100000,-0.100000)" fill="currentColor" stroke="none"> <path d="M11580 12848 c-47 -5 -692 -13 -1435 -18 -837 -5 -1379 -12 -1425 -18 -44 -6 -299 -11 -620 -11 -544 -1 -545 -1 -558 -22 -11 -17 -20 -20 -45 -16 -23 3 -39 -1 -56 -14 -13 -10 -33 -19 -46 -19 -12 0 -47 -13 -78 -30 -31 -16 -65 -30 -76 -30 -34 0 -160 -67 -206 -109 -25 -23 -50 -41 -57 -41 -6 0 -53 -40 -104 -90 -50 -49 -98 -90 -105 -90 -20 0 -186 -169 -207 -210 -10 -21 -32 -42 -53 -53 -41 -20 -269 -248 -269 -270 0 -15 -112 -127 -127 -127 -12 0 -235 -226 -454 -460 -206 -219 -475 -502 -784 -825 -132 -139 -328 -344 -435 -456 -107 -113 -274 -288 -371 -389 -97 -102 -220 -234 -275 -295 -54 -60 -144 -157 -199 -215 -55 -58 -146 -158 -202 -222 -107 -122 -129 -141 -203 -178 -135 -69 -336 -66 -471 6 -65 35 -122 91 -349 343 -96 107 -220 242 -275 300 -55 59 -149 162 -210 230 -103 117 -195 217 -509 551 -104 110 -135 150 -169 219 l-42 84 0 121 c0 133 13 180 86 303 157 264 524 361 771 204 38 -24 551 -549 777 -795 104 -113 176 -176 200 -176 25 0 8 -17 761 750 316 322 716 727 890 901 332 333 521 532 530 556 3 8 119 128 256 266 138 139 253 262 257 275 l5 22 -356 0 c-247 0 -400 -5 -497 -15 -116 -12 -357 -15 -1390 -16 -687 0 -1290 -5 -1340 -10 -49 -5 -160 -12 -245 -15 -105 -5 -161 -11 -175 -20 -11 -8 -42 -14 -70 -14 -28 0 -59 -7 -69 -15 -11 -8 -39 -15 -62 -15 -24 0 -45 -4 -49 -10 -3 -5 -20 -14 -38 -19 -110 -33 -323 -137 -375 -182 -10 -8 -45 -29 -77 -45 -64 -32 -349 -298 -361 -337 -4 -12 -21 -38 -38 -57 -74 -82 -236 -375 -236 -425 0 -12 -5 -26 -11 -32 -6 -6 -14 -26 -19 -44 -5 -19 -18 -59 -30 -89 -12 -30 -25 -77 -29 -105 -4 -27 -12 -59 -18 -70 -6 -11 -13 -110 -17 -220 -4 -110 -10 -245 -13 -300 -4 -55 -6 -327 -6 -605 1 -278 2 -593 2 -700 -2 -686 12 -1109 37 -1144 8 -11 14 -36 14 -55 0 -19 14 -63 30 -98 17 -34 30 -68 30 -75 0 -6 20 -44 45 -84 25 -39 45 -76 45 -81 0 -5 18 -27 41 -48 22 -22 47 -54 55 -72 16 -32 121 -135 195 -190 49 -37 234 -133 255 -133 8 0 42 -13 76 -30 34 -16 78 -30 98 -30 20 0 45 -7 56 -15 25 -19 1666 -23 1724 -4 21 7 143 14 295 16 199 4 264 8 280 19 11 8 42 14 70 14 30 0 59 6 71 15 10 8 35 15 54 15 19 0 44 7 54 15 11 8 32 15 47 15 15 0 42 8 61 17 18 9 45 22 60 30 14 7 32 13 40 13 8 0 30 11 49 25 19 14 57 37 86 51 29 13 64 35 79 49 15 14 31 25 37 25 5 0 40 20 78 45 38 25 72 45 77 45 4 0 26 18 47 41 22 23 65 58 97 80 67 46 658 634 694 690 13 21 36 45 51 53 33 17 114 100 171 176 22 30 138 151 257 269 118 117 215 218 215 225 0 7 104 118 231 247 127 129 248 257 269 285 21 28 62 71 90 95 29 24 75 65 103 90 29 25 86 62 127 81 110 51 160 75 209 103 24 14 54 25 66 25 11 0 30 7 41 15 10 8 41 15 67 15 26 0 60 6 75 14 21 10 129 15 492 20 256 4 542 11 635 16 94 5 719 10 1390 10 897 0 1313 4 1570 15 253 11 666 15 1490 15 986 1 1143 3 1159 15 13 10 43 15 86 15 43 0 73 5 86 15 10 8 31 15 45 15 14 0 34 7 45 15 10 8 27 15 36 15 24 0 148 58 173 80 11 10 48 33 83 52 69 37 325 280 338 321 3 12 14 31 24 42 30 33 125 226 144 290 9 33 21 68 27 77 5 10 9 40 9 68 0 38 5 54 20 67 29 25 31 278 3 299 -13 9 -20 32 -24 86 -6 72 -17 115 -45 171 -8 16 -14 35 -14 43 0 8 -4 22 -9 32 -5 9 -19 38 -31 64 -12 26 -31 62 -43 80 -12 18 -41 65 -65 104 -42 71 -217 254 -242 254 -7 0 -28 14 -47 30 -18 17 -37 30 -42 30 -4 0 -39 20 -77 45 -37 25 -73 45 -80 45 -6 0 -17 7 -24 15 -7 8 -27 15 -44 15 -17 0 -40 7 -50 15 -11 8 -31 15 -45 15 -14 0 -35 7 -45 15 -11 8 -38 15 -60 15 -23 1 -52 7 -66 15 -29 17 -2195 19 -2350 3z"/> <path d="M9200 8520 c-69 -4 -529 -8 -1024 -9 -773 -1 -901 -4 -919 -16 -12 -8 -40 -15 -62 -15 -22 0 -49 -7 -59 -15 -11 -8 -37 -15 -57 -15 -21 0 -50 -6 -66 -14 -57 -28 -104 -46 -123 -46 -10 0 -21 -4 -24 -9 -4 -5 -25 -18 -49 -29 -136 -63 -189 -92 -223 -123 -11 -10 -26 -19 -32 -19 -7 0 -33 -19 -58 -42 -26 -24 -61 -52 -80 -63 -28 -17 -175 -160 -827 -802 -15 -16 -121 -122 -236 -238 -114 -115 -226 -223 -250 -238 -23 -15 -50 -42 -59 -60 -9 -18 -51 -65 -92 -104 -41 -40 -80 -78 -87 -85 -41 -44 -246 -246 -346 -341 -174 -165 -227 -221 -224 -232 5 -15 1862 -13 1992 3 73 8 596 12 1910 12 1130 1 1840 5 1890 11 45 6 495 12 1025 15 797 5 948 8 967 20 12 8 39 14 60 14 37 0 139 33 157 51 6 5 20 9 32 9 26 0 176 74 194 95 7 8 37 26 66 40 53 25 274 234 274 259 0 5 18 31 40 57 22 26 45 58 50 71 13 28 29 54 56 93 26 38 54 113 54 146 0 14 7 34 15 45 8 10 15 37 15 59 0 22 7 51 15 65 11 19 14 69 14 215 0 146 -3 196 -14 215 -8 14 -15 45 -15 70 0 25 -7 54 -15 64 -8 11 -15 32 -15 46 0 23 -49 127 -117 249 -14 25 -40 63 -59 85 -19 22 -34 45 -34 51 0 16 -165 175 -182 175 -8 0 -30 16 -49 36 -18 20 -76 56 -127 81 -50 25 -95 49 -98 54 -3 5 -17 9 -32 9 -15 0 -36 7 -46 15 -11 8 -34 15 -50 15 -17 0 -40 7 -50 15 -11 8 -30 15 -43 15 -13 0 -37 7 -52 15 -24 12 -220 15 -1352 19 -728 3 -1353 7 -1389 9 -36 3 -121 1 -190 -3z"/> <path d="M3620 4808 c-14 -5 -50 -14 -80 -18 -57 -8 -105 -22 -153 -46 -16 -8 -37 -14 -47 -14 -10 0 -31 -7 -47 -15 -15 -7 -49 -23 -75 -35 -117 -50 -144 -67 -222 -141 -46 -44 -91 -79 -100 -79 -9 0 -25 -14 -34 -31 -9 -18 -29 -47 -44 -64 -16 -18 -28 -37 -28 -43 0 -6 -16 -29 -35 -52 -19 -23 -35 -48 -35 -54 0 -7 -9 -21 -20 -31 -22 -20 -70 -118 -70 -144 0 -9 -7 -25 -15 -35 -8 -11 -15 -27 -15 -37 0 -9 -7 -30 -15 -45 -8 -16 -15 -40 -15 -54 0 -15 -6 -32 -12 -38 -15 -15 -31 -250 -30 -447 0 -71 0 -173 0 -225 -3 -357 12 -781 28 -804 8 -11 14 -39 14 -61 0 -22 7 -49 15 -59 8 -11 15 -29 15 -40 0 -53 129 -267 232 -384 92 -105 195 -202 215 -202 5 0 38 -19 74 -43 80 -54 126 -77 153 -77 12 0 30 -6 41 -13 30 -20 108 -47 136 -47 14 0 34 -7 45 -15 12 -9 43 -15 84 -15 37 0 77 -6 94 -15 36 -19 123 -19 156 0 14 8 50 14 81 15 31 0 70 7 85 15 16 8 47 15 69 15 22 0 49 7 59 15 11 8 31 15 44 15 37 0 206 87 264 135 28 25 57 45 64 45 16 0 192 177 222 225 14 22 32 45 39 51 21 18 61 92 113 209 27 61 40 100 40 124 0 15 7 36 15 47 8 10 15 34 15 52 0 19 6 48 14 65 8 18 16 72 18 120 3 88 3 89 40 122 l37 34 2111 0 c1875 1 2113 2 2133 16 12 8 34 15 49 15 15 0 42 6 60 14 110 48 150 68 194 98 28 18 72 44 97 58 26 13 50 33 53 43 3 10 24 30 45 44 22 15 47 40 56 56 8 16 33 50 56 74 38 41 72 97 123 203 64 133 74 160 74 207 0 28 6 58 15 69 21 28 21 280 0 308 -9 11 -15 42 -15 70 -1 28 -7 62 -15 76 -8 14 -14 33 -15 44 0 26 -97 216 -125 246 -12 14 -25 34 -29 45 -11 37 -197 212 -266 250 -202 110 -287 148 -395 172 -86 20 -5588 31 -5635 11z"/> </g> </svg>`;
+const estado = {plat:'android', instalada:false};
+const $ = s => document.querySelector(s);
+const NOMBRES = {android:'Android', ios:'iPhone', compu:'computadora'};
+
+function render(){
+  document.querySelectorAll('[data-tarjeta-plat]').forEach(t => t.classList.toggle('actual', t.dataset.tarjetaPlat === estado.plat));
+  const acc = $('#acciones-portada'), det = $('#detalle-portada');
+  if (estado.instalada){
+    acc.innerHTML = `<a class="btn btn-primario" href="#" data-sim="abrir">Abrir TaskFlow</a>`;
+    det.innerHTML = `<span class="etiqueta-estado">Ya la tienes instalada en este dispositivo</span>`;
+  } else if (estado.plat === 'ios'){
+    acc.innerHTML = `<a class="btn btn-primario" href="#instalar">Ver cómo instalar en iPhone</a><a class="btn btn-secundario" href="#" data-sim="abrir">Usar en el navegador</a>`;
+    det.innerHTML = `En iPhone se instala desde Safari con «Compartir → Agregar a pantalla de inicio».`;
+  } else {
+    acc.innerHTML = `<button class="btn btn-primario" data-sim="instalar">Instalar TaskFlow</button><a class="btn btn-secundario" href="#" data-sim="abrir">Usar en el navegador</a>`;
+    det.innerHTML = `Gratis · se actualiza sola`;
+  }
+  // Botón dentro de la tarjeta de la plataforma actual.
+  document.querySelectorAll('[data-boton]').forEach(b => {
+    const p = b.dataset.boton;
+    b.innerHTML = (p === estado.plat && p !== 'ios' && !estado.instalada) ? `<button class="btn btn-primario btn-chico" data-sim="instalar">Instalar ahora</button>` : '';
+  });
+}
+
+document.addEventListener('click', e => {
+  const b = e.target.closest('[data-plat],[data-inst],[data-sim]');
+  if (!b) return;
+  if (b.dataset.plat){ estado.plat = b.dataset.plat; marcar('[data-plat]', b); return render(); }
+  if (b.dataset.inst){ estado.instalada = b.dataset.inst === 'si'; marcar('[data-inst]', b); return render(); }
+  const s = b.dataset.sim; e.preventDefault();
+  if (s === 'instalar'){
+    $('#capa').innerHTML = `<div class="velo"><div class="dialogo" role="dialog" aria-modal="true">
+      <b>¿Instalar app?</b>
+      <div class="fila"><span class="sello">${LOGO}</span><div><b>TaskFlow</b><br><small>sistemas.reduaz.mx</small></div></div>
+      <div class="acciones"><button class="btn btn-secundario btn-chico" data-sim="cancelar">Cancelar</button><button class="btn btn-primario btn-chico" data-sim="aceptar">Instalar</button></div>
+      <div class="nota-sim">Este cuadro lo muestra el navegador (${NOMBRES[estado.plat]}), no la página. En la app real se abre con el evento <code>beforeinstallprompt</code>.</div>
+    </div></div>`;
+  }
+  if (s === 'cancelar'){ $('#capa').innerHTML = ''; }
+  if (s === 'aceptar'){ $('#capa').innerHTML = ''; estado.instalada = true; marcar('[data-inst]', document.querySelector('[data-inst="si"]')); render(); }
+  if (s === 'abrir'){ alertaSuave('En la página real, este botón lleva a sistemas.reduaz.mx/taskflow/app/ (la maqueta de la app es app-v1.html).'); }
+});
+
+function alertaSuave(texto){
+  $('#capa').innerHTML = `<div class="velo"><div class="dialogo" role="dialog" aria-modal="true"><p style="margin:0 0 14px">${texto}</p><div class="acciones"><button class="btn btn-primario btn-chico" data-sim="cancelar">Entendido</button></div></div></div>`;
+}
+function marcar(sel, b){ document.querySelectorAll(sel).forEach(x => x.setAttribute('aria-pressed', x === b)); }
+render();
+</script>
+</body>
+</html>

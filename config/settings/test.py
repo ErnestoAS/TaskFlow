@@ -16,3 +16,9 @@ EMAIL_BACKEND = "django.core.mail.backends.locmem.EmailBackend"
 MEDIA_ROOT = BASE_DIR / "media-test"
 
 LOGGING["root"]["level"] = "WARNING"
+TASKFLOW_URL = "https://ejemplo.mx/taskflow"
+
+# Las pruebas no dependen de que la PWA esté compilada en pwa/ (WhiteNoise la serviría antes que
+# la vista y cambiaría el resultado según la máquina).
+PWA_DIR = BASE_DIR / "pwa-sin-compilar"
+WHITENOISE_ROOT = None

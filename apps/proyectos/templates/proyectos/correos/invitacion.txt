@@ -1,0 +1,14 @@
+{% autoescape off %}Hola:
+
+{% if invitada_por %}{{ invitada_por }} te invitó{% else %}Te invitaron{% endif %} a colaborar en el proyecto «{{ proyecto.nombre }}» en TaskFlow.
+
+Para unirte, abre este enlace:
+
+{{ url }}
+
+Si aún no tienes cuenta, podrás crearla desde ahí con este mismo correo ({{ invitacion.correo }}). El enlace no vence, pero solo sirve para este correo.
+
+Si no esperabas esta invitación, puedes ignorar este mensaje.
+
+TaskFlow
+{% endautoescape %}

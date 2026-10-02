@@ -1,0 +1,1 @@
+Te invitaron a «{{ proyecto.nombre }}» en TaskFlow

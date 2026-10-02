@@ -1,0 +1,61 @@
+<script setup lang="ts">
+import { ref } from "vue";
+import { useRoute, useRouter } from "vue-router";
+
+import { mensajeDeError } from "../api";
+import Logo from "../componentes/Logo.vue";
+import { entrar, sesion } from "../sesion";
+
+const route = useRoute();
+const router = useRouter();
+const correo = ref("");
+const password = ref("");
+const error = ref("");
+const ocupado = ref(false);
+
+async function enviar() {
+  error.value = "";
+  if (!correo.value.trim() || !password.value) {
+    error.value = "Escribe tu correo y tu contraseña.";
+    return;
+  }
+  ocupado.value = true;
+  try {
+    await entrar(correo.value.trim(), password.value);
+    const siguiente = typeof route.query.siguiente === "string" ? route.query.siguiente : "/proyectos";
+    await router.replace(siguiente);
+  } catch (e) {
+    error.value = mensajeDeError(e);
+  } finally {
+    ocupado.value = false;
+  }
+}
+</script>
+
+<template>
+  <main class="acceso">
+    <div class="marca"><Logo /><span>TaskFlow</span></div>
+    <div class="caja">
+      <h1>Entrar</h1>
+      <p class="intro">Organiza las actividades de tus proyectos en tarjetas.</p>
+      <form novalidate @submit.prevent="enviar">
+        <div v-if="error" class="error-general" role="alert">{{ error }}</div>
+        <div class="campo">
+          <label for="correo">Correo</label>
+          <input id="correo" v-model="correo" type="email" autocomplete="username" inputmode="email" />
+        </div>
+        <div class="campo">
+          <label for="password">Contraseña</label>
+          <input id="password" v-model="password" type="password" autocomplete="current-password" />
+        </div>
+        <button type="submit" class="btn btn-primario btn-bloque" :disabled="ocupado">
+          {{ ocupado ? "Entrando…" : "Entrar" }}
+        </button>
+      </form>
+    </div>
+    <p v-if="sesion.registroAbierto" class="pie-acceso">
+      ¿No tienes cuenta? <RouterLink :to="{ name: 'registro' }">Crea una</RouterLink>
+    </p>
+    <p v-else class="pie-acceso">Para tener cuenta, pide a alguien que te invite a su proyecto.</p>
+  </main>
+</template>

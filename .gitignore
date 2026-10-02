@@ -39,6 +39,11 @@ config/settings/local.py
 *.log
 logs/
 
+# --- PWA (frontend/) ---------------------------------------------------------
+# Se compila en la imagen (etapa «pwa» del Dockerfile) o con `npm run build`.
+node_modules/
+/pwa/
+
 # --- Variables de entorno y secretos -----------------------------------------
 .env
 .env.*

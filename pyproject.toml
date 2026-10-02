@@ -10,6 +10,7 @@ dependencies = [
     "django-environ>=0.14,<0.15",
     "whitenoise>=6.12,<7",
     "gunicorn>=26,<27",
+    "djangorestframework>=3.16,<3.19",   # API de la PWA (/api/v1/)
 ]
 
 [dependency-groups]

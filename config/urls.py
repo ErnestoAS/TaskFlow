@@ -7,6 +7,10 @@ from apps.core import views as core_views
 urlpatterns = [
     path("healthz/", core_views.healthz, name="healthz"),
     path("django-admin/", admin.site.urls),
+    path("api/v1/", include("apps.api.urls")),
+    # La PWA (pwa/app/) la sirve WhiteNoise; esta ruta solo responde si no está compilada.
+    path("app/", core_views.pwa, name="pwa"),
+    path("", core_views.portada, name="portada"),
 ]
 
 if settings.DEBUG and "debug_toolbar" in settings.INSTALLED_APPS:

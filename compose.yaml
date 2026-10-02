@@ -37,5 +37,25 @@ services:
       db:
         condition: service_healthy
 
+  # PWA (frontend/). Compilar una vez:   docker compose run --rm frontend sh -c "npm ci && npm run build"
+  #   (`run` no ejecuta el `command`; sin `npm ci` el volumen de node_modules queda vacío)
+  # Desarrollo con recarga en caliente:  docker compose --profile frontend up
+  #   → http://localhost:5173/app/  (Vite reenvía /api a Django)
+  frontend:
+    image: node:24-alpine
+    profiles: ["frontend"]
+    working_dir: /src/frontend
+    command: sh -c "npm install && npm run dev -- --base /app/"
+    environment:
+      DJANGO_URL: http://web:8000
+    volumes:
+      - .:/src
+      - frontend-node-modules:/src/frontend/node_modules
+    ports:
+      - "127.0.0.1:${TASKFLOW_FRONTEND_PORT:-5173}:5173"
+    depends_on:
+      - web
+
 volumes:
   db-data:
+  frontend-node-modules:

@@ -1,7 +1,9 @@
 # TaskFlow — Operación en producción
 
 Procedimientos del servidor Docker de producción (`compose.prod.yaml`). Diseño en
-[propuesta-arquitectura.md](propuesta-arquitectura.md). Adaptado de `docs/operacion.md` de
+[propuesta-arquitectura.md](propuesta-arquitectura.md). **Inventario de cómo está montado hoy, con
+quién comparte y qué cambiar para darle dominio propio o moverlo de servidor:
+[despliegue-actual.md](despliegue-actual.md).** Adaptado de `docs/operacion.md` de
 mi-campus, que comparte servidor y mecanismo de despliegue.
 
 ## Reparto de responsabilidades
@@ -319,6 +321,8 @@ cambio así lo anota aquí (y en §11 de la propuesta) en el mismo commit.
 | Desde la versión | Qué hacer después de desplegar | Una vez o siempre |
 | --- | --- | --- |
 | *(primera versión)* | Primera instalación completa (sección de arriba) y `createsuperuser`. | Una vez |
+| *(versión con proyectos, Etapa 2)* | **Antes:** agregar a `/opt/taskflow/.env.prod` `TASKFLOW_URL=https://sistemas.reduaz.mx/taskflow` y, para que las invitaciones lleguen, las `DJANGO_EMAIL_*` (ver `.env.prod.example`). **Después:** las tarjetas que ya existían quedan en el proyecto «Tarjetas anteriores» (migración `tarjetas.0004`); revisarlo en el admin y renombrarlo, moverlas o borrarlo. | Una vez |
+| *(versión con la app, Etapa 3)* | Incluye los pasos de la Etapa 2 si no se hicieron. **Antes (opcional):** `TASKFLOW_REGISTRO_ABIERTO` y `TASKFLOW_LIMITE_ACCESO` en `.env.prod` (por omisión: registro abierto, 20 intentos/min). La imagen ya trae la PWA compilada; nginx no cambia (`/taskflow/` ya reenvía todo). **Después:** abrir `https://sistemas.reduaz.mx/taskflow/` (portada) y `/taskflow/app/`, crear una cuenta de prueba y revisar que `/taskflow/app/manifest.webmanifest` responda 200. | Una vez |
 
 ### Alternativa sin GitHub Actions
 

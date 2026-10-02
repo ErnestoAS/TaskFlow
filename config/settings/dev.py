@@ -10,8 +10,6 @@ ALLOWED_HOSTS = ["*"]
 WHITENOISE_USE_FINDERS = True
 WHITENOISE_AUTOREFRESH = True
 
-EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
-
 if env.bool("DJANGO_DEBUG_TOOLBAR", default=True):
     INSTALLED_APPS += ["debug_toolbar"]
     MIDDLEWARE.insert(0, "debug_toolbar.middleware.DebugToolbarMiddleware")

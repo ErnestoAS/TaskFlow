@@ -1,0 +1,133 @@
+/*
+ * Portada de TaskFlow (/taskflow/): qué es y cómo instalar la app (§5 de la propuesta).
+ * Pasada de docs/_mockups/instalacion-v2.html. Los colores vienen de tema.css: aquí solo se
+ * renombran a los nombres cortos que usaba la maqueta.
+ */
+:root{
+  --logo:var(--tf-logo);
+  --primario:var(--tf-primary); --primario-osc:var(--tf-primary-hover); --primario-suave:var(--tf-primary-soft);
+  --acento:var(--tf-accent); --acento-hover:var(--tf-accent-hover); --acento-suave:var(--tf-accent-soft);
+  --acento-texto:var(--tf-accent-text); --sobre-acento:var(--tf-on-accent);
+  --fondo:var(--tf-bg); --superficie:var(--tf-surface); --texto:var(--tf-text); --tenue:var(--tf-text-muted); --linea:var(--tf-border);
+  --sombra:var(--tf-shadow); --sombra-alta:var(--tf-shadow-float);
+  --pendiente:var(--tf-status-pending-text); --pendiente-suave:var(--tf-status-pending-soft);
+  --en-curso:var(--tf-status-progress-text); --en-curso-suave:var(--tf-status-progress-soft);
+  --finalizada:var(--tf-status-done-text); --finalizada-suave:var(--tf-status-done-soft);
+  --vencida:var(--tf-danger-text); --vencida-suave:var(--tf-danger-soft); --urgente:var(--tf-priority-urgent);
+  --av1:var(--tf-primary); --av2:var(--tf-primary-hover); --av3:var(--tf-status-pending-text);
+}
+/* =========================================================
+   Maqueta de la portada de TaskFlow (https://sistemas.reduaz.mx/taskflow/):
+   qué es y cómo instalar la app. Exploración: NO aprobada.
+   Colores solo por variable, los mismos de la maqueta de la app.
+========================================================= */
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--fondo);color:var(--texto);font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;line-height:1.5}
+button{font-family:inherit;cursor:pointer}
+/* Que `hidden` gane a `display` de .btn (botones que muestra solo portada.js según el dispositivo). */
+[hidden]{display:none!important}
+a{color:var(--primario)}
+.contenedor{max-width:1080px;margin:0 auto;padding:0 20px}
+
+/* ---------- barra ---------- */
+.barra{background:var(--superficie);border-bottom:1px solid var(--linea);position:sticky;top:0;z-index:5}
+.barra .contenedor{display:flex;align-items:center;gap:18px;height:62px}
+.marca{display:flex;align-items:center;gap:10px;font-weight:700;font-size:17px;color:var(--texto);text-decoration:none}
+.sello{width:34px;height:34px;border-radius:10px;background:var(--primario);color:var(--superficie);display:grid;place-items:center;font-size:13px;letter-spacing:.5px}
+.barra nav{margin-left:auto;display:flex;gap:4px;align-items:center}
+.barra nav a{color:var(--tenue);text-decoration:none;font-size:14px;padding:8px 10px;border-radius:9px}
+.barra nav a:hover{background:var(--fondo);color:var(--texto)}
+@media (max-width:600px){.barra nav a.opcional{display:none}}
+
+/* ---------- botones ---------- */
+.btn{border:0;border-radius:12px;padding:12px 20px;font-weight:600;font-size:15px;display:inline-flex;align-items:center;justify-content:center;gap:8px;text-decoration:none}
+.btn-primario{background:var(--primario);color:var(--superficie)}
+.btn-primario:hover{background:var(--primario-osc)}
+.btn-secundario{background:var(--superficie);color:var(--texto);box-shadow:inset 0 0 0 1px var(--linea)}
+.btn-chico{padding:8px 14px;font-size:14px;border-radius:10px}
+
+/* ---------- portada ---------- */
+.portada{padding:56px 0 40px}
+/* Sin ilustración: el texto ocupa una columna, alineada con el resto de secciones. */
+.portada .contenedor>div{max-width:760px}
+.portada h1{font-size:clamp(30px,4.4vw,46px);line-height:1.12;margin:0 0 16px;letter-spacing:-.02em}
+.portada h1 span{color:var(--primario)}
+.portada .intro{font-size:17px;color:var(--tenue);margin:0 0 26px;max-width:520px}
+.portada .acciones{display:flex;gap:10px;flex-wrap:wrap}
+.portada .detalle{font-size:13px;color:var(--tenue);margin-top:14px;display:flex;gap:6px;align-items:center}
+.etiqueta-estado{display:inline-flex;gap:6px;align-items:center;font-size:13px;font-weight:600;padding:4px 10px;border-radius:99px;background:var(--finalizada-suave);color:var(--finalizada)}
+
+
+/* ---------- características ---------- */
+.caracteristicas{padding:20px 0 50px}
+.caracteristicas .rejilla{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+@media (max-width:760px){.caracteristicas .rejilla{grid-template-columns:1fr}}
+.caract{background:var(--superficie);border-radius:16px;padding:20px;box-shadow:var(--sombra)}
+.caract .ic{width:42px;height:42px;border-radius:12px;background:var(--primario-suave);color:var(--primario);display:grid;place-items:center;margin-bottom:12px}
+.caract h3{margin:0 0 6px;font-size:16px}
+.caract p{margin:0;color:var(--tenue);font-size:14px}
+
+/* ---------- instalar ---------- */
+section.bloque{padding:50px 0;border-top:1px solid var(--linea);background:var(--superficie)}
+section.bloque.alt{background:var(--fondo)}
+.titulo-seccion{font-size:26px;margin:0 0 6px;letter-spacing:-.01em}
+.sub-seccion{color:var(--tenue);margin:0 0 26px}
+.plataformas{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+@media (max-width:860px){.plataformas{grid-template-columns:1fr}}
+.plataforma{border:1px solid var(--linea);border-radius:18px;padding:20px;background:var(--superficie);position:relative;transition:.15s}
+.plataforma.actual{border-color:var(--primario);box-shadow:0 0 0 3px var(--primario-suave)}
+.plataforma .cab{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+.plataforma .cab .ic{width:40px;height:40px;border-radius:11px;background:var(--fondo);display:grid;place-items:center;color:var(--texto)}
+.plataforma h3{margin:0;font-size:17px}
+.plataforma .navegador{font-size:12.5px;color:var(--tenue)}
+.tu-disp{position:absolute;top:-11px;right:16px;background:var(--primario);color:var(--superficie);font-size:11.5px;font-weight:600;padding:3px 10px;border-radius:99px;display:none}
+.plataforma.actual .tu-disp{display:inline-block}
+ol.pasos{margin:0;padding:0;list-style:none;counter-reset:paso;display:flex;flex-direction:column;gap:10px}
+ol.pasos li{counter-increment:paso;position:relative;padding-left:34px;font-size:14px;min-height:24px}
+ol.pasos li::before{content:counter(paso);position:absolute;left:0;top:0;width:24px;height:24px;border-radius:50%;background:var(--primario-suave);color:var(--primario-osc);font-weight:700;font-size:12px;display:grid;place-items:center}
+.ic-linea{display:inline-flex;vertical-align:-3px;padding:1px 4px;border-radius:6px;background:var(--fondo);border:1px solid var(--linea)}
+.plataforma .boton-plat{margin-top:16px}
+
+/* ---------- primer acceso ---------- */
+.dos-col{display:grid;grid-template-columns:1fr 1fr;gap:28px;align-items:start}
+@media (max-width:860px){.dos-col{grid-template-columns:1fr}}
+.caja{background:var(--superficie);border-radius:18px;padding:22px;box-shadow:var(--sombra)}
+.caja h3{margin:0 0 12px;font-size:17px}
+
+/* ---------- preguntas ---------- */
+details{background:var(--superficie);border:1px solid var(--linea);border-radius:14px;margin-bottom:10px;overflow:hidden}
+summary{padding:15px 18px;font-weight:600;cursor:pointer;list-style:none;display:flex;justify-content:space-between;align-items:center;gap:10px}
+summary::-webkit-details-marker{display:none}
+summary::after{content:"";width:9px;height:9px;border-right:2px solid var(--tenue);border-bottom:2px solid var(--tenue);transform:rotate(45deg);transition:.15s;flex-shrink:0}
+details[open] summary::after{transform:rotate(-135deg)}
+details p{margin:0;padding:0 18px 16px;color:var(--tenue);font-size:14.5px}
+
+footer{padding:28px 0 40px;color:var(--tenue);font-size:13px;text-align:center}
+
+
+/* ---------- v2: paleta navy + petróleo ---------- */
+body{-webkit-font-smoothing:antialiased}
+:focus-visible{outline:2px solid var(--acento);outline-offset:2px}
+.sello{background:none;width:36px;height:36px;color:var(--logo);border-radius:0}
+.sello svg{width:34px;height:auto}
+.btn{border-radius:9px;transition:background .12s}
+.btn-primario{background:var(--tf-btn);color:var(--tf-on-btn)}
+.btn-primario:hover{background:var(--tf-btn-hover)}
+.btn-secundario:hover{background:var(--fondo)}
+.portada h1 span{color:var(--primario);text-decoration:underline;text-decoration-color:var(--acento);text-decoration-thickness:.12em;text-underline-offset:.12em}
+.portada .marca-grande{color:var(--logo);width:88px;margin-bottom:18px}
+.portada .marca-grande svg{width:100%;height:auto}
+.etiqueta-estado{background:var(--finalizada-suave);color:var(--finalizada)}
+.caract{border:1px solid var(--linea);box-shadow:var(--sombra)}
+.caract .ic{background:var(--acento-suave);color:var(--acento-texto)}
+.plataforma{border-radius:12px}
+.plataforma.actual{border-color:var(--acento);box-shadow:0 0 0 3px var(--acento-suave)}
+.tu-disp{background:var(--acento);color:var(--sobre-acento)}
+ol.pasos li::before{background:var(--primario);color:var(--superficie)}
+.caja{border:1px solid var(--linea)}
+details{border-radius:12px}
+details[open] summary{color:var(--primario)}
+summary::after{border-color:var(--acento-texto)}
+footer .marca-pie{display:inline-flex;align-items:center;gap:8px;color:var(--logo)}
+footer .marca-pie svg{width:22px;height:auto}

@@ -47,6 +47,22 @@ ENTRYPOINT ["entrypoint.sh"]
 CMD ["python", "manage.py", "runserver", "0.0.0.0:8000"]
 
 # ---------------------------------------------------------------------------
+# pwa: compila frontend/ (Vue + Vite) a /src/pwa/app; Django la sirve en /app/ (§5)
+# ---------------------------------------------------------------------------
+FROM node:24-alpine AS pwa
+
+WORKDIR /src/frontend
+RUN --mount=type=cache,target=/root/.npm \
+    --mount=type=bind,source=frontend/package.json,target=package.json \
+    --mount=type=bind,source=frontend/package-lock.json,target=package-lock.json \
+    npm ci
+COPY frontend/ ./
+# La PWA importa la paleta y la tipografía de static/ (una sola fuente de colores).
+COPY static/css /src/static/css
+COPY static/fonts /src/static/fonts
+RUN npm run build
+
+# ---------------------------------------------------------------------------
 # builder: dependencias de producción + collectstatic
 # ---------------------------------------------------------------------------
 FROM base AS builder
@@ -57,6 +73,7 @@ RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --frozen --no-install-project --no-dev
 
 COPY . /app
+COPY --from=pwa /src/pwa /app/pwa
 
 RUN DJANGO_SETTINGS_MODULE=config.settings.production \
     DJANGO_SECRET_KEY=solo-para-collectstatic \
