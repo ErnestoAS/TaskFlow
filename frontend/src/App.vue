@@ -38,11 +38,38 @@ watch(
   { immediate: true },
 );
 
-// Versión nueva publicada: se avisa y se recarga cuando el usuario quiera (registerType "prompt").
-const hayVersion = ref(false);
+// Versión nueva publicada: siempre se instala (§9). Se avisa con una cuenta regresiva para que
+// nadie pierda lo que está escribiendo, y al llegar a cero se recarga sola.
+const SEGUNDOS_PARA_ACTUALIZAR = 15;
+const UNA_HORA = 60 * 60 * 1000;
+const cuentaRegresiva = ref<number | null>(null);
 let actualizar: ((recargar?: boolean) => Promise<void>) | undefined;
+
+function iniciarCuentaRegresiva() {
+  if (cuentaRegresiva.value !== null) return;
+  cuentaRegresiva.value = SEGUNDOS_PARA_ACTUALIZAR;
+  const reloj = setInterval(() => {
+    if (cuentaRegresiva.value !== null && --cuentaRegresiva.value <= 0) {
+      clearInterval(reloj);
+      actualizar?.(true);
+    }
+  }, 1000);
+}
+
 if (import.meta.env.PROD) {
-  actualizar = registerSW({ onNeedRefresh: () => (hayVersion.value = true) });
+  actualizar = registerSW({
+    onNeedRefresh: iniciarCuentaRegresiva,
+    // El navegador solo busca versión nueva al abrir la app; una app instalada puede quedarse
+    // abierta días. Se busca también al volver al frente y cada hora.
+    onRegisteredSW(_url, registro) {
+      if (!registro) return;
+      const buscar = () => registro.update().catch(() => undefined);
+      setInterval(buscar, UNA_HORA);
+      document.addEventListener("visibilitychange", () => {
+        if (document.visibilityState === "visible") buscar();
+      });
+    },
+  });
 }
 </script>
 
@@ -90,9 +117,14 @@ if (import.meta.env.PROD) {
     </nav>
   </div>
 
-  <div v-if="hayVersion" class="toast" role="status" style="display: flex; gap: 12px; align-items: center">
-    Hay una versión nueva de TaskFlow.
-    <button class="btn btn-chico btn-primario" @click="actualizar?.(true)">Actualizar</button>
+  <div
+    v-if="cuentaRegresiva !== null"
+    class="toast"
+    role="status"
+    style="display: flex; gap: 12px; align-items: center"
+  >
+    TaskFlow se actualizará en {{ cuentaRegresiva }} s. Guarda lo que estés escribiendo.
+    <button class="btn btn-chico btn-primario" @click="actualizar?.(true)">Actualizar ahora</button>
   </div>
   <div v-else-if="ui.aviso" class="toast" role="status">{{ ui.aviso }}</div>
 

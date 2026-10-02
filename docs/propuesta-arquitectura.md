@@ -238,7 +238,9 @@ Código en `frontend/`. Rutas con `#` (decisión en §9):
 - **Sin conexión:** el service worker (Workbox, `registerType: "prompt"`) guarda la app y, con
   `NetworkFirst`, las últimas respuestas `GET` de `auth/csrf`, `yo`, `proyectos` y `tarjetas`; se ve
   lo último cargado. Las escrituras requieren conexión. Al cerrar sesión se borra esa caché.
-  Cuando hay versión nueva aparece «Hay una versión nueva · Actualizar».
+  **Versión nueva** *(cambiado 2026-10-02)*: la app la busca al abrirse, al volver al frente y cada
+  hora; al encontrarla avisa «TaskFlow se actualizará en 15 s. Guarda lo que estés escribiendo.»
+  con «Actualizar ahora», y al llegar a cero se recarga sola (`frontend/src/App.vue`).
 - **Instalación:** Chrome/Edge/Android usan `beforeinstallprompt` (botón «Instalar»); iOS muestra
   los pasos de Safari. El aviso se puede descartar (`localStorage`).
 - **Entrega:** `npm run build` deja la app en `pwa/app/`; WhiteNoise la sirve en `/app/`
@@ -348,6 +350,14 @@ límite `acceso`.
 - **El código se guarda como HMAC, no en claro ni con el hasher de contraseñas** (2026-10-02): un
   respaldo filtrado no debe servir para entrar; el HMAC basta porque el código vive 15 minutos y
   tiene 5 intentos, y no paga el costo de PBKDF2 en cada intento.
+- **La PWA se actualiza sola con cuenta regresiva** (2026-10-02, Ernesto): con el aviso que
+  esperaba a que alguien tocara «Actualizar», una app instalada podía quedarse días en una versión
+  vieja, con pantallas que ya no coinciden con la API (p. ej. un registro sin el campo de primer
+  apellido que el servidor ahora exige). Se descartó recargar al instante, porque perdería lo que
+  alguien estuviera escribiendo, y esperar a que no hubiera formularios abiertos, por complejo:
+  15 s de aviso bastan para guardar. Los datos no corren riesgo con una versión vieja (las reglas
+  viven en el servidor); el riesgo era de pantallas rotas. Los despliegues se hacen en horas de
+  poco uso.
 - **Paleta y tipografía compartidas** (2026-10-01): la PWA importa `static/css/tema.css` y
   `static/css/fuentes.css`, los mismos que la portada; no hay una segunda copia de los colores.
 - **Sin nginx interno** (2026-10-01), a diferencia de mi-campus: no hay archivos privados que
@@ -432,3 +442,8 @@ límite `acceso`.
   `django_db(transaction=True)` porque el correo sale en `on_commit`, y `conftest.py` limpia la
   caché antes de cada prueba (ahí cuenta DRF los intentos de `acceso`); el fixture `crear_usuario`
   crea cuentas verificadas.
+- (2026-10-02) **Cambio a lo aprobado: actualización automática de la PWA.** Antes (§5, v3) la
+  versión nueva esperaba a que el usuario tocara «Actualizar»; ahora se instala sola tras 15 s
+  de aviso, y la app busca versiones al volver al frente y cada hora (antes, solo al abrirse).
+  `registerType` sigue en `"prompt"`: es lo que deja controlar el momento de la recarga. Motivo
+  y alternativas en §9.
