@@ -47,7 +47,7 @@ Problemas comunes:
 3. `makemigrations --check` sin cambios pendientes.
 4. Si cambió Docker o settings de producción: build `--target production` y healthcheck `healthy`.
 5. Ninguna URL escrita a mano: todo con `{% url %}`/`reverse()`/`{% static %}`, y en la PWA con
-   `api()` de `frontend/src/api.ts` (producción vive bajo `/taskflow/`, ver `CLAUDE.md`).
+   `api()` de `frontend/src/api.ts` (el código debe funcionar también bajo una ruta como `/taskflow/`, ver `CLAUDE.md`).
 6. Si cambió `frontend/`: `npm run build` sin errores (incluye `vue-tsc`) y la pantalla probada en
    teléfono (390 px) y computadora (≥ 900 px).
 7. Endpoint nuevo: prueba en `apps/api/tests/` de que un no miembro recibe 404 y uno sin permiso 403.

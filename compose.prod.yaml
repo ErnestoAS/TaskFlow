@@ -1,4 +1,4 @@
-# Referencia de despliegue en el servidor Docker de PRODUCCIÓN (sistemas.reduaz.mx).
+# Referencia de despliegue en el servidor Docker de PRODUCCIÓN (srv-01, Hetzner).
 #
 # La imagen la publica GitHub Actions en ghcr.io con cada push a main. En el servidor, junto a
 # .env.prod y un .env con TASKFLOW_IMAGE y TASKFLOW_HTTP_PORT:
@@ -8,7 +8,8 @@
 # Procedimiento completo (login, permisos, respaldo, vuelta atrás): docs/operacion.md.
 #
 # TLS y dominio: los atiende el nginx del servidor (fuera de este compose), que publica TaskFlow
-# en https://sistemas.reduaz.mx/taskflow/ y hace proxy_pass a 127.0.0.1:TASKFLOW_HTTP_PORT.
+# en https://taskflow.rourendev.com/ y hace proxy_pass a 127.0.0.1:TASKFLOW_HTTP_PORT
+# (docker/nginx/taskflow.conf).
 # No hay nginx interno: TaskFlow no tiene archivos privados y WhiteNoise sirve los estáticos.
 name: taskflow-prod
 
@@ -19,7 +20,7 @@ services:
     env_file: .env.prod
     volumes:
       - db-data:/var/lib/postgresql
-    # Sin `ports`: PostgreSQL no se publica (el 5432 del servidor es de otra aplicación).
+    # Sin `ports`: PostgreSQL no se publica; solo `web` lo alcanza por la red interna de Compose.
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
       interval: 10s

@@ -110,15 +110,16 @@ USE_TZ = True
 LANGUAGES = [("es-mx", "Español (México)")]
 
 
-# Publicación bajo una ruta (docs/operacion.md). En producción TaskFlow vive en
-# https://sistemas.reduaz.mx/taskflow/: el nginx del servidor quita el prefijo antes de reenviar y
-# Django lo vuelve a anteponer en todas las URLs que genera. En local queda vacío (raíz).
+# Publicación bajo una ruta (docs/operacion.md). Producción vive en la raíz de su dominio
+# (https://taskflow.rourendev.com/) y lo deja vacío, igual que en local. Si algún día se publica
+# bajo una ruta de otro dominio (como /taskflow/ hasta 2026-10-03), el nginx de ese servidor quita
+# el prefijo antes de reenviar y Django lo vuelve a anteponer en todas las URLs que genera.
 FORCE_SCRIPT_NAME = env("DJANGO_FORCE_SCRIPT_NAME", default=None) or None
 RUTA_BASE = (FORCE_SCRIPT_NAME or "").rstrip("/") + "/"
 
-# Cookies con nombre y ruta propios: el dominio lo comparten otras aplicaciones (actividades-uaz
-# usa `sessionid` y `csrftoken` en `/`) y, en local, mi-campus en `localhost`. Con el mismo nombre
-# una aplicación pisaría la sesión de la otra.
+# Cookies con nombre y ruta propios: en local, otras aplicaciones (como mi-campus) usan
+# `sessionid` y `csrftoken` en `localhost`, y bajo una ruta de un dominio compartido pasaría lo
+# mismo. Con el mismo nombre una aplicación pisaría la sesión de la otra.
 SESSION_COOKIE_NAME = "taskflow_sessionid"
 CSRF_COOKIE_NAME = "taskflow_csrftoken"
 SESSION_COOKIE_PATH = RUTA_BASE

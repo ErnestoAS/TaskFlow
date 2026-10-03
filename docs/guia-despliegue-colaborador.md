@@ -1,10 +1,10 @@
 # Guía para actualizar TaskFlow en producción
 
-Para quien se suma a desplegar TaskFlow en el servidor de la UAZ (`sistemas.reduaz.mx`). Cubre la
+Para quien se suma a desplegar TaskFlow en su servidor (`srv-01`, Hetzner). Cubre la
 configuración de una sola vez y cómo actualizar el sistema cada vez. El detalle técnico completo
 está en `docs/operacion.md` del repositorio.
 
-TaskFlow se publica en **https://sistemas.reduaz.mx/taskflow/**.
+TaskFlow se publica en **https://taskflow.rourendev.com/**.
 
 ## Qué está automatizado y qué haces tú
 
@@ -25,15 +25,15 @@ Cambios en main  ──►  GitHub prueba y publica la imagen  ──►  Tú la
 
 ### 1.1 Lo que necesitas de quien administra el servidor
 
-- [ ] **Tu usuario SSH** en el servidor (`148.217.94.155`, puerto `4022`).
+- [ ] **Tu usuario SSH** en el servidor (`taskflow.rourendev.com`, puerto 22). Solo se entra con
+  llave: mándale tu llave **pública** (`ssh-keygen -t ed25519`, el archivo `.pub`), nunca la privada.
 - [ ] Que agregue tu usuario a los grupos **`docker`**, **`taskflow-admin`** y **`sudo`**.
 - [ ] Que dé a **tu cuenta de GitHub** el rol *Read* sobre la imagen `taskflow` (cuenta
   `ErnestoAS`). Solo deja descargar la imagen: no da acceso al código.
 
 ### 1.2 Crear tu token de GitHub
 
-Si ya tienes uno para mi-campus (classic, con `read:packages`) y no ha vencido, **sirve el mismo**:
-salta a 1.3.
+Si ya tienes uno *classic* con `read:packages` que no ha vencido, **sirve el mismo**: salta a 1.3.
 
 1. <https://github.com> → tu foto → **Settings** → **Developer settings**.
 2. **Personal access tokens** → **Tokens (classic)** → **Generate new token (classic)**.
@@ -45,7 +45,7 @@ salta a 1.3.
 ### 1.3 Configurar tu usuario en el servidor
 
 ```bash
-ssh -p 4022 <tu-usuario>@148.217.94.155
+ssh <tu-usuario>@taskflow.rourendev.com
 id                                  # debe incluir docker, taskflow-admin y sudo
 read -rs GHCR_TOKEN                 # pega el token (no se ve) y Enter
 echo "$GHCR_TOKEN" | docker login ghcr.io -u <tu-usuario-de-GitHub> --password-stdin
@@ -66,13 +66,14 @@ cambia nada en el sistema).
    lo ves en <https://github.com/ErnestoAS?tab=packages> → `taskflow` → la etiqueta más reciente
    que no sea `latest`.
 2. **Pregunta si la versión tiene pasos especiales.**
-3. **Elige el momento.** TaskFlow deja de responder unos segundos; actividades-uaz y mi-campus no
-   se ven afectados.
+3. **Elige el momento.** TaskFlow deja de responder unos segundos; las demás apps del servidor no
+   se ven afectadas. Al publicar una versión, la app instalada se actualiza sola a los 15 segundos:
+   mejor en horas de poco uso.
 
 ### 2.2 Desplegar
 
 ```bash
-ssh -p 4022 <tu-usuario>@148.217.94.155
+ssh <tu-usuario>@taskflow.rourendev.com
 taskflow estado                           # qué versión está activa ahora
 taskflow desplegar <versión> --simular    # ensayo: no cambia nada
 taskflow desplegar <versión>              # el despliegue real
@@ -87,7 +88,7 @@ comando exacto para volver atrás**: cópialo y guárdalo hasta confirmar que to
 ### 2.3 Después
 
 1. **Pasos especiales**, si la versión los tiene.
-2. **Revisa en el navegador** <https://sistemas.reduaz.mx/taskflow/> e inicia sesión.
+2. **Revisa en el navegador** <https://taskflow.rourendev.com/> e inicia sesión.
 3. **Avisa** a quien integró los cambios que la versión ya está en producción.
 
 ## Si algo sale mal
@@ -112,11 +113,13 @@ pierde. Ante la duda, avisa antes de ejecutarlo.
 
 ## Reglas del servidor
 
-El servidor lo comparten **actividades-uaz, mi-campus y TaskFlow**. Para no afectar a las otras:
+El servidor está pensado para varias apps (una por subdominio de `rourendev.com`). Para no afectar
+a las otras:
 
 - Usa **solo** los comandos `taskflow …` de esta guía.
 - **Nunca** ejecutes `docker system prune`, `docker image prune -a`, `docker volume prune`,
   `docker compose down -v` ni `docker compose up --remove-orphans`.
 - Versiones viejas: `taskflow limpiar` (conserva la activa y la anterior).
 - No borres archivos de `/var/backups/taskflow/`: son los respaldos de todo el equipo.
-- No toques `/etc/nginx/` sin coordinarlo: el archivo de sitio es de actividades-uaz.
+- No toques `/etc/nginx/` sin coordinarlo: cada app tiene su sitio y un error de sintaxis las
+  tumba todas (siempre `sudo nginx -t` antes de recargar).

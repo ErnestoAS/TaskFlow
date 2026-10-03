@@ -46,7 +46,7 @@
   <section class="bloque" id="instalar" aria-labelledby="t-instalar">
     <div class="contenedor">
       <h2 class="titulo-seccion" id="t-instalar">Instala la aplicación</h2>
-      <p class="sub-seccion">Abre <b>sistemas.reduaz.mx/taskflow/</b> en tu dispositivo y sigue los pasos. La app queda en tu pantalla de inicio como cualquier otra y se actualiza sola.</p>
+      {% url "portada" as raiz %}<p class="sub-seccion">Abre <b>{{ request.get_host }}{% if raiz != "/" %}{{ raiz }}{% endif %}</b> en tu dispositivo y sigue los pasos. La app queda en tu pantalla de inicio como cualquier otra y se actualiza sola.</p>
       <div class="plataformas">
         <article class="plataforma" data-tarjeta-plat="android">
           <span class="tu-disp">Tu dispositivo</span>
@@ -112,11 +112,11 @@
       <details><summary>¿Cómo creo un proyecto?</summary><p>Desde «Mis proyectos», toca «Nuevo proyecto». Quedas como dueño y puedes invitar a otras personas desde «Miembros».</p></details>
       <details><summary>¿Quién ve mis tarjetas?</summary><p>Todos los miembros del proyecto ven todas sus tarjetas. Quien no es miembro no ve el proyecto.</p></details>
       <details><summary>¿Funciona sin internet?</summary><p>Puedes abrir la app y ver las últimas tarjetas que cargaste. Para crear o cambiar tarjetas necesitas conexión.</p></details>
-      <details><summary>Olvidé mi contraseña</summary><p>En la pantalla de entrada, toca «¿Olvidaste tu contraseña?» y te llegará un enlace a tu correo para crear una nueva.</p></details>
+      <details><summary>Olvidé mi contraseña</summary><p>En la pantalla de entrada, toca «¿Olvidaste tu contraseña?» y te llegará un código a tu correo para crear una nueva.</p></details>
     </div>
   </section>
 </main>
 
-<footer><div class="contenedor"><span class="marca-pie">{% include "core/_simbolo.html" %}<b>TaskFlow</b></span> · sistemas.reduaz.mx/taskflow/</div></footer>
+<footer><div class="contenedor"><span class="marca-pie">{% include "core/_simbolo.html" %}<b>TaskFlow</b></span> · {{ request.get_host }}{% if raiz != "/" %}{{ raiz }}{% endif %}</div></footer>
 {% endblock %}
 {% block scripts %}<script src="{% static 'js/portada.js' %}" defer></script>{% endblock %}

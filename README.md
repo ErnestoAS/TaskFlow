@@ -60,13 +60,12 @@ docker compose run --rm frontend sh -c "npm ci && npm run typecheck"
 
 ## Producción
 
-Publicado en **https://sistemas.reduaz.mx/taskflow/** (servidor compartido con actividades-uaz y
-mi-campus). Cada push a `main` corre ruff, la verificación de migraciones y las pruebas en GitHub
+Publicado en **https://taskflow.rourendev.com/** (servidor propio `srv-01` en Hetzner). Cada push a `main` corre ruff, la verificación de migraciones y las pruebas en GitHub
 Actions y, si pasan, publica la imagen `ghcr.io/ernestoas/taskflow:<commit corto>`. En el servidor
 se activa con `taskflow desplegar <commit corto>`.
 
 - Primera instalación, despliegue, respaldos y vuelta atrás: [docs/operacion.md](docs/operacion.md).
-- Cómo está montado hoy y qué cambiar al migrar: [docs/despliegue-actual.md](docs/despliegue-actual.md).
+- Cómo está montado hoy, riesgos aceptados y cómo agregar apps o mudarse: [docs/despliegue-actual.md](docs/despliegue-actual.md).
 - Guía para quien se suma a desplegar: [docs/guia-despliegue-colaborador.md](docs/guia-despliegue-colaborador.md).
 
 Al agregar o cambiar dependencias en `pyproject.toml`, regenerar el lock con `uv lock` y
