@@ -1,0 +1,10 @@
+# Respaldo diario de TaskFlow (docker/respaldo-diario.sh). Lo dispara taskflow-respaldo.timer.
+# Instalación: docs/operacion.md, «Respaldo automático diario».
+[Unit]
+Description=Respaldo diario de TaskFlow (base y archivos subidos)
+Requires=docker.service
+After=docker.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/taskflow-respaldo-diario
