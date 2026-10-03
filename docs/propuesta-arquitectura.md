@@ -6,7 +6,9 @@
 > CI (GitHub Actions + ghcr.io) y despliegue en `https://sistemas.reduaz.mx/taskflow/` en
 > producción desde el 2026-10-01 (versión `f6d2e40`, solo Etapa 1). **Cuentas con correo
 > verificado, recuperación de contraseña y apellidos separados** implementados el 2026-10-02
-> (§4.3, §7), sin desplegar.
+> (§4.3, §7), sin desplegar. **Pendiente (2026-10-02): listas libres por proyecto, estilo
+> Trello, en lugar de los tres estatus** (§4.6, maqueta `app-v3.html` por aprobar); hasta
+> implementarse, §4.4–§7 describen lo que hay hoy.
 > **Fecha:** 2026-10-02
 > **Alcance:** describe el funcionamiento general y el esquema. Lo pendiente de decidir está en
 > [§10](#10-preguntas-abiertas); los ajustes hechos al implementar, en [§11](#11-notas-de-implementación).
@@ -199,6 +201,76 @@ Decisiones tomadas al implementar (2026-10-01):
   PWA que la acepta (§5). El correo sale por SMTP (`DJANGO_EMAIL_*`); sin configurar, se imprime en el
   registro del contenedor.
 
+### 4.6 Listas en lugar de estatus *(decidido 2026-10-02 · pendiente: maqueta por aprobar, sin implementar)*
+
+**Qué cambia.** Ernesto pidió (2026-10-02) que las tarjetas se manejen como en Trello y quitar los
+estatus. Cada proyecto tendrá **sus propias listas** (columnas con nombre libre: «Ideas»,
+«Esperando compra», «Finalizada»…), que se crean, renombran, ordenan y eliminan; las tarjetas se
+mueven entre ellas y se ordenan a mano dentro de cada una. Maqueta:
+`docs/_mockups/app-v3.html`.
+
+Decisiones (Ernesto, 2026-10-02):
+
+- **No existe «terminada».** Si un equipo quiere ese concepto, crea una lista «Finalizada»; para
+  el sistema es una lista como cualquier otra. Por eso **«Vencida» = fecha fin pasada, sin
+  excepciones**, y «Mis tarjetas» muestra todo lo asignado (ver §10, pregunta 11).
+- **Mover:** **arrastrar y soltar en computadora y en teléfono** (entre listas y para ordenar
+  dentro de una). En teléfono se **mantiene presionada** la tarjeta (~0.35 s; si el dedo se mueve
+  antes, es un desplazamiento normal), la tarjeta se levanta con una vibración breve y sigue al
+  dedo, y cerca del borde el tablero pasa solo a la lista de al lado. Además, en el detalle, una
+  fila de botones con las listas mueve la tarjeta **al final** de la elegida con un toque (sirve
+  para teclado y lector de pantalla). Ernesto descartó (2026-10-03) el selector de posición
+  «Arriba / Posición n / Abajo» por poco profesional: el orden se cambia arrastrando. Todo esto
+  reemplaza la decisión de 2026-10-01 de no arrastrar.
+- **Historial de movimientos:** se conserva como «quién la movió de qué lista a cuál, fecha y
+  hora»; la creación es la primera entrada. Ordenar dentro de la misma lista **no** se registra
+  (sería ruido).
+
+Propuesto al implementar (2026-10-02, a confirmar con la maqueta):
+
+| Modelo | Campos | Notas |
+| --- | --- | --- |
+| `Lista` *(nuevo, en `proyectos`)* | `proyecto` (FK, `CASCADE`), `nombre` (50), `posicion` (entero), fechas | `UniqueConstraint(proyecto, Lower(nombre))`, igual que los tipos: en «Mover a…» dos listas con el mismo nombre serían indistinguibles. Orden por `posicion`. Va en `proyectos` junto a `TipoTarjeta` porque es configuración del proyecto. Sin color: las listas se distinguen por su nombre, y la paleta reserva los colores para alertas y tipos. |
+| `Tarjeta` (cambio) | − `estatus`; + `lista` (FK `Lista`, **obligatoria**, `PROTECT`); + `posicion` (entero) | `lista` debe ser del mismo proyecto (servicio). `PROTECT` porque **solo se elimina una lista vacía**: borrar en cascada tarjetas al quitar una columna es demasiado fácil de hacer sin querer. Se ordena por `posicion`; una tarjeta nueva va al final de su lista. Al mover, el servicio renumera las listas afectadas (son pocas tarjetas por lista; no hace falta un orden fraccionario). |
+| `Tarjeta` (cambio, Ernesto 2026-10-02) | + **`fecha_inicio`** (fecha, **obligatoria**; por omisión, el día de creación en `America/Mexico_City`) | **Cuándo empezó o se encargó** la actividad, que no siempre es cuándo se capturó: si a alguien le piden algo el lunes y lo anota el jueves, debe poder poner el lunes. Por eso es editable, a diferencia de `creado_en` (fecha y hora de captura, automática, de `TimeStampedModel`; ya existía pero la app no la mostraba: ahora sale en el detalle como «Creada por … el 3 oct 2026 · 09:14»). Solo fecha, como `fecha_fin`: la hora casi nunca se sabe y una inventada no aporta. Regla en el servicio: **`fecha_fin` no puede ser anterior a `fecha_inicio`**. La migración llena las existentes con la fecha de su `creado_en`. |
+| Textos (Ernesto 2026-10-02) | En la interfaz: **«Fecha de inicio»** y **«Fecha límite»** (antes «Fecha fin») | Términos genéricos que sirven para un encargo, un trámite o un evento; se descartó «Encargada el» porque no toda tarjeta es un encargo. En el código `fecha_fin` conserva su nombre (ya existe; renombrarlo no le cambia nada al usuario). |
+| `Movimiento` *(reemplaza a `CambioEstatus`)* | `tarjeta` (FK, `CASCADE`), `lista_anterior` y `lista_nueva` (**texto**, el nombre en ese momento; `lista_anterior` vacía en la creación), `usuario` (FK, `SET_NULL`), `fecha` | Se guarda el **nombre** y no una FK porque las listas se renombran y se eliminan, y el historial debe seguir diciendo lo que pasó. Mismas reglas que `CambioEstatus`: solo se agregan filas, en la misma transacción y desde un único servicio (`mover_tarjeta`). |
+| `MiembroProyecto` (cambio) | `puede_cambiar_estatus` → **`puede_mover`**; + **`puede_gestionar_listas`** (`False`) | Seis permisos. Quien acepta una invitación entra con crear, editar y mover. Gestionar listas va aparte de gestionar tipos porque reorganizar el tablero afecta a todos más que agregar una etiqueta. |
+
+- **Proyecto nuevo:** empieza con las listas «Pendiente», «En curso» y «Finalizada», editables;
+  un tablero vacío no le dice a nadie por dónde empezar, y esos nombres son los que ya conocen.
+- **Migración:** cada proyecto recibe esas tres listas y cada tarjeta va a la de su estatus; el
+  historial pasa de `CambioEstatus` a `Movimiento` con los nombres de los estatus. No se pierde
+  nada.
+- **Servicios:** `crear_lista`, `renombrar_lista`, `ordenar_listas`, `eliminar_lista` (rechaza si
+  tiene tarjetas) y `mover_tarjeta(tarjeta, lista, posicion)`, que reemplaza a `cambiar_estatus`.
+- **API (§6):** `POST proyectos/<id>/listas/`, `PATCH, DELETE listas/<id>/`,
+  `POST proyectos/<id>/listas/orden/` (`{ids: […]}`) y `POST tarjetas/<id>/mover/`
+  (`{lista, posicion}`), que reemplaza a `tarjetas/<id>/estatus/`. `GET proyectos/<id>/` incluye
+  las listas; el resumen de «Mis proyectos» trae el conteo por lista en vez de por estatus.
+- **«Proyecto» pasa a llamarse «Espacio» en la interfaz** (Ernesto, 2026-10-02): «proyecto» suena
+  a algo con inicio y fin, y TaskFlow también se usa para áreas o equipos permanentes. Se descartó
+  «Tablero» porque se confunde con las listas (así les llamaba Ernesto al platicarlo). *Pendiente
+  de confirmar:* propuesta de cambiar solo textos de la PWA, la portada y los correos, y dejar
+  `Proyecto` en modelos, API y URLs (`#/proyectos/…`); renombrarlos costaría una migración y
+  cambiar la API sin ningún beneficio para quien usa la app.
+- **«Mis espacios»** (2026-10-02, Ernesto): cada espacio se muestra con un **resumen de tamaño
+  fijo** («8 tarjetas · 5 listas · 3 tuyas», miembros y vencidas). Antes había un chip por lista,
+  y con muchas listas la tarjeta crecía hacia abajo.
+- **PWA (§5):** el tablero es una fila de listas con desplazamiento horizontal (en teléfono, una
+  lista por pantalla, con **pestañas subrayadas** arriba para saltar entre listas y un solo botón
+  **«Filtrar»** que abre una hoja con «Solo mías» y el tipo; el 2026-10-02 Ernesto pidió quitar
+  las dos filas de chips, que ocupaban media pantalla. En computadora, columnas de 284 px con los
+  filtros a la vista), con
+  «Agregar tarjeta» al pie de cada lista y «Agregar lista» al final. Opciones de la lista
+  (renombrar, mover a la izquierda o derecha, eliminar si está vacía) en su menú «⋯». Se quitan
+  la barra de avance y los conteos por estatus de «Mis proyectos», los badges de estatus y las
+  variables `--tf-status-*` (se agrega `.chip.lista`, neutro en navy suave). El orden del tablero
+  pasa a ser **manual**; la prioridad sigue como badge y como indicador lateral de urgente.
+- *Pendiente de elegir al implementar:* la librería de arrastre (con soporte táctil y de
+  teclado; candidata: SortableJS vía `vue-draggable-plus`, que ya trae la espera al presionar
+  solo en táctil, `delayOnTouchOnly`, y el desplazamiento automático en los bordes).
+
 ## 5. Vistas de la aplicación
 
 *Aprobadas el 2026-10-01* con las maquetas `docs/_mockups/app-v2.html` y
@@ -319,6 +391,7 @@ límite `acceso`.
 | 2 | Proyectos, miembros, permisos, invitaciones, tipos e historial (§4.5): modelos, migraciones, servicios, admin y pruebas | ✅ 2026-10-01 (maquetas en `docs/_mockups/`) |
 | 3 | API `/api/v1/`, PWA (tablero, tarjetas, miembros, invitaciones, tipos, perfil) y portada de instalación (§5–§7) | ✅ 2026-10-01 · sin desplegar |
 | 3.5 | Correo verificado con código, recuperar contraseña y apellidos separados (§4.3, §7) | ✅ 2026-10-02 · sin desplegar |
+| 3.6 | Listas libres por proyecto en lugar de estatus, arrastrar y soltar, historial de movimientos (§4.6) | Decidido 2026-10-02 · maqueta `app-v3.html` por aprobar |
 | 4 | Por definir: avisos por correo de asignación o vencimiento, búsqueda, comentarios en tarjetas | — |
 
 ## 9. Decisiones de diseño
@@ -358,6 +431,22 @@ límite `acceso`.
   15 s de aviso bastan para guardar. Los datos no corren riesgo con una versión vieja (las reglas
   viven en el servidor); el riesgo era de pantallas rotas. Los despliegues se hacen en horas de
   poco uso.
+- **Listas libres en lugar de estatus fijos** (2026-10-02, Ernesto; pendiente, §4.6): los tres
+  estatus obligaban a todos los proyectos a la misma forma de trabajo, y los equipos tienen etapas
+  propias («Esperando compra», «Revisión con dirección»). Se descartaron: **estatus configurables
+  con una casilla «es final»** (mantiene el concepto de terminada pero agrega una regla que nadie
+  pidió; Ernesto prefirió que «Finalizada» sea solo una lista), **una casilla «Completada» aparte
+  de la lista** (dos formas de decir lo mismo), **archivar tarjetas al terminar** (otra
+  pantalla más para algo que una lista ya resuelve) y **quitar las columnas** y dejar una sola
+  lista filtrable (pierde la vista de etapas, que es lo que se quería). Costo aceptado: sin
+  «terminada», las vencidas en una lista de cierre siguen marcadas (§10, 11).
+- **Arrastrar y soltar en todos los dispositivos, más «Mover a» en el detalle** (2026-10-02,
+  ajustado 2026-10-03; pendiente): con listas libres y orden manual, arrastrar es la forma
+  natural. El 2026-10-01 se había descartado porque en teléfono es torpe: se resuelve con
+  **mantener presionado** para levantar la tarjeta, como las apps nativas, para no confundirlo
+  con desplazar el tablero. Se descartó un selector de lista y posición en el detalle como
+  única vía en teléfono (Ernesto, 2026-10-03: poco vistoso); queda solo el cambio de lista con un
+  toque, como alternativa accesible.
 - **Paleta y tipografía compartidas** (2026-10-01): la PWA importa `static/css/tema.css` y
   `static/css/fuentes.css`, los mismos que la portada; no hay una segunda copia de los colores.
 - **Sin nginx interno** (2026-10-01), a diferencia de mi-campus: no hay archivos privados que
@@ -388,6 +477,15 @@ límite `acceso`.
 
 10. ~~¿Cómo recupera alguien su contraseña?~~ **Resuelta (2026-10-02):** con un código por
     correo (§7), el mismo mecanismo que verifica la cuenta al registrarse.
+
+11. **(2026-10-02, abierta)** Sin «terminada» (§4.6), una tarjeta con fecha pasada que está en
+    una lista de cierre («Finalizada») sigue saliendo «Vencida» y en «Mis tarjetas». Por ahora se
+    resuelve quitándole la fecha o los asignados, o eliminándola. Si molesta en el uso real,
+    opciones: marcar una lista como «de cierre» (sin vencidas ni «Mis tarjetas») o archivar
+    tarjetas.
+12. ~~¿Las tarjetas se arrastran?~~ **Resuelta (2026-10-02, ampliada 2026-10-03):** sí, en
+    computadora y en teléfono (mantener presionada), más cambio de lista con un toque en el
+    detalle (§9). Antes (2026-10-01) se había decidido que no.
 
 ## 11. Notas de implementación
 
@@ -447,3 +545,10 @@ límite `acceso`.
   de aviso, y la app busca versiones al volver al frente y cada hora (antes, solo al abrirse).
   `registerType` sigue en `"prompt"`: es lo que deja controlar el momento de la recarga. Motivo
   y alternativas en §9.
+- (2026-10-02) **Cambio al esquema aprobado (decidido, pendiente de implementar): listas en lugar
+  de estatus.** Contradice lo aprobado el 2026-10-01 en §1, §4.4 (`Tarjeta.estatus`), §4.5
+  (`CambioEstatus`, permiso «cambiar estatus», mover entre los tres estatus), §5 (pestañas por
+  estatus, tres columnas, orden por prioridad), §6 (`tarjetas/<id>/estatus/`) y la tabla de
+  badges de CLAUDE.md. Motivo: Ernesto quiere organizar las tarjetas como en Trello, con listas
+  propias de cada proyecto, sin el concepto de terminada. Diseño en §4.6, alternativas en §9,
+  maqueta `docs/_mockups/app-v3.html`. Esas secciones se reescriben al implementar.

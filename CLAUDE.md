@@ -152,6 +152,7 @@ autocontenido por maqueta, con datos inventados y sin backend: se abre con doble
 
 | Archivo | Qué explora |
 |---|---|
+| `app-v3.html` | ***Por aprobar* (2026-10-02).** Listas libres por proyecto (estilo Trello) en lugar de los tres estatus: tablero con desplazamiento horizontal, agregar/renombrar/ordenar/eliminar listas, arrastrar y soltar (en teléfono, mantener presionada), cambio de lista con un toque en el detalle, historial de movimientos, permisos «Mover» y «Gestionar listas», «Mis tarjetas» sin el filtro de finalizadas. Colores de `tema.css` (navy + petróleo). |
 | `app-v2.html` | **Implementada** (con colores cambiados después: navy + petróleo, botón principal navy; ver docs/identidad-visual.md). Igual que v1 con la paleta navy + coral, el logo, la **prioridad** (badge, selector en el formulario, indicador lateral para urgente y orden por prioridad) y barra lateral navy en computadora. |
 | `instalacion-v2.html` | **Implementada** (sin la ilustración del teléfono y con los colores nuevos). Portada de instalación con la paleta navy + coral y el logo. |
 | `app-v1.html` | *(Reemplazada por v2; se conserva como referencia.)* PWA: mis proyectos (activos y archivados), tablero por estatus (pestañas en teléfono, tres columnas en computadora), detalle y edición de tarjeta, nueva tarjeta, miembros con permisos por persona, invitaciones, transferir/archivar/eliminar proyecto, «Mis tarjetas» y perfil. El escaparate cambia vista, usuario (Ana, dueña / Luis, miembro) y la fecha «de hoy». |
@@ -205,6 +206,34 @@ aprobarse.
   administrador transfiere el proyecto a otro miembro desde el admin de Django.
 - **Instalación:** portada propia en `/taskflow/` con botón que usa `beforeinstallprompt` (Android
   y computadora) y pasos de Safari en iPhone; la app vive en `/taskflow/app/`. Igual que mi-campus.
+
+### Decisiones de `app-v3.html` *(pendientes de aprobar, 2026-10-02; diseño en §4.6 de la propuesta)*
+
+Al aprobarse, reemplazan lo que contradicen arriba (estatus, «el estatus se cambia desde el
+detalle», orden por prioridad, permiso «cambiar estatus») y la tabla de badges.
+
+- **Sin estatus:** cada proyecto tiene sus **listas** con nombre libre; un proyecto nuevo empieza
+  con «Pendiente», «En curso» y «Finalizada», editables. Las listas no tienen color.
+- **No existe «terminada»:** «Finalizada» es una lista más. «Vencida» = fecha pasada, siempre;
+  «Mis tarjetas» muestra todo lo asignado, con el nombre de la lista.
+- **Mover:** arrastrar y soltar en computadora y en teléfono (en teléfono, **mantener presionada**
+  para levantarla; cerca del borde pasa sola a la lista de al lado). En el detalle, botones con las
+  listas para cambiarla de lista con un toque (queda al final). Sin selector de posición: el orden
+  se cambia arrastrando. Orden manual dentro de cada lista; una tarjeta nueva va al final.
+- **Historial de movimientos** (de qué lista a cuál, con el nombre de entonces); ordenar dentro de
+  una lista no se registra.
+- **Listas:** solo se elimina una lista vacía. Permisos: «Cambiar estatus» pasa a «Mover» y se
+  agrega «Gestionar listas» (apagado de inicio).
+- **«Proyecto» se llama «Espacio» en la interfaz** («Mis espacios», «Nuevo espacio»). En el código
+  sigue `Proyecto` (por confirmar).
+- **Mis espacios:** resumen de una línea por espacio (tarjetas · listas · tuyas, y vencidas), sin un
+  chip por lista.
+- **Fechas de la tarjeta:** se muestra la fecha y hora de captura (`creado_en`, automática) y se
+  agrega **«Fecha de inicio»** (`fecha_inicio`, obligatoria, hoy por omisión, editable) para
+  registrar cuándo empezó o se pidió algo capturado después. «Fecha fin» se muestra como
+  **«Fecha límite»** (`fecha_fin` en el código) y no puede ser anterior a la de inicio.
+- **Tablero en teléfono:** pestañas subrayadas con las listas y un solo botón «Filtrar» (hoja con
+  «Solo mías» y tipo); los filtros solo quedan a la vista en computadora.
 
 ### Convenciones de las maquetas
 

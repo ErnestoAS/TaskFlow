@@ -1,0 +1,1010 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TaskFlow · maqueta de la app (v3, listas)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+/* =========================================================
+   Maqueta v3 de la PWA de TaskFlow (2026-10-02): listas libres por proyecto
+   (estilo Trello) en lugar de los tres estatus fijos. POR APROBAR.
+   Colores: los de static/css/tema.css (navy + petróleo), solo por variable.
+========================================================= */
+:root{
+  /* Marca */
+  --tf-logo:#000955;
+  --tf-primary:#172554; --tf-primary-hover:#1e3a8a; --tf-primary-soft:#e8ecf6;
+  --tf-accent:#0e7490; --tf-accent-hover:#155e75; --tf-accent-soft:#ecfeff;
+  --tf-accent-text:#155e75; --tf-on-accent:#ffffff; --tf-accent-on-dark:#67e8f9;
+  --tf-btn:#172554; --tf-btn-hover:#1e3a8a; --tf-on-btn:#ffffff;
+
+  /* Fondos, texto y bordes */
+  --tf-bg:#f5f7fa; --tf-surface:#ffffff; --tf-text:#172033; --tf-text-muted:#64748b;
+  --tf-text-disabled:#94a3b8; --tf-border:#e2e8f0; --tf-sidebar-text:#cbd5e1;
+
+  /* Semánticos */
+  --tf-danger:#dc2626;  --tf-danger-text:#b91c1c;  --tf-danger-soft:#fef2f2;
+  --tf-warning:#d97706; --tf-warning-text:#b45309; --tf-warning-soft:#fffbeb;
+
+  /* Prioridades */
+  --tf-priority-low:#cbd5e1;    --tf-priority-low-text:#64748b;    --tf-priority-low-soft:#f8fafc;
+  --tf-priority-medium:#64748b; --tf-priority-medium-text:#334155; --tf-priority-medium-soft:#e2e8f0;
+  --tf-priority-high:#d97706;   --tf-priority-high-text:#b45309;   --tf-priority-high-soft:#fffbeb;
+  --tf-priority-urgent:#dc2626; --tf-priority-urgent-text:#b91c1c; --tf-priority-urgent-soft:#fef2f2;
+
+  --av1:#172554; --av2:#1e3a8a; --av3:#334155; --av4:#475569; --av5:#0f3f6e; --av6:#3b4a6b;
+
+  --tf-radius-card:12px; --tf-radius-btn:9px; --tf-radius-modal:16px;
+  --tf-shadow:0 1px 3px rgba(15,23,42,.06);
+  --tf-shadow-float:0 8px 24px rgba(15,23,42,.10);
+  --tf-veil:rgba(15,23,42,.45);
+
+  /* Escaparate (no es parte de la app) */
+  --esc-fondo:#e7eaf0; --esc-texto:#33404d; --esc-caja:#ffffff; --esc-linea:#d5d8de;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  background:var(--esc-fondo);color:var(--tf-text);
+  font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  min-height:100vh;display:flex;flex-direction:column;align-items:center;gap:14px;padding:16px;
+  -webkit-font-smoothing:antialiased;
+}
+button,input,textarea,select{font-family:inherit;font-size:inherit;color:inherit}
+button{cursor:pointer}
+svg{flex-shrink:0}
+:focus-visible{outline:2px solid var(--tf-accent);outline-offset:2px}
+
+/* ---------- escaparate (solo para presentar) ---------- */
+.escaparate{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;align-items:center;font-size:12.5px;color:var(--esc-texto)}
+.escaparate .grupo{display:flex;align-items:center;gap:4px;background:var(--esc-caja);border:1px solid var(--esc-linea);border-radius:10px;padding:4px 6px}
+.escaparate .grupo b{font-weight:600;padding:0 4px}
+.escaparate button{border:0;background:transparent;padding:4px 9px;border-radius:7px}
+.escaparate button[aria-pressed="true"]{background:var(--tf-primary);color:var(--tf-surface)}
+.escaparate input[type=date]{border:0;background:transparent;padding:2px 4px}
+.escaparate .nota{opacity:.75}
+
+/* ---------- marco ---------- */
+.dispositivo{
+  width:390px;height:800px;background:var(--tf-bg);border-radius:38px;overflow:hidden;position:relative;
+  box-shadow:0 0 0 10px var(--tf-text),0 24px 60px rgba(0,0,0,.25);display:flex;flex-direction:column;
+}
+.dispositivo.computadora{width:min(1240px,100%);height:760px;border-radius:14px;box-shadow:0 0 0 1px var(--esc-linea),0 24px 60px rgba(0,0,0,.18);
+  display:grid;grid-template-columns:232px minmax(0,1fr);grid-template-rows:auto 1fr}
+.computadora .cuerpo{display:contents}
+.computadora .nav-lateral{grid-column:1;grid-row:1 / 3}
+.computadora .cabecera{grid-column:2;grid-row:1}
+.computadora .contenido{grid-column:2;grid-row:2;min-width:0}
+@media (max-width:520px){
+  body{padding:0;background:var(--tf-bg)}
+  .escaparate{display:none}
+  .dispositivo,.dispositivo.computadora{width:100%;height:100vh;border-radius:0;box-shadow:none}
+}
+
+/* ---------- cabecera ---------- */
+.cabecera{background:var(--tf-surface);color:var(--tf-text);border-bottom:1px solid var(--tf-border);padding:14px 14px 12px;display:flex;align-items:center;gap:10px;flex-shrink:0}
+.computadora .cabecera{padding:14px 24px}
+.cabecera .titulos{flex:1;min-width:0}
+.cabecera h1{font-size:17px;margin:0;font-weight:700;letter-spacing:-.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cabecera .sub{font-size:12px;color:var(--tf-text-muted);margin-top:1px}
+.btn-icono{border:0;background:transparent;color:var(--tf-primary);width:36px;height:36px;border-radius:10px;display:grid;place-items:center}
+.btn-icono:hover{background:var(--tf-bg)}
+.sello{width:34px;height:34px;display:grid;place-items:center;color:var(--tf-logo)}
+.sello svg{width:32px;height:auto}
+.computadora .sello{display:none}
+
+/* ---------- contenido ---------- */
+.contenido{flex:1;overflow:auto;padding:14px 14px 90px}
+.computadora .contenido{padding:20px 24px 24px}
+.seccion-titulo{font-size:11.5px;text-transform:uppercase;letter-spacing:.07em;color:var(--tf-text-muted);margin:18px 4px 8px;font-weight:600}
+.seccion-titulo:first-child{margin-top:4px}
+.vacio{color:var(--tf-text-muted);text-align:center;padding:36px 16px;font-size:14px}
+
+/* ---------- proyectos ---------- */
+.lista-proyectos{display:grid;gap:10px}
+.computadora .lista-proyectos{grid-template-columns:repeat(auto-fill,minmax(300px,1fr))}
+.proyecto{background:var(--tf-surface);border-radius:var(--tf-radius-card);border:1px solid var(--tf-border);box-shadow:var(--tf-shadow);padding:14px;text-align:left;width:100%;display:flex;flex-direction:column;gap:10px;transition:border-color .12s,box-shadow .12s}
+.proyecto:hover{border-color:color-mix(in srgb,var(--tf-primary) 30%,var(--tf-border));box-shadow:var(--tf-shadow-float)}
+.proyecto .fila{display:flex;align-items:center;gap:8px}
+.proyecto h3{margin:0;font-size:15.5px;flex:1;font-weight:650}
+/* Resumen de una sola línea: no crece con el número de listas. */
+.proyecto .resumen{font-size:12.5px;color:var(--tf-text-muted);display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.proyecto .resumen b{color:var(--tf-text);font-weight:600}
+.proyecto .fila .chip{margin-left:auto}
+.etiqueta-rol{font-size:11px;padding:2px 8px;border-radius:99px;background:var(--tf-primary-soft);color:var(--tf-primary);font-weight:600}
+.proyecto.archivado{opacity:.75}
+
+/* ---------- chips ---------- */
+.chip{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;font-weight:600;padding:3px 9px;border-radius:9999px;white-space:nowrap;line-height:1.3}
+.punto{width:7px;height:7px;border-radius:50%;background:currentColor;flex-shrink:0}
+/* NUEVO v3: nombre de una lista. Neutro: las listas no tienen color (las nombra el usuario). */
+.chip.lista{background:var(--tf-primary-soft);color:var(--tf-primary);font-weight:600}
+.chip.lista .num{opacity:.7;font-weight:500}
+.chip.neutro{background:var(--tf-bg);color:var(--tf-text-muted);border:1px solid var(--tf-border)}
+.chip.vencida{background:var(--tf-danger-soft);color:var(--tf-danger-text)}
+.chip.por-vencer{background:var(--tf-warning-soft);color:var(--tf-warning-text)}
+.chip.fecha{background:var(--tf-bg);color:var(--tf-text-muted);font-weight:500}
+.chip.prio-baja{background:var(--tf-priority-low-soft);color:var(--tf-priority-low-text)} .chip.prio-baja .punto{background:var(--tf-priority-low)}
+.chip.prio-media{background:var(--tf-priority-medium-soft);color:var(--tf-priority-medium-text)} .chip.prio-media .punto{background:var(--tf-priority-medium)}
+.chip.prio-alta{background:var(--tf-priority-high-soft);color:var(--tf-priority-high-text)} .chip.prio-alta .punto{background:var(--tf-priority-high)}
+.chip.prio-urgente{background:var(--tf-priority-urgent-soft);color:var(--tf-priority-urgent-text)} .chip.prio-urgente .punto{background:var(--tf-priority-urgent)}
+.chip.tipo{background:color-mix(in srgb,var(--tipo) 12%,var(--tf-surface));color:color-mix(in srgb,var(--tipo) 70%,var(--tf-text))}
+.chip.tipo .punto{background:var(--tipo)}
+
+/* ---------- avatares ---------- */
+.avatares{display:flex}
+.avatar{width:26px;height:26px;border-radius:50%;color:var(--tf-surface);font-size:10px;font-weight:700;display:grid;place-items:center;border:2px solid var(--tf-surface);margin-left:-7px;letter-spacing:.02em}
+.avatares .avatar:first-child{margin-left:0}
+.avatar.grande{width:36px;height:36px;font-size:12.5px;margin:0;border:0}
+.avatar.mas{background:var(--tf-border);color:var(--tf-text-muted)}
+
+/* ---------- tablero de listas (NUEVO v3) ---------- */
+.filtros{display:flex;justify-content:space-between;align-items:center;margin:0 2px 10px;font-size:13px;color:var(--tf-text-muted);gap:8px}
+.interruptor{display:flex;align-items:center;gap:8px;border:0;background:transparent;color:var(--tf-text-muted);padding:4px}
+.interruptor .pista{width:32px;height:18px;border-radius:99px;background:var(--tf-border);position:relative;transition:.15s}
+.interruptor .pista::after{content:"";position:absolute;top:2px;left:2px;width:14px;height:14px;border-radius:50%;background:var(--tf-surface);transition:.15s;box-shadow:var(--tf-shadow)}
+.interruptor[aria-pressed="true"] .pista{background:var(--tf-accent)}
+.interruptor[aria-pressed="true"] .pista::after{left:16px}
+.filtro-tipos{display:flex;gap:6px;overflow-x:auto;margin:0 0 12px;padding-bottom:2px}
+.filtro-tipos button{border:1px solid var(--tf-border);background:var(--tf-surface);border-radius:99px;padding:5px 11px;font-size:12.5px;font-weight:600;color:var(--tf-text-muted);display:inline-flex;gap:6px;align-items:center;white-space:nowrap}
+.filtro-tipos button .punto{background:var(--tipo,var(--tf-text-muted))}
+.filtro-tipos button[aria-pressed="true"]{border-color:var(--tipo,var(--tf-primary));background:color-mix(in srgb,var(--tipo,var(--tf-primary)) 10%,var(--tf-surface));color:var(--tf-text)}
+/* Teléfono: pestañas subrayadas con las listas (también se recorren deslizando) y un solo botón
+   «Filtrar» que abre una hoja; en computadora los filtros quedan a la vista. */
+.solo-compu{display:none}
+.computadora .solo-compu{display:flex}
+.computadora .solo-tel{display:none}
+.pestanas-listas{display:flex;overflow-x:auto;margin:-14px -14px 12px;padding:0 8px;background:var(--tf-surface);border-bottom:1px solid var(--tf-border);scrollbar-width:none;position:sticky;top:-14px;z-index:3}
+.pestanas-listas::-webkit-scrollbar{display:none}
+.pestanas-listas button{border:0;background:transparent;padding:11px 10px 10px;font-size:13.5px;font-weight:600;color:var(--tf-text-muted);white-space:nowrap;border-bottom:2px solid transparent;display:inline-flex;gap:6px;align-items:center}
+.pestanas-listas button[aria-current="true"]{color:var(--tf-primary);border-bottom-color:var(--tf-accent)}
+.pestanas-listas .num{font-size:11px;font-weight:600;background:var(--tf-bg);color:var(--tf-text-muted);border-radius:99px;padding:1px 7px}
+.barra-tel{display:flex;align-items:center;gap:8px;margin:0 2px 10px;font-size:13px;color:var(--tf-text-muted)}
+.barra-tel .activos{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.barra-tel .btn-link{border:0;background:transparent;color:var(--tf-accent-text);font-weight:600;font-size:13px;padding:4px}
+.contador{background:var(--tf-primary);color:var(--tf-on-btn);border-radius:99px;font-size:11px;padding:0 6px;line-height:17px}
+.opciones-filtro{display:flex;flex-direction:column;gap:2px}
+.opciones-filtro label{display:flex;align-items:center;gap:10px;padding:9px 6px;border-radius:10px;cursor:pointer;font-size:14px}
+.opciones-filtro label:hover{background:var(--tf-bg)}
+.opciones-filtro input{width:18px;height:18px;accent-color:var(--tf-accent)}
+
+.tablero{display:flex;gap:12px;overflow-x:auto;align-items:flex-start;scroll-snap-type:x mandatory;margin:0 -14px;padding:0 14px 12px;scroll-padding:0 14px}
+.computadora .tablero{margin:0;padding:0 0 12px;scroll-snap-type:none}
+.lista{flex:0 0 86%;scroll-snap-align:start;background:color-mix(in srgb,var(--tf-border) 55%,var(--tf-bg));border-radius:14px;padding:10px;display:flex;flex-direction:column;gap:8px;max-height:100%}
+.computadora .lista{flex-basis:284px}
+.lista-cab{display:flex;align-items:center;gap:6px;padding:2px 2px 2px 6px}
+.lista-cab h3{margin:0;font-size:14px;font-weight:700;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lista-cab .num{color:var(--tf-text-muted);font-weight:600;font-size:12px;background:var(--tf-surface);border-radius:99px;padding:1px 8px}
+.lista-cab .btn-icono{width:30px;height:30px;color:var(--tf-text-muted)}
+.lista-tarjetas{display:flex;flex-direction:column;gap:8px;min-height:8px}
+.lista-tarjetas .vacio{padding:14px 8px;font-size:13px}
+.agregar-tarjeta{border:0;background:transparent;color:var(--tf-text-muted);font-weight:600;font-size:13.5px;text-align:left;padding:8px 8px;border-radius:9px;display:flex;align-items:center;gap:6px}
+.agregar-tarjeta:hover{background:color-mix(in srgb,var(--tf-text) 6%,transparent);color:var(--tf-text)}
+.lista.nueva{background:transparent;border:2px dashed var(--tf-border)}
+.lista.nueva form{display:flex;flex-direction:column;gap:8px}
+.lista.nueva input{border:1px solid var(--tf-border);border-radius:var(--tf-radius-btn);padding:9px 11px;background:var(--tf-surface)}
+.lista.nueva input:focus{outline:none;border-color:var(--tf-accent);box-shadow:0 0 0 3px var(--tf-accent-soft)}
+/* Arrastrar y soltar. Computadora: arrastre nativo. Teléfono: mantener presionada ~0.35 s; la
+   tarjeta se levanta y sigue al dedo, y cerca del borde el tablero se desplaza a la otra lista. */
+.tarjeta[draggable="true"]{cursor:grab}
+.tablero.tactil .tarjeta{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+.tarjeta.presionando{transform:scale(.98);transition:transform .35s}
+.tarjeta.hueco{opacity:.35;box-shadow:none;border-style:dashed}
+.fantasma{position:fixed;z-index:50;pointer-events:none;margin:0;transform:rotate(2.5deg) scale(1.04);box-shadow:0 18px 40px rgba(15,23,42,.28);border-color:var(--tf-accent);transition:none;animation:levantar .15s ease-out}
+.tablero.arrastrando-tactil{scroll-snap-type:none}
+@keyframes levantar{from{transform:none;box-shadow:var(--tf-shadow)}to{transform:rotate(2.5deg) scale(1.04)}}
+.tarjeta.arrastrando{opacity:.35}
+.lista.destino{box-shadow:inset 0 0 0 2px var(--tf-accent)}
+.marcador{height:3px;border-radius:3px;background:var(--tf-accent);margin:-2px 4px}
+
+.tarjeta{position:relative;background:var(--tf-surface);border-radius:var(--tf-radius-card);border:1px solid var(--tf-border);box-shadow:var(--tf-shadow);padding:11px 12px;text-align:left;width:100%;display:flex;flex-direction:column;gap:7px;overflow:hidden;transition:border-color .12s,box-shadow .12s}
+.tarjeta:hover{border-color:color-mix(in srgb,var(--tf-primary) 28%,var(--tf-border));box-shadow:var(--tf-shadow-float)}
+.tarjeta.urgente::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--tf-priority-urgent)}
+.tarjeta h4{margin:0;font-size:14px;font-weight:650;line-height:1.3}
+.tarjeta p{margin:0;font-size:12.5px;color:var(--tf-text-muted);line-height:1.45;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.tarjeta .etiquetas{display:flex;gap:5px;flex-wrap:wrap}
+.tarjeta .pie{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.tarjeta .pie .avatares{margin-left:auto}
+.tarjeta .proyecto-de{font-size:11.5px;color:var(--tf-primary);font-weight:600}
+.mis-tarjetas{display:grid;gap:10px}
+.computadora .mis-tarjetas{grid-template-columns:repeat(auto-fill,minmax(300px,1fr))}
+
+/* ---------- botones ---------- */
+.btn{border:0;border-radius:var(--tf-radius-btn);padding:10px 16px;font-weight:600;font-size:14px;display:inline-flex;align-items:center;justify-content:center;gap:7px;transition:background .12s,box-shadow .12s}
+.btn-primario{background:var(--tf-btn);color:var(--tf-on-btn)}
+.btn-primario:hover{background:var(--tf-btn-hover)}
+.btn-secundario{background:var(--tf-surface);color:var(--tf-text);box-shadow:inset 0 0 0 1px var(--tf-border)}
+.btn-secundario:hover{background:var(--tf-bg)}
+.btn-peligro{background:var(--tf-surface);color:var(--tf-danger-text);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--tf-danger) 45%,var(--tf-border))}
+.btn-peligro:hover{background:var(--tf-danger-soft)}
+.btn-peligro-lleno{background:var(--tf-danger-text);color:var(--tf-surface)}
+.btn-chico{padding:6px 11px;font-size:12.5px;border-radius:8px}
+.btn-bloque{width:100%}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.acciones-cab{display:none;gap:8px}
+.computadora .acciones-cab{display:flex}
+
+/* ---------- navegación ---------- */
+.nav-inferior{position:absolute;left:0;right:0;bottom:0;background:var(--tf-surface);border-top:1px solid var(--tf-border);display:flex;justify-content:space-around;padding:6px 6px 14px;z-index:5}
+.nav-inferior button{position:relative;border:0;background:transparent;display:flex;flex-direction:column;align-items:center;gap:3px;font-size:11px;color:var(--tf-text-muted);padding:6px 12px;border-radius:10px;min-width:84px}
+.nav-inferior button[aria-current="page"]{color:var(--tf-primary);font-weight:650}
+.nav-inferior button[aria-current="page"]::before{content:"";position:absolute;top:-6px;left:50%;width:28px;height:3px;border-radius:0 0 3px 3px;background:var(--tf-accent);transform:translateX(-50%)}
+.nav-lateral{display:none}
+.computadora .nav-inferior{display:none}
+.cuerpo{display:flex;flex-direction:column;flex:1;min-height:0}
+.computadora .nav-lateral{display:flex;flex-direction:column;gap:2px;background:var(--tf-primary);padding:18px 12px}
+.marca-lateral{display:flex;align-items:center;gap:10px;color:var(--tf-surface);padding:2px 8px 18px;font-weight:700;font-size:18px;letter-spacing:-.01em}
+.marca-lateral svg{width:30px;height:auto}
+.nav-lateral .separador{height:1px;background:color-mix(in srgb,var(--tf-surface) 12%,transparent);margin:10px 8px}
+.nav-lateral .rotulo-nav{font-size:11px;letter-spacing:.07em;text-transform:uppercase;color:var(--tf-sidebar-text);opacity:.7;padding:4px 12px}
+.nav-lateral button{position:relative;border:0;background:transparent;display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:9px;font-size:14px;color:var(--tf-sidebar-text);text-align:left}
+.nav-lateral button:hover{background:color-mix(in srgb,var(--tf-surface) 6%,transparent);color:var(--tf-surface)}
+.nav-lateral button[aria-current="page"]{background:color-mix(in srgb,var(--tf-accent-on-dark) 14%,transparent);color:var(--tf-surface);font-weight:600}
+.nav-lateral button[aria-current="page"]::before{content:"";position:absolute;left:-12px;top:8px;bottom:8px;width:3px;border-radius:0 3px 3px 0;background:var(--tf-accent-on-dark)}
+
+/* ---------- hoja (detalle / formularios) ---------- */
+.velo{position:absolute;inset:0;background:var(--tf-veil);display:flex;align-items:flex-end;z-index:10;animation:aparecer .15s}
+.computadora .velo{align-items:stretch;justify-content:flex-end}
+.hoja{background:var(--tf-surface);width:100%;max-height:92%;border-radius:var(--tf-radius-modal) var(--tf-radius-modal) 0 0;overflow:auto;padding:8px 18px 22px;animation:subir .18s ease-out}
+.computadora .hoja{width:460px;max-height:none;border-radius:0;padding:22px 26px;animation:entrar .18s ease-out}
+.asa{width:40px;height:5px;border-radius:9px;background:var(--tf-border);margin:4px auto 12px}
+.computadora .asa{display:none}
+.hoja-cab{display:flex;align-items:flex-start;gap:8px;margin-bottom:12px}
+.hoja-cab h2{font-size:18px;margin:0;flex:1;line-height:1.3;font-weight:700;letter-spacing:-.01em}
+.hoja-cab .btn-icono{color:var(--tf-text-muted)}
+.campo{margin-bottom:16px}
+.campo>label,.campo>.etiqueta{display:block;font-size:11.5px;font-weight:600;color:var(--tf-text-muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:.06em}
+.campo input[type=text],.campo input[type=email],.campo input[type=date],.campo textarea,.campo select{width:100%;border:1px solid var(--tf-border);border-radius:var(--tf-radius-btn);padding:10px 12px;background:var(--tf-surface);font-size:14.5px}
+.campo input:focus,.campo textarea:focus,.campo select:focus{outline:none;border-color:var(--tf-accent);box-shadow:0 0 0 3px var(--tf-accent-soft)}
+.campo textarea{min-height:96px;resize:vertical}
+.campo .ayuda,.ayuda{font-size:12px;color:var(--tf-text-muted);margin-top:5px}
+.campo .error{font-size:12px;color:var(--tf-danger-text);margin-top:5px}
+.texto-largo{font-size:14.5px;line-height:1.55;white-space:pre-wrap;margin:0}
+/* Dos campos lado a lado (fecha de inicio y fecha límite). */
+.dos-campos{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+/* NUEVO v3: «Mover a» en el detalle (sustituye a los tres botones de estatus). */
+.elegir-lista{display:flex;gap:6px;overflow-x:auto;padding-bottom:2px;scrollbar-width:none}
+.elegir-lista::-webkit-scrollbar{display:none}
+.elegir-lista button{border:1px solid var(--tf-border);background:var(--tf-surface);border-radius:99px;padding:7px 13px;font-size:13px;font-weight:600;color:var(--tf-text-muted);white-space:nowrap;display:inline-flex;gap:6px;align-items:center;transition:background .12s,border-color .12s}
+.elegir-lista button:hover{border-color:color-mix(in srgb,var(--tf-primary) 35%,var(--tf-border))}
+.elegir-lista button[aria-checked="true"]{background:var(--tf-primary-soft);border-color:var(--tf-primary);color:var(--tf-primary);cursor:default}
+.elegir-prioridad{display:flex;gap:6px}
+.elegir-prioridad label{flex:1;cursor:pointer}
+.elegir-prioridad input{position:absolute;opacity:0;pointer-events:none}
+.elegir-prioridad .chip{width:100%;justify-content:center;padding:8px 4px;font-size:12.5px;border:1px solid var(--tf-border);background:var(--tf-surface);color:var(--tf-text-muted)}
+.elegir-prioridad input:checked + .chip.prio-baja{background:var(--tf-priority-low-soft);color:var(--tf-priority-low-text);border-color:var(--tf-priority-low)}
+.elegir-prioridad input:checked + .chip.prio-media{background:var(--tf-priority-medium-soft);color:var(--tf-priority-medium-text);border-color:var(--tf-priority-medium)}
+.elegir-prioridad input:checked + .chip.prio-alta{background:var(--tf-priority-high-soft);color:var(--tf-priority-high-text);border-color:var(--tf-priority-high)}
+.elegir-prioridad input:checked + .chip.prio-urgente{background:var(--tf-priority-urgent-soft);color:var(--tf-priority-urgent-text);border-color:var(--tf-priority-urgent)}
+.personas{display:flex;flex-direction:column;gap:6px}
+.persona{display:flex;align-items:center;gap:10px;padding:6px 4px;border-radius:10px;flex-wrap:wrap}
+.persona .nombre{flex:1;font-size:14px}
+.persona .nombre small{display:block;color:var(--tf-text-muted);font-size:12px}
+.persona input[type=checkbox]{width:18px;height:18px;accent-color:var(--tf-accent)}
+label.persona{cursor:pointer}
+label.persona:hover{background:var(--tf-bg)}
+.tipos-tarjeta,.elegir-tipos{display:flex;gap:6px;flex-wrap:wrap}
+.elegir-tipos label{cursor:pointer}
+.elegir-tipos input{position:absolute;opacity:0;pointer-events:none}
+.elegir-tipos .chip{border:1px solid transparent;padding:6px 12px;font-size:13px;opacity:.5}
+.elegir-tipos input:checked + .chip{opacity:1;border-color:var(--tipo)}
+.historial{list-style:none;margin:0;padding:0 0 0 4px;display:flex;flex-direction:column}
+.historial li{position:relative;padding:0 0 14px 22px;font-size:13.5px;line-height:1.6}
+.historial li::before{content:"";position:absolute;left:4px;top:6px;width:9px;height:9px;border-radius:50%;background:var(--tf-surface);border:2px solid var(--tf-text-muted)}
+.historial li::after{content:"";position:absolute;left:9px;top:18px;bottom:0;width:1px;background:var(--tf-border)}
+.historial li:first-child::before{border-color:var(--tf-accent)}
+.historial li:last-child{padding-bottom:0}
+.historial li:last-child::after{display:none}
+.historial .cuando{display:block;font-size:12px;color:var(--tf-text-muted)}
+.historial .chip{font-size:11px;padding:1px 8px}
+.meta{display:flex;flex-direction:column;gap:4px;font-size:12.5px;color:var(--tf-text-muted);border-top:1px solid var(--tf-border);padding-top:12px;margin-top:6px}
+.fila-botones{display:flex;gap:8px;margin-top:8px}
+.fila-botones .btn{flex:1}
+
+/* ---------- miembros ---------- */
+.tarjeta-blanca{background:var(--tf-surface);border-radius:var(--tf-radius-card);border:1px solid var(--tf-border);box-shadow:var(--tf-shadow);padding:6px 12px}
+.tarjeta-blanca .persona{padding:10px 0;border-bottom:1px solid var(--tf-border);border-radius:0}
+.tarjeta-blanca .persona:last-child{border-bottom:0}
+.acciones-persona{display:flex;gap:6px;align-items:center}
+.permisos{display:flex;gap:6px;flex-wrap:wrap;width:100%;padding-left:46px}
+.permisos button,.permisos span{border:1px solid var(--tf-border);background:var(--tf-surface);border-radius:99px;padding:4px 10px;font-size:12px;font-weight:600;color:var(--tf-text-muted);display:inline-flex;gap:5px;align-items:center}
+.permisos button svg{display:none}
+.permisos button[aria-pressed="true"],.permisos span.si{background:var(--tf-accent-soft);border-color:var(--tf-accent);color:var(--tf-primary)}
+.permisos button[aria-pressed="true"] svg,.permisos span.si svg{display:inline;color:var(--tf-accent-text)}
+.permisos .rotulo{border:0;padding:4px 0;background:transparent;font-weight:500}
+.permisos .nuevo{font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:var(--tf-accent-text)}
+.banner{display:flex;gap:10px;align-items:center;background:var(--tf-primary-soft);color:var(--tf-text);border-radius:12px;padding:10px 12px;font-size:13px;margin-bottom:12px}
+.banner span{flex:1}
+.aviso{font-size:13px;color:var(--tf-text-muted);background:var(--tf-surface);border:1px solid var(--tf-border);border-radius:12px;padding:10px 12px;display:flex;gap:8px;align-items:flex-start}
+
+/* ---------- confirmación y aviso ---------- */
+.modal{position:absolute;inset:0;background:var(--tf-veil);display:grid;place-items:center;z-index:20;padding:24px;animation:aparecer .12s}
+.modal .caja{background:var(--tf-surface);border-radius:var(--tf-radius-modal);padding:20px;max-width:340px;width:100%;box-shadow:var(--tf-shadow-float)}
+.modal p{margin:0 0 16px;font-size:15px;line-height:1.45}
+.toast{position:absolute;left:50%;bottom:92px;transform:translateX(-50%);background:var(--tf-primary);color:var(--tf-surface);padding:10px 16px;border-radius:10px;font-size:13.5px;z-index:30;box-shadow:var(--tf-shadow-float);white-space:nowrap;animation:aparecer .15s}
+.computadora .toast{bottom:24px}
+
+@keyframes aparecer{from{opacity:0}to{opacity:1}}
+@keyframes subir{from{transform:translateY(40px);opacity:.4}to{transform:none;opacity:1}}
+@keyframes entrar{from{transform:translateX(40px);opacity:.4}to{transform:none;opacity:1}}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+
+<!-- Escaparate de presentación: NO es parte de la app. -->
+<div class="escaparate" aria-label="Controles de la maqueta">
+  <div class="grupo"><b>Vista</b>
+    <button data-vista="telefono" aria-pressed="true">Teléfono</button>
+    <button data-vista="computadora" aria-pressed="false">Computadora</button>
+  </div>
+  <div class="grupo"><b>Entrar como</b>
+    <button data-yo="ana" aria-pressed="true">Ana</button>
+    <button data-yo="luis" aria-pressed="false">Luis</button>
+  </div>
+  <div class="grupo"><b>Hoy</b><input type="date" id="hoy" value="2026-10-15"></div>
+  <span class="nota">Maqueta v3 · listas libres en lugar de estatus · datos inventados · por aprobar</span>
+</div>
+
+<div class="dispositivo" id="dispositivo">
+  <header class="cabecera" id="cabecera"></header>
+  <div class="cuerpo">
+    <nav class="nav-lateral" id="nav-lateral" aria-label="Navegación principal"></nav>
+    <main class="contenido" id="contenido"></main>
+  </div>
+  <nav class="nav-inferior" id="nav-inferior" aria-label="Navegación principal"></nav>
+  <div id="capa"></div>
+</div>
+
+<script>
+/* ---------------------------------------------------------------------------
+   Íconos (SVG en línea, nunca emojis)
+--------------------------------------------------------------------------- */
+const LOGO = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="-13 184 1543 1209" aria-hidden="true"> <g transform="translate(0.000000,1500.000000) scale(0.100000,-0.100000)" fill="currentColor" stroke="none"> <path d="M11580 12848 c-47 -5 -692 -13 -1435 -18 -837 -5 -1379 -12 -1425 -18 -44 -6 -299 -11 -620 -11 -544 -1 -545 -1 -558 -22 -11 -17 -20 -20 -45 -16 -23 3 -39 -1 -56 -14 -13 -10 -33 -19 -46 -19 -12 0 -47 -13 -78 -30 -31 -16 -65 -30 -76 -30 -34 0 -160 -67 -206 -109 -25 -23 -50 -41 -57 -41 -6 0 -53 -40 -104 -90 -50 -49 -98 -90 -105 -90 -20 0 -186 -169 -207 -210 -10 -21 -32 -42 -53 -53 -41 -20 -269 -248 -269 -270 0 -15 -112 -127 -127 -127 -12 0 -235 -226 -454 -460 -206 -219 -475 -502 -784 -825 -132 -139 -328 -344 -435 -456 -107 -113 -274 -288 -371 -389 -97 -102 -220 -234 -275 -295 -54 -60 -144 -157 -199 -215 -55 -58 -146 -158 -202 -222 -107 -122 -129 -141 -203 -178 -135 -69 -336 -66 -471 6 -65 35 -122 91 -349 343 -96 107 -220 242 -275 300 -55 59 -149 162 -210 230 -103 117 -195 217 -509 551 -104 110 -135 150 -169 219 l-42 84 0 121 c0 133 13 180 86 303 157 264 524 361 771 204 38 -24 551 -549 777 -795 104 -113 176 -176 200 -176 25 0 8 -17 761 750 316 322 716 727 890 901 332 333 521 532 530 556 3 8 119 128 256 266 138 139 253 262 257 275 l5 22 -356 0 c-247 0 -400 -5 -497 -15 -116 -12 -357 -15 -1390 -16 -687 0 -1290 -5 -1340 -10 -49 -5 -160 -12 -245 -15 -105 -5 -161 -11 -175 -20 -11 -8 -42 -14 -70 -14 -28 0 -59 -7 -69 -15 -11 -8 -39 -15 -62 -15 -24 0 -45 -4 -49 -10 -3 -5 -20 -14 -38 -19 -110 -33 -323 -137 -375 -182 -10 -8 -45 -29 -77 -45 -64 -32 -349 -298 -361 -337 -4 -12 -21 -38 -38 -57 -74 -82 -236 -375 -236 -425 0 -12 -5 -26 -11 -32 -6 -6 -14 -26 -19 -44 -5 -19 -18 -59 -30 -89 -12 -30 -25 -77 -29 -105 -4 -27 -12 -59 -18 -70 -6 -11 -13 -110 -17 -220 -4 -110 -10 -245 -13 -300 -4 -55 -6 -327 -6 -605 1 -278 2 -593 2 -700 -2 -686 12 -1109 37 -1144 8 -11 14 -36 14 -55 0 -19 14 -63 30 -98 17 -34 30 -68 30 -75 0 -6 20 -44 45 -84 25 -39 45 -76 45 -81 0 -5 18 -27 41 -48 22 -22 47 -54 55 -72 16 -32 121 -135 195 -190 49 -37 234 -133 255 -133 8 0 42 -13 76 -30 34 -16 78 -30 98 -30 20 0 45 -7 56 -15 25 -19 1666 -23 1724 -4 21 7 143 14 295 16 199 4 264 8 280 19 11 8 42 14 70 14 30 0 59 6 71 15 10 8 35 15 54 15 19 0 44 7 54 15 11 8 32 15 47 15 15 0 42 8 61 17 18 9 45 22 60 30 14 7 32 13 40 13 8 0 30 11 49 25 19 14 57 37 86 51 29 13 64 35 79 49 15 14 31 25 37 25 5 0 40 20 78 45 38 25 72 45 77 45 4 0 26 18 47 41 22 23 65 58 97 80 67 46 658 634 694 690 13 21 36 45 51 53 33 17 114 100 171 176 22 30 138 151 257 269 118 117 215 218 215 225 0 7 104 118 231 247 127 129 248 257 269 285 21 28 62 71 90 95 29 24 75 65 103 90 29 25 86 62 127 81 110 51 160 75 209 103 24 14 54 25 66 25 11 0 30 7 41 15 10 8 41 15 67 15 26 0 60 6 75 14 21 10 129 15 492 20 256 4 542 11 635 16 94 5 719 10 1390 10 897 0 1313 4 1570 15 253 11 666 15 1490 15 986 1 1143 3 1159 15 13 10 43 15 86 15 43 0 73 5 86 15 10 8 31 15 45 15 14 0 34 7 45 15 10 8 27 15 36 15 24 0 148 58 173 80 11 10 48 33 83 52 69 37 325 280 338 321 3 12 14 31 24 42 30 33 125 226 144 290 9 33 21 68 27 77 5 10 9 40 9 68 0 38 5 54 20 67 29 25 31 278 3 299 -13 9 -20 32 -24 86 -6 72 -17 115 -45 171 -8 16 -14 35 -14 43 0 8 -4 22 -9 32 -5 9 -19 38 -31 64 -12 26 -31 62 -43 80 -12 18 -41 65 -65 104 -42 71 -217 254 -242 254 -7 0 -28 14 -47 30 -18 17 -37 30 -42 30 -4 0 -39 20 -77 45 -37 25 -73 45 -80 45 -6 0 -17 7 -24 15 -7 8 -27 15 -44 15 -17 0 -40 7 -50 15 -11 8 -31 15 -45 15 -14 0 -35 7 -45 15 -11 8 -38 15 -60 15 -23 1 -52 7 -66 15 -29 17 -2195 19 -2350 3z"/> <path d="M9200 8520 c-69 -4 -529 -8 -1024 -9 -773 -1 -901 -4 -919 -16 -12 -8 -40 -15 -62 -15 -22 0 -49 -7 -59 -15 -11 -8 -37 -15 -57 -15 -21 0 -50 -6 -66 -14 -57 -28 -104 -46 -123 -46 -10 0 -21 -4 -24 -9 -4 -5 -25 -18 -49 -29 -136 -63 -189 -92 -223 -123 -11 -10 -26 -19 -32 -19 -7 0 -33 -19 -58 -42 -26 -24 -61 -52 -80 -63 -28 -17 -175 -160 -827 -802 -15 -16 -121 -122 -236 -238 -114 -115 -226 -223 -250 -238 -23 -15 -50 -42 -59 -60 -9 -18 -51 -65 -92 -104 -41 -40 -80 -78 -87 -85 -41 -44 -246 -246 -346 -341 -174 -165 -227 -221 -224 -232 5 -15 1862 -13 1992 3 73 8 596 12 1910 12 1130 1 1840 5 1890 11 45 6 495 12 1025 15 797 5 948 8 967 20 12 8 39 14 60 14 37 0 139 33 157 51 6 5 20 9 32 9 26 0 176 74 194 95 7 8 37 26 66 40 53 25 274 234 274 259 0 5 18 31 40 57 22 26 45 58 50 71 13 28 29 54 56 93 26 38 54 113 54 146 0 14 7 34 15 45 8 10 15 37 15 59 0 22 7 51 15 65 11 19 14 69 14 215 0 146 -3 196 -14 215 -8 14 -15 45 -15 70 0 25 -7 54 -15 64 -8 11 -15 32 -15 46 0 23 -49 127 -117 249 -14 25 -40 63 -59 85 -19 22 -34 45 -34 51 0 16 -165 175 -182 175 -8 0 -30 16 -49 36 -18 20 -76 56 -127 81 -50 25 -95 49 -98 54 -3 5 -17 9 -32 9 -15 0 -36 7 -46 15 -11 8 -34 15 -50 15 -17 0 -40 7 -50 15 -11 8 -30 15 -43 15 -13 0 -37 7 -52 15 -24 12 -220 15 -1352 19 -728 3 -1353 7 -1389 9 -36 3 -121 1 -190 -3z"/> <path d="M3620 4808 c-14 -5 -50 -14 -80 -18 -57 -8 -105 -22 -153 -46 -16 -8 -37 -14 -47 -14 -10 0 -31 -7 -47 -15 -15 -7 -49 -23 -75 -35 -117 -50 -144 -67 -222 -141 -46 -44 -91 -79 -100 -79 -9 0 -25 -14 -34 -31 -9 -18 -29 -47 -44 -64 -16 -18 -28 -37 -28 -43 0 -6 -16 -29 -35 -52 -19 -23 -35 -48 -35 -54 0 -7 -9 -21 -20 -31 -22 -20 -70 -118 -70 -144 0 -9 -7 -25 -15 -35 -8 -11 -15 -27 -15 -37 0 -9 -7 -30 -15 -45 -8 -16 -15 -40 -15 -54 0 -15 -6 -32 -12 -38 -15 -15 -31 -250 -30 -447 0 -71 0 -173 0 -225 -3 -357 12 -781 28 -804 8 -11 14 -39 14 -61 0 -22 7 -49 15 -59 8 -11 15 -29 15 -40 0 -53 129 -267 232 -384 92 -105 195 -202 215 -202 5 0 38 -19 74 -43 80 -54 126 -77 153 -77 12 0 30 -6 41 -13 30 -20 108 -47 136 -47 14 0 34 -7 45 -15 12 -9 43 -15 84 -15 37 0 77 -6 94 -15 36 -19 123 -19 156 0 14 8 50 14 81 15 31 0 70 7 85 15 16 8 47 15 69 15 22 0 49 7 59 15 11 8 31 15 44 15 37 0 206 87 264 135 28 25 57 45 64 45 16 0 192 177 222 225 14 22 32 45 39 51 21 18 61 92 113 209 27 61 40 100 40 124 0 15 7 36 15 47 8 10 15 34 15 52 0 19 6 48 14 65 8 18 16 72 18 120 3 88 3 89 40 122 l37 34 2111 0 c1875 1 2113 2 2133 16 12 8 34 15 49 15 15 0 42 6 60 14 110 48 150 68 194 98 28 18 72 44 97 58 26 13 50 33 53 43 3 10 24 30 45 44 22 15 47 40 56 56 8 16 33 50 56 74 38 41 72 97 123 203 64 133 74 160 74 207 0 28 6 58 15 69 21 28 21 280 0 308 -9 11 -15 42 -15 70 -1 28 -7 62 -15 76 -8 14 -14 33 -15 44 0 26 -97 216 -125 246 -12 14 -25 34 -29 45 -11 37 -197 212 -266 250 -202 110 -287 148 -395 172 -86 20 -5588 31 -5635 11z"/> </g> </svg>`;
+
+const I = {
+  carpetas:'<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>',
+  check:'<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="m8 12 3 3 5-6"/></svg>',
+  persona:'<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>',
+  personas:'<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M16 4.6a3.5 3.5 0 0 1 0 6.8"/><path d="M18.5 20a6.5 6.5 0 0 0-3-5.5"/></svg>',
+  atras:'<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>',
+  masChico:'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>',
+  cerrar:'<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>',
+  calendario:'<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18"/></svg>',
+  alerta:'<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4M12 17h.01"/><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg>',
+  palomita:'<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 5 5 9-10"/></svg>',
+  archivo:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="4" rx="1"/><path d="M5 8v11a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8M10 12h4"/></svg>',
+  punto:'<svg width="8" height="8" viewBox="0 0 8 8" aria-hidden="true"><circle cx="4" cy="4" r="3" fill="currentColor" opacity=".6"/></svg>',
+  info:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg>',
+  puntos:'<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="19" cy="12" r="1.8"/></svg>',
+  filtro:'<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16M7 12h10M10 18h4"/></svg>',
+  izq:'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>',
+  der:'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>',
+};
+
+/* ---------------------------------------------------------------------------
+   Datos inventados
+--------------------------------------------------------------------------- */
+const usuarios = {
+  ana:   {nombre:'Ana López',    correo:'ana.lopez@ejemplo.mx',   color:'--av1'},
+  luis:  {nombre:'Luis Pérez',   correo:'luis.perez@ejemplo.mx',  color:'--av2'},
+  maria: {nombre:'María Ruiz',   correo:'maria.ruiz@ejemplo.mx',  color:'--av3'},
+  jorge: {nombre:'Jorge Díaz',   correo:'jorge.diaz@ejemplo.mx',  color:'--av4'},
+};
+
+// permisos: crear, editar, mover y eliminar tarjetas; gestionar listas y tipos (el dueño siempre puede todo).
+const proyectos = [
+  {id:1, nombre:'Semana de la Ciencia 2026', dueno:'ana', miembros:['ana','luis','maria'], archivado:false,
+   permisos:{luis:{crear:true, editar:true, mover:true, eliminar:false, listas:true, tipos:true}, maria:{crear:true, editar:false, mover:true, eliminar:false, listas:false, tipos:false}},
+   listas:[{id:11, nombre:'Ideas'}, {id:12, nombre:'Pendiente'}, {id:13, nombre:'En curso'}, {id:14, nombre:'Revisión con dirección'}, {id:15, nombre:'Finalizada'}],
+   tipos:[{id:1, nombre:'Logística', color:'#0ea5e9'}, {id:2, nombre:'Difusión', color:'#ec4899'}, {id:3, nombre:'Académico', color:'#6366f1'}]},
+  {id:2, nombre:'Mantenimiento del laboratorio', dueno:'luis', miembros:['luis','ana','jorge'], archivado:false,
+   permisos:{ana:{crear:true, editar:true, mover:true, eliminar:true, listas:true, tipos:true}, jorge:{crear:false, editar:false, mover:true, eliminar:false, listas:false, tipos:false}},
+   listas:[{id:21, nombre:'Por hacer'}, {id:22, nombre:'Esperando compra'}, {id:23, nombre:'Hecho'}],
+   tipos:[{id:5, nombre:'Mantenimiento', color:'#64748b'}, {id:6, nombre:'Compras', color:'#78716c'}]},
+  {id:4, nombre:'Congreso regional 2025', dueno:'ana', miembros:['ana','luis'], archivado:true,
+   permisos:{luis:{crear:true, editar:true, mover:true, eliminar:false, listas:false, tipos:false}},
+   listas:[{id:41, nombre:'Pendiente'}, {id:42, nombre:'Finalizada'}], tipos:[]},
+];
+
+// `pos` = orden manual dentro de la lista (lo cambia arrastrar o «Mover a»).
+let sigId = 100, sigLista = 100;
+const tarjetas = [
+  {id:1, proyecto:1, lista:13, pos:0, titulo:'Reservar el auditorio', descripcion:'Confirmar con Servicios Generales el auditorio central para los tres días, con proyector y sonido.', prioridad:'urgente', fin:-2, ini:-19, asignados:['ana'], creada_por:'ana', tipos:[1]},
+  {id:3, proyecto:1, lista:13, pos:1, titulo:'Diseñar el cartel', descripcion:'Versión impresa doble carta y versión para redes sociales.', prioridad:'alta', fin:1, asignados:['maria'], creada_por:'luis', tipos:[2]},
+  {id:2, proyecto:1, lista:15, pos:0, titulo:'Convocatoria de ponentes', descripcion:'Redactar y publicar la convocatoria con formato de resumen y fecha límite.', prioridad:'alta', fin:-10, asignados:['luis','maria'], creada_por:'ana', tipos:[2, 3]},
+  {id:6, proyecto:1, lista:12, pos:0, titulo:'Programa del evento', descripcion:'Horarios, salas y ponentes confirmados.', prioridad:'alta', fin:5, asignados:['ana','maria','luis'], creada_por:'ana', tipos:[1, 3]},
+  {id:4, proyecto:1, lista:12, pos:1, titulo:'Lista de constancias', descripcion:'Asistentes que recibirán constancia al final del evento.', prioridad:'media', fin:12, asignados:['luis'], creada_por:'ana', tipos:[3]},
+  {id:5, proyecto:1, lista:11, pos:0, titulo:'Coffee break', descripcion:'Cotizar con tres proveedores y elegir el menú.', prioridad:'baja', fin:null, asignados:[], creada_por:'maria', tipos:[1]},
+  {id:14, proyecto:1, lista:11, pos:1, titulo:'Transmisión en vivo', descripcion:'Ver si se puede transmitir la conferencia inaugural.', prioridad:'media', fin:null, asignados:[], creada_por:'luis', tipos:[2]},
+  {id:15, proyecto:1, lista:14, pos:0, titulo:'Presupuesto final', descripcion:'Enviar a dirección el presupuesto con las tres cotizaciones.', prioridad:'media', fin:3, ini:-30, asignados:['ana'], creada_por:'ana', tipos:[]},
+  {id:7, proyecto:2, lista:21, pos:0, titulo:'Inventario de reactivos', descripcion:'Contar existencias y marcar los que caducan antes de diciembre.', prioridad:'urgente', fin:0, asignados:['jorge'], creada_por:'luis', tipos:[5]},
+  {id:8, proyecto:2, lista:21, pos:1, titulo:'Calibrar balanzas', descripcion:'Calibración semestral de las cuatro balanzas analíticas.', prioridad:'media', fin:-1, asignados:['ana','jorge'], creada_por:'luis', tipos:[5]},
+  {id:9, proyecto:2, lista:22, pos:0, titulo:'Filtros de la campana', descripcion:'Orden de compra enviada; esperar entrega.', prioridad:'baja', fin:8, asignados:['luis'], creada_por:'luis', tipos:[5, 6]},
+  {id:12, proyecto:4, lista:42, pos:0, titulo:'Memorias del congreso', descripcion:'Compilar y publicar las memorias en PDF.', prioridad:'media', fin:-300, asignados:['luis'], creada_por:'ana', tipos:[]},
+];
+
+/* ---------------------------------------------------------------------------
+   Estado de la maqueta
+--------------------------------------------------------------------------- */
+const estado = {
+  vista:'telefono', yo:'ana', hoy:new Date('2026-10-15T12:00:00'),
+  pantalla:'proyectos',   // proyectos | tablero | miembros | mis | perfil
+  proyecto:null, soloMias:false, filtroTipo:null, agregandoLista:false,
+  capa:null,
+};
+const PRIORIDADES = [['baja','Baja'],['media','Media'],['alta','Alta'],['urgente','Urgente']];
+const PERMISOS = [['crear','Crear'],['editar','Editar'],['mover','Mover'],['eliminar','Eliminar'],['listas','Gestionar listas'],['tipos','Gestionar tipos']];
+const LISTAS_INICIALES = ['Pendiente', 'En curso', 'Finalizada'];
+
+/* ---------------------------------------------------------------------------
+   Utilidades
+--------------------------------------------------------------------------- */
+const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const $ = s => document.querySelector(s);
+const iniciales = id => usuarios[id].nombre.split(' ').map(p => p[0]).slice(0,2).join('');
+const avatar = (id, grande) => `<span class="avatar${grande ? ' grande' : ''}" style="background:var(${usuarios[id].color})" title="${esc(usuarios[id].nombre)}">${iniciales(id)}</span>`;
+function avatares(ids, max = 3){
+  const extra = ids.length - max;
+  return `<span class="avatares">${ids.slice(0, max).map(i => avatar(i)).join('')}${extra > 0 ? `<span class="avatar mas">+${extra}</span>` : ''}</span>`;
+}
+const fechaDe = dias => { if (dias === null) return null; const d = new Date(estado.hoy); d.setDate(d.getDate() + dias); return d; };
+const diasEntre = d => Math.round((new Date(d.toDateString()) - new Date(estado.hoy.toDateString())) / 864e5);
+const MESES = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+const corta = d => `${d.getDate()} ${MESES[d.getMonth()]}`;
+const iso = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+const fechaLarga = d => `${d.getDate()} ${MESES[d.getMonth()]} ${d.getFullYear()}`;
+const fechaHora = d => `${d.getDate()} ${MESES[d.getMonth()]} ${d.getFullYear()} · ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+
+// Sin estatus no hay «terminada»: una fecha pasada siempre es «Vencida», esté en la lista que esté.
+function chipFecha(t){
+  if (!t.fecha) return '';
+  const dif = diasEntre(t.fecha);
+  if (dif < 0) return `<span class="chip vencida">${I.alerta} Vencida · ${corta(t.fecha)}</span>`;
+  if (dif === 0) return `<span class="chip por-vencer">${I.calendario} Vence hoy</span>`;
+  if (dif === 1) return `<span class="chip por-vencer">${I.calendario} Vence mañana</span>`;
+  return `<span class="chip fecha">${I.calendario} ${corta(t.fecha)}</span>`;
+}
+const esVencida = t => t.fecha && diasEntre(t.fecha) < 0;
+const proyectoDe = id => proyectos.find(p => p.id === id);
+const listaDe = (p, id) => p.listas.find(l => l.id === id);
+const misProyectos = () => proyectos.filter(p => p.miembros.includes(estado.yo));
+const tipoDe = (p, id) => p.tipos.find(x => x.id === id);
+const chipTipo = tp => `<span class="chip tipo" style="--tipo:${tp.color}"><span class="punto"></span>${esc(tp.nombre)}</span>`;
+const chipLista = nombre => `<span class="chip lista">${esc(nombre)}</span>`;
+const chipPrioridad = p => `<span class="chip prio-${p}"><span class="punto"></span>${PRIORIDADES.find(x => x[0] === p)[1]}</span>`;
+const puede = (p, accion) => !p.archivado && (p.dueno === estado.yo || !!(p.permisos[estado.yo] || {})[accion]);
+const deLista = id => tarjetas.filter(t => t.lista === id).sort((a, b) => a.pos - b.pos);
+
+/* Mueve una tarjeta a `listaId` en la posición `indice` y renumera las dos listas (como hará el servicio). */
+function mover(t, listaId, indice){
+  const p = proyectoDe(t.proyecto);
+  const origen = t.lista;
+  const destino = deLista(listaId).filter(x => x !== t);
+  destino.splice(Math.max(0, Math.min(indice, destino.length)), 0, t);
+  destino.forEach((x, i) => x.pos = i);
+  t.lista = listaId;
+  if (origen !== listaId){
+    deLista(origen).forEach((x, i) => x.pos = i);
+    t.historial.push({cuando:ahora(), quien:estado.yo, de:listaDe(p, origen).nombre, a:listaDe(p, listaId).nombre});
+    toast(`Se movió a «${listaDe(p, listaId).nombre}».`);
+  }
+}
+
+function toast(texto){
+  document.querySelectorAll('.toast').forEach(t => t.remove());
+  const el = document.createElement('div');
+  el.className = 'toast'; el.setAttribute('role','status'); el.textContent = texto;
+  $('#dispositivo').appendChild(el);
+  setTimeout(() => el.remove(), 2200);
+}
+
+tarjetas.forEach(t => { t.fecha = fechaDe(t.fin); });
+
+/* Historial de movimientos: guarda el NOMBRE de las listas (si después se renombra o se elimina
+   una lista, el historial sigue diciendo lo que pasó). La creación es la primera entrada. */
+function momento(dias, hora, minuto){ const d = fechaDe(dias); d.setHours(hora, minuto, 0, 0); return d; }
+tarjetas.forEach(t => {
+  const p = proyectoDe(t.proyecto);
+  const actual = listaDe(p, t.lista).nombre, primera = p.listas[0].nombre;
+  t.historial = [{cuando:momento(-12, 9, 14), quien:t.creada_por, de:null, a:primera}];
+  // creada = fecha y hora en que se capturó (automática); inicio = fecha de inicio, editable.
+  // Por omisión son el mismo día; en las tarjetas 1 y 15 se capturó días después del inicio.
+  t.creada = t.historial[0].cuando;
+  t.inicio = fechaDe(t.ini !== undefined ? t.ini : -12);
+  if (actual !== primera) t.historial.push({cuando:momento(-6, 11, 32), quien:t.asignados[0] || t.creada_por, de:primera, a:actual});
+});
+function ahora(){ const d = new Date(estado.hoy), r = new Date(); d.setHours(r.getHours(), r.getMinutes(), 0, 0); return d; }
+
+/* ---------------------------------------------------------------------------
+   Render
+--------------------------------------------------------------------------- */
+function render(){
+  $('#dispositivo').classList.toggle('computadora', estado.vista === 'computadora');
+  renderCabecera(); renderNav(); renderContenido(); renderCapa();
+}
+
+function renderCabecera(){
+  const c = $('#cabecera');
+  if (estado.pantalla === 'tablero' || estado.pantalla === 'miembros'){
+    const p = proyectoDe(estado.proyecto);
+    const sub = estado.pantalla === 'miembros' ? 'Miembros y ajustes' : p.archivado ? 'Archivado · solo lectura' : `${p.listas.length} listas · ${p.miembros.length} miembros`;
+    c.innerHTML = `
+      <button class="btn-icono" data-ir="${estado.pantalla === 'miembros' ? 'tablero' : 'proyectos'}" aria-label="Regresar">${I.atras}</button>
+      <div class="titulos"><h1>${esc(p.nombre)}</h1><div class="sub">${esc(sub)}</div></div>
+      <div class="acciones-cab">${estado.pantalla === 'tablero' ? `<button class="btn btn-chico btn-secundario" data-ir="miembros">${I.personas} Miembros y ajustes</button>` : ''}</div>
+      ${estado.pantalla === 'tablero' ? `<button class="btn-icono" data-ir="miembros" aria-label="Miembros y ajustes" style="${estado.vista === 'computadora' ? 'display:none' : ''}">${I.personas}</button>` : ''}`;
+  } else {
+    const titulos = {proyectos:'Mis espacios', mis:'Mis tarjetas', perfil:'Perfil'};
+    c.innerHTML = `<span class="sello">${LOGO}</span>
+      <div class="titulos"><h1>TaskFlow</h1><div class="sub">${titulos[estado.pantalla]}</div></div>
+      ${estado.pantalla === 'proyectos' ? `<div class="acciones-cab"><button class="btn btn-chico btn-primario" data-accion="nuevo-proyecto">${I.masChico} Nuevo espacio</button></div>` : ''}`;
+  }
+}
+
+function renderNav(){
+  const items = [['proyectos','Espacios',I.carpetas],['mis','Mis tarjetas',I.check],['perfil','Perfil',I.persona]];
+  const activa = ['tablero','miembros'].includes(estado.pantalla) ? (estado.vista === 'computadora' ? null : 'proyectos') : estado.pantalla;
+  const html = items.map(([id, txt, ic]) => `<button data-ir="${id}" ${activa === id ? 'aria-current="page"' : ''}>${ic}<span>${txt}</span></button>`).join('');
+  $('#nav-inferior').innerHTML = html;
+  $('#nav-lateral').innerHTML = `<div class="marca-lateral">${LOGO}<span>TaskFlow</span></div>${html}
+    <div class="separador"></div><div class="rotulo-nav">Mis espacios</div>
+    ${misProyectos().filter(p => !p.archivado).map(p => `<button data-proyecto="${p.id}" ${['tablero','miembros'].includes(estado.pantalla) && estado.proyecto === p.id ? 'aria-current="page"' : ''}>${I.punto}<span>${esc(p.nombre)}</span></button>`).join('')}`;
+}
+
+function htmlTarjeta(t, enMis){
+  const p = proyectoDe(t.proyecto);
+  const arrastrable = !enMis && estado.vista === 'computadora' && puede(p, 'mover');
+  return `<button class="tarjeta${t.prioridad === 'urgente' ? ' urgente' : ''}" data-tarjeta="${t.id}" ${arrastrable ? 'draggable="true"' : ''}>
+    ${enMis ? `<span class="proyecto-de">${esc(p.nombre)}</span>` : ''}
+    <h4>${esc(t.titulo)}</h4>
+    ${enMis ? '' : `<p>${esc(t.descripcion)}</p>`}
+    <div class="etiquetas">${enMis ? chipLista(listaDe(p, t.lista).nombre) : ''}${t.tipos.map(id => chipTipo(tipoDe(p, id))).join('')}${t.prioridad !== 'media' ? chipPrioridad(t.prioridad) : ''}</div>
+    <div class="pie">${chipFecha(t)}${t.asignados.length ? avatares(t.asignados) : '<span class="chip fecha" style="margin-left:auto">Sin asignar</span>'}</div>
+  </button>`;
+}
+
+function renderContenido(){
+  const m = $('#contenido');
+  if (estado.pantalla === 'proyectos'){
+    const activos = misProyectos().filter(p => !p.archivado), archivados = misProyectos().filter(p => p.archivado);
+    // Tamaño fijo: un resumen en una línea, sin importar cuántas listas tenga el espacio.
+    const tarjetaProyecto = p => {
+      const ts = tarjetas.filter(t => t.proyecto === p.id);
+      const venc = ts.filter(esVencida).length, mias = ts.filter(t => t.asignados.includes(estado.yo)).length;
+      const pl = (n, s) => `<b>${n}</b> ${s}${n === 1 ? '' : 's'}`;
+      return `<button class="proyecto${p.archivado ? ' archivado' : ''}" data-proyecto="${p.id}">
+        <div class="fila"><h3>${esc(p.nombre)}</h3>${p.archivado ? '<span class="chip neutro">Archivado</span>' : ''}${p.dueno === estado.yo ? '<span class="etiqueta-rol">Dueña/o</span>' : ''}</div>
+        <div class="resumen">${pl(ts.length, 'tarjeta')} · ${pl(p.listas.length, 'lista')}${mias ? ` · <b>${mias}</b> tuya${mias === 1 ? '' : 's'}` : ''}</div>
+        <div class="fila">${avatares(p.miembros, 5)}${venc ? `<span class="chip vencida">${I.alerta} ${venc} vencida${venc > 1 ? 's' : ''}</span>` : ''}</div>
+      </button>`;};
+    m.innerHTML = `<div class="seccion-titulo">Espacios en los que participas</div>
+      <div class="lista-proyectos">${activos.map(tarjetaProyecto).join('') || '<div class="vacio">Aún no participas en ningún espacio.</div>'}</div>
+      ${archivados.length ? `<div class="seccion-titulo">Archivados · ${archivados.length}</div><div class="lista-proyectos">${archivados.map(tarjetaProyecto).join('')}</div>` : ''}
+      <div style="margin-top:14px;${estado.vista === 'computadora' ? 'display:none' : ''}"><button class="btn btn-primario btn-bloque" data-accion="nuevo-proyecto">${I.masChico} Nuevo espacio</button></div>`;
+    return;
+  }
+  if (estado.pantalla === 'tablero'){
+    const p = proyectoDe(estado.proyecto);
+    const filtra = ts => ts.filter(t => (!estado.soloMias || t.asignados.includes(estado.yo)) && (!estado.filtroTipo || t.tipos.includes(estado.filtroTipo)));
+    const filtrando = estado.soloMias || estado.filtroTipo;
+    const compu = estado.vista === 'computadora';
+    const nFiltros = (estado.soloMias ? 1 : 0) + (estado.filtroTipo ? 1 : 0);
+    const textoFiltros = [estado.soloMias ? 'Solo mías' : '', estado.filtroTipo ? tipoDe(p, estado.filtroTipo).nombre : ''].filter(Boolean).join(' · ');
+    m.innerHTML = `
+      <nav class="pestanas-listas solo-tel" aria-label="Listas">${p.listas.map((l, i) => `<button data-saltar="${l.id}" ${i === 0 ? 'aria-current="true"' : ''}>${esc(l.nombre)}<span class="num">${filtra(deLista(l.id)).length}</span></button>`).join('')}</nav>
+      ${p.archivado ? `<div class="banner">${I.archivo}<span>Espacio archivado: se puede consultar, pero nadie puede crear, editar ni mover tarjetas.</span></div>` : ''}
+      <div class="barra-tel solo-tel">
+        <button class="btn btn-chico btn-secundario" data-accion="filtros">${I.filtro} Filtrar${nFiltros ? ` <span class="contador">${nFiltros}</span>` : ''}</button>
+        <span class="activos">${nFiltros ? esc(textoFiltros) : puede(p, 'mover') ? 'Mantén presionada una tarjeta para moverla.' : ''}</span>
+        ${nFiltros ? '<button class="btn-link" data-accion="quitar-filtros">Quitar</button>' : ''}
+      </div>
+      <div class="filtros solo-compu"><span>${puede(p, 'mover') ? 'Arrastra las tarjetas para moverlas u ordenarlas.' : `${tarjetas.filter(t => t.proyecto === p.id).length} tarjetas`}</span>
+        <button class="interruptor" data-accion="solo-mias" aria-pressed="${estado.soloMias}"><span class="pista"></span>Solo mías</button></div>
+      ${p.tipos.length ? `<div class="filtro-tipos solo-compu" role="group" aria-label="Filtrar por tipo"><button data-filtro-tipo="0" aria-pressed="${!estado.filtroTipo}">Todos los tipos</button>${p.tipos.map(tp =>
+        `<button data-filtro-tipo="${tp.id}" style="--tipo:${tp.color}" aria-pressed="${estado.filtroTipo === tp.id}"><span class="punto"></span>${esc(tp.nombre)}</button>`).join('')}</div>` : ''}
+      <div class="tablero${!compu && puede(p, 'mover') ? ' tactil' : ''}" id="tablero">
+        ${p.listas.map((l, i) => { const ts = filtra(deLista(l.id)); return `
+        <section class="lista" data-lista="${l.id}" aria-label="${esc(l.nombre)}">
+          <div class="lista-cab"><h3 title="${esc(l.nombre)}">${esc(l.nombre)}</h3><span class="num">${ts.length}</span>
+            ${puede(p, 'listas') ? `<button class="btn-icono" data-menu-lista="${l.id}" aria-label="Opciones de la lista ${esc(l.nombre)}">${I.puntos}</button>` : ''}</div>
+          <div class="lista-tarjetas">${ts.map(t => htmlTarjeta(t)).join('') || `<div class="vacio">${filtrando ? 'Nada con este filtro.' : 'Sin tarjetas.'}</div>`}</div>
+          ${puede(p, 'crear') ? `<button class="agregar-tarjeta" data-nueva-en="${l.id}">${I.masChico} Agregar tarjeta</button>` : ''}
+        </section>`; }).join('')}
+        ${puede(p, 'listas') ? `<section class="lista nueva">${estado.agregandoLista
+          ? `<form id="form-lista-nueva" novalidate><input id="f-lista" type="text" maxlength="50" placeholder="Nombre de la lista" aria-label="Nombre de la lista"><div class="error" id="e-lista" hidden style="font-size:12px;color:var(--tf-danger-text)"></div>
+             <div class="fila-botones" style="margin:0"><button type="button" class="btn btn-chico btn-secundario" data-accion="cancelar-lista">Cancelar</button><button type="submit" class="btn btn-chico btn-primario">Agregar lista</button></div></form>`
+          : `<button class="agregar-tarjeta" data-accion="agregar-lista">${I.masChico} Agregar lista</button>`}</section>` : ''}
+      </div>`;
+    if (estado.agregandoLista) $('#f-lista').focus();
+    return;
+  }
+  if (estado.pantalla === 'miembros'){
+    const p = proyectoDe(estado.proyecto);
+    const soyDueno = p.dueno === estado.yo;
+    const permisosDe = u => {
+      if (u === p.dueno) return '';
+      const pu = p.permisos[u] || {};
+      if (soyDueno && !p.archivado) return `<div class="permisos" role="group" aria-label="Permisos de ${esc(usuarios[u].nombre)}">${PERMISOS.map(([k, txt]) =>
+        `<button data-permiso="${u}:${k}" aria-pressed="${!!pu[k]}">${I.palomita}${txt}</button>`).join('')}</div>`;
+      const dados = PERMISOS.filter(([k]) => pu[k]);
+      return `<div class="permisos"><span class="rotulo">Puede:</span>${dados.length ? dados.map(([, txt]) => `<span class="si">${I.palomita}${txt}</span>`).join('') : '<span>Solo ver tarjetas</span>'}</div>`;
+    };
+    m.innerHTML = `
+      <div class="aviso">${I.info}<span>En la v3 cambian dos permisos: «Cambiar estatus» pasa a <b>«Mover»</b> (entre listas y dentro de una lista) y se agrega <b>«Gestionar listas»</b> (crear, renombrar, ordenar y eliminar listas). El resto de esta pantalla queda como en la v2.</span></div>
+      <div class="seccion-titulo">Miembros · ${p.miembros.length}</div>
+      <div class="tarjeta-blanca">${p.miembros.map(u => `
+        <div class="persona">${avatar(u, true)}<div class="nombre">${esc(usuarios[u].nombre)}${u === estado.yo ? ' (tú)' : ''}<small>${esc(usuarios[u].correo)}</small></div>
+          ${u === p.dueno ? '<span class="etiqueta-rol">Dueña/o</span>' : ''}
+          ${permisosDe(u)}
+        </div>`).join('')}</div>`;
+    return;
+  }
+  if (estado.pantalla === 'mis'){
+    const ids = misProyectos().filter(p => !p.archivado).map(p => p.id);
+    const ts = tarjetas.filter(t => ids.includes(t.proyecto) && t.asignados.includes(estado.yo))
+      .sort((a, b) => (a.fecha ? a.fecha : Infinity) - (b.fecha ? b.fecha : Infinity));
+    const venc = ts.filter(esVencida), resto = ts.filter(t => !esVencida(t));
+    m.innerHTML = `${venc.length ? `<div class="seccion-titulo">Vencidas · ${venc.length}</div><div class="mis-tarjetas">${venc.map(t => htmlTarjeta(t, true)).join('')}</div>` : ''}
+      <div class="seccion-titulo">Asignadas a mí · ${resto.length}</div>
+      <div class="mis-tarjetas">${resto.map(t => htmlTarjeta(t, true)).join('') || '<div class="vacio">No tienes tarjetas asignadas.</div>'}</div>
+      <div class="aviso" style="margin-top:14px">${I.info}<span>Todas las tarjetas asignadas a ti en tus espacios activos, con la lista en la que están. Ya no hay «finalizadas»: si una tarjeta terminó, quítate de asignados, quita la fecha o elimínala.</span></div>`;
+    return;
+  }
+  if (estado.pantalla === 'perfil'){
+    const u = usuarios[estado.yo];
+    m.innerHTML = `<div class="tarjeta-blanca" style="padding:16px"><div class="persona" style="border:0">${avatar(estado.yo, true)}<div class="nombre"><b>${esc(u.nombre)}</b><small>${esc(u.correo)}</small></div></div></div>
+      <div class="aviso" style="margin-top:14px">${I.info}<span>Sin cambios respecto a la v2.</span></div>`;
+  }
+}
+
+function renderCapa(){
+  const capa = $('#capa');
+  const c = estado.capa;
+  if (!c){ capa.innerHTML = ''; return; }
+  if (c.tipo === 'confirmar'){
+    capa.innerHTML = `<div class="modal" role="dialog" aria-modal="true"><div class="caja"><p>${esc(c.mensaje)}</p>
+      <div class="fila-botones"><button class="btn btn-secundario" data-accion="cerrar">Cancelar</button><button class="btn btn-peligro-lleno" data-accion="confirmar">${esc(c.boton)}</button></div></div></div>`;
+    return;
+  }
+  let cuerpo = '';
+  if (c.tipo === 'detalle'){
+    const t = tarjetas.find(x => x.id === c.id);
+    const p = proyectoDe(t.proyecto);
+    const n = deLista(t.lista).length;
+    cuerpo = `<div class="hoja-cab"><h2>${esc(t.titulo)}</h2><button class="btn-icono" data-accion="cerrar" aria-label="Cerrar">${I.cerrar}</button></div>
+      <div class="campo"><span class="etiqueta">Lista</span>
+        ${puede(p, 'mover') ? `<div class="elegir-lista" role="radiogroup" aria-label="Mover a la lista">${p.listas.map(l => `
+          <button role="radio" data-mover-a="${l.id}" aria-checked="${l.id === t.lista}">${l.id === t.lista ? I.palomita : ''}${esc(l.nombre)}</button>`).join('')}</div>
+          <div class="ayuda">Toca una lista para moverla (queda al final). Para cambiar su orden, ${estado.vista === 'computadora' ? 'arrástrala' : 'mantenla presionada y arrástrala'} en el tablero.</div>`
+        : chipLista(listaDe(p, t.lista).nombre)}</div>
+      <div class="campo"><span class="etiqueta">Prioridad</span>${chipPrioridad(t.prioridad)}</div>
+      <div class="campo"><span class="etiqueta">Tipos</span>${t.tipos.length ? `<div class="tipos-tarjeta">${t.tipos.map(id => chipTipo(tipoDe(p, id))).join('')}</div>` : '<span style="color:var(--tf-text-muted);font-size:14px">Sin tipo</span>'}</div>
+      <div class="campo"><span class="etiqueta">Descripción</span><p class="texto-largo">${esc(t.descripcion)}</p></div>
+      <div class="dos-campos">
+        <div class="campo"><span class="etiqueta">Fecha de inicio</span><span class="chip fecha">${I.calendario} ${fechaLarga(t.inicio)}</span></div>
+        <div class="campo"><span class="etiqueta">Fecha límite</span>${t.fecha ? chipFecha(t) : '<span style="color:var(--tf-text-muted);font-size:14px">Sin fecha</span>'}</div>
+      </div>
+      <div class="campo"><span class="etiqueta">Asignada a · ${t.asignados.length}</span><div class="personas">${t.asignados.map(u => `<div class="persona">${avatar(u, true)}<div class="nombre">${esc(usuarios[u].nombre)}${u === estado.yo ? ' (tú)' : ''}</div></div>`).join('') || '<span style="color:var(--tf-text-muted);font-size:14px">Sin asignar</span>'}</div></div>
+      <div class="campo"><span class="etiqueta">Historial · ${t.historial.length}</span><ul class="historial">${[...t.historial].reverse().map(h => `
+        <li>${esc(usuarios[h.quien] ? usuarios[h.quien].nombre : 'Usuario eliminado')}${h.quien === estado.yo ? ' (tú)' : ''} ${h.de ? `la movió de ${chipLista(h.de)} a ${chipLista(h.a)}` : `la creó en ${chipLista(h.a)}`}<span class="cuando">${fechaHora(h.cuando)}</span></li>`).join('')}</ul>
+        <div class="ayuda">Ordenarla dentro de la misma lista no se registra.</div></div>
+      <div class="fila-botones">${puede(p, 'editar') ? '<button class="btn btn-secundario" data-accion="editar">Editar</button>' : ''}
+        ${puede(p, 'eliminar') ? `<button class="btn btn-chico btn-peligro" data-accion="eliminar-tarjeta">Eliminar</button>` : ''}</div>
+      <div class="meta"><span>Espacio: ${esc(p.nombre)}</span><span>Creada por ${esc(usuarios[t.creada_por].nombre)} el ${fechaHora(t.creada)}</span></div>`;
+  }
+  if (c.tipo === 'nueva' || c.tipo === 'editar'){
+    const t = c.tipo === 'editar' ? tarjetas.find(x => x.id === c.id) : null;
+    const p = proyectoDe(t ? t.proyecto : estado.proyecto);
+    const asig = t ? t.asignados : [];
+    cuerpo = `<div class="hoja-cab"><h2>${t ? 'Editar tarjeta' : 'Nueva tarjeta'}</h2><button class="btn-icono" data-accion="cerrar" aria-label="Cerrar">${I.cerrar}</button></div>
+      <form id="form-tarjeta" novalidate>
+        <div class="campo"><label for="f-titulo">Título</label><input id="f-titulo" type="text" maxlength="200" value="${t ? esc(t.titulo) : ''}" placeholder="¿Qué hay que hacer?"><div class="error" id="e-titulo" hidden>Escribe un título.</div></div>
+        ${t ? '' : `<div class="campo"><label for="f-lista-t">Lista</label><select id="f-lista-t">${p.listas.map(l => `<option value="${l.id}" ${l.id === c.lista ? 'selected' : ''}>${esc(l.nombre)}</option>`).join('')}</select><div class="ayuda">Se agrega al final de la lista.</div></div>`}
+        <div class="campo"><label for="f-desc">Descripción</label><textarea id="f-desc" placeholder="Detalles, criterios de terminado…">${t ? esc(t.descripcion) : ''}</textarea><div class="error" id="e-desc" hidden>Escribe una descripción.</div></div>
+        <div class="campo"><span class="etiqueta">Prioridad</span><div class="elegir-prioridad" role="radiogroup" aria-label="Prioridad">${PRIORIDADES.map(([k, txt]) => `
+          <label><input type="radio" name="prioridad" value="${k}" ${(t ? t.prioridad : 'media') === k ? 'checked' : ''}><span class="chip prio-${k}"><span class="punto"></span>${txt}</span></label>`).join('')}</div></div>
+        <div class="dos-campos">
+          <div class="campo"><label for="f-inicio">Fecha de inicio</label><input id="f-inicio" type="date" value="${iso(t ? t.inicio : estado.hoy)}"><div class="error" id="e-inicio" hidden>Escribe la fecha de inicio.</div></div>
+          <div class="campo"><label for="f-fecha">Fecha límite <span style="text-transform:none;font-weight:400">(opcional)</span></label><input id="f-fecha" type="date" value="${t && t.fecha ? iso(t.fecha) : ''}"><div class="error" id="e-fecha" hidden>No puede ser anterior a la fecha de inicio.</div></div>
+        </div>
+        <div class="ayuda" style="margin:-8px 0 16px">La fecha de inicio es hoy por omisión; cámbiala si la actividad empezó o te la pidieron antes de capturarla.${t ? ` La tarjeta se capturó el ${fechaHora(t.creada)}.` : ''}</div>
+        ${p.tipos.length ? `<div class="campo"><span class="etiqueta">Tipos <span style="text-transform:none;font-weight:400">(opcional)</span></span><div class="elegir-tipos">${p.tipos.map(tp => `
+          <label><input type="checkbox" name="tipo" value="${tp.id}" ${t && t.tipos.includes(tp.id) ? 'checked' : ''}>${chipTipo(tp)}</label>`).join('')}</div></div>` : ''}
+        <div class="campo"><span class="etiqueta">Asignar a <span style="text-transform:none;font-weight:400">(opcional)</span></span><div class="personas">${p.miembros.map(u => `
+          <label class="persona"><input type="checkbox" name="asig" value="${u}" ${asig.includes(u) ? 'checked' : ''}>${avatar(u, true)}<span class="nombre">${esc(usuarios[u].nombre)}${u === estado.yo ? ' (tú)' : ''}</span></label>`).join('')}</div></div>
+        <div class="fila-botones"><button type="button" class="btn btn-secundario" data-accion="cerrar">Cancelar</button><button type="submit" class="btn btn-primario">Guardar</button></div>
+      </form>`;
+  }
+  if (c.tipo === 'lista'){
+    const p = proyectoDe(estado.proyecto);
+    const l = listaDe(p, c.id);
+    const i = p.listas.indexOf(l), n = deLista(l.id).length;
+    cuerpo = `<div class="hoja-cab"><h2>Lista «${esc(l.nombre)}»</h2><button class="btn-icono" data-accion="cerrar" aria-label="Cerrar">${I.cerrar}</button></div>
+      <form id="form-lista" novalidate>
+        <div class="campo"><label for="f-lnombre">Nombre</label><input id="f-lnombre" type="text" maxlength="50" value="${esc(l.nombre)}"><div class="error" id="e-lnombre" hidden></div></div>
+        <div class="fila-botones" style="margin-bottom:18px"><button type="submit" class="btn btn-primario">Guardar</button></div>
+      </form>
+      <div class="campo"><span class="etiqueta">Orden en el tablero</span>
+        <div class="fila-botones"><button class="btn btn-secundario" data-accion="lista-izq" ${i === 0 ? 'disabled' : ''}>${I.izq} Mover a la izquierda</button><button class="btn btn-secundario" data-accion="lista-der" ${i === p.listas.length - 1 ? 'disabled' : ''}>Mover a la derecha ${I.der}</button></div>
+        <div class="ayuda">Posición ${i + 1} de ${p.listas.length}.</div></div>
+      <div class="campo"><span class="etiqueta">Eliminar</span>
+        <button class="btn btn-chico btn-peligro" data-accion="eliminar-lista" ${n ? 'disabled' : ''}>Eliminar lista</button>
+        <div class="ayuda">${n ? `Tiene ${n} tarjeta${n === 1 ? '' : 's'}: muévelas o elimínalas antes. Así ninguna tarjeta se borra sin querer.` : 'La lista está vacía.'}</div></div>`;
+  }
+  if (c.tipo === 'filtros'){
+    const p = proyectoDe(estado.proyecto);
+    cuerpo = `<div class="hoja-cab"><h2>Filtrar tarjetas</h2><button class="btn-icono" data-accion="cerrar" aria-label="Cerrar">${I.cerrar}</button></div>
+      <form id="form-filtros" novalidate>
+        <div class="campo"><span class="etiqueta">Asignadas</span><div class="opciones-filtro">
+          <label><input type="checkbox" id="fl-mias" ${estado.soloMias ? 'checked' : ''}>Solo las asignadas a mí</label></div></div>
+        ${p.tipos.length ? `<div class="campo"><span class="etiqueta">Tipo</span><div class="opciones-filtro">
+          <label><input type="radio" name="fl-tipo" value="0" ${!estado.filtroTipo ? 'checked' : ''}>Todos los tipos</label>
+          ${p.tipos.map(tp => `<label><input type="radio" name="fl-tipo" value="${tp.id}" ${estado.filtroTipo === tp.id ? 'checked' : ''}>${chipTipo(tp)}</label>`).join('')}</div></div>` : ''}
+        <div class="fila-botones"><button type="button" class="btn btn-secundario" data-accion="quitar-filtros">Quitar filtros</button><button type="submit" class="btn btn-primario">Ver tarjetas</button></div>
+      </form>`;
+  }
+  if (c.tipo === 'nuevo-proyecto'){
+    cuerpo = `<div class="hoja-cab"><h2>Nuevo espacio</h2><button class="btn-icono" data-accion="cerrar" aria-label="Cerrar">${I.cerrar}</button></div>
+      <form id="form-proyecto" novalidate>
+        <div class="campo"><label for="f-nombre">Nombre</label><input id="f-nombre" type="text" maxlength="150" placeholder="Ej. Feria de empleo 2027"><div class="error" id="e-nombre" hidden>Escribe un nombre.</div></div>
+        <div class="campo"><div class="ayuda">Empieza con las listas ${LISTAS_INICIALES.map(x => `«${x}»`).join(', ')}; puedes renombrarlas, agregar otras o eliminarlas.</div></div>
+        <div class="fila-botones"><button type="button" class="btn btn-secundario" data-accion="cerrar">Cancelar</button><button type="submit" class="btn btn-primario">Crear espacio</button></div>
+      </form>`;
+  }
+  capa.innerHTML = `<div class="velo" data-accion="cerrar-fondo"><div class="hoja" role="dialog" aria-modal="true"><div class="asa"></div>${cuerpo}</div></div>`;
+}
+
+/* ---------------------------------------------------------------------------
+   Eventos
+--------------------------------------------------------------------------- */
+document.addEventListener('click', e => {
+  const b = e.target.closest('[data-vista],[data-yo],[data-ir],[data-proyecto],[data-tarjeta],[data-permiso],[data-filtro-tipo],[data-saltar],[data-mover-a],[data-menu-lista],[data-nueva-en],[data-accion]');
+  if (!b) return;
+  if (b.dataset.vista){ estado.vista = b.dataset.vista; marcar('[data-vista]', b); return render(); }
+  if (b.dataset.yo){
+    estado.yo = b.dataset.yo; marcar('[data-yo]', b);
+    if (estado.proyecto && !proyectoDe(estado.proyecto).miembros.includes(estado.yo)) estado.pantalla = 'proyectos';
+    estado.capa = null; return render();
+  }
+  if (b.dataset.ir){ estado.pantalla = b.dataset.ir; estado.capa = null; return render(); }
+  if (b.dataset.proyecto){ Object.assign(estado, {proyecto:+b.dataset.proyecto, pantalla:'tablero', soloMias:false, filtroTipo:null, agregandoLista:false}); return render(); }
+  if (b.dataset.tarjeta){ estado.capa = {tipo:'detalle', id:+b.dataset.tarjeta}; return render(); }
+  if (b.dataset.filtroTipo !== undefined){ estado.filtroTipo = +b.dataset.filtroTipo || null; return render(); }
+  if (b.dataset.saltar){
+    document.querySelector(`.lista[data-lista="${b.dataset.saltar}"]`).scrollIntoView({behavior:'smooth', inline:'start', block:'nearest'});
+    marcarSalto(b.dataset.saltar); return;
+  }
+  if (b.dataset.moverA){
+    const t = tarjetas.find(x => x.id === estado.capa.id), destino = +b.dataset.moverA;
+    if (destino !== t.lista) mover(t, destino, deLista(destino).length);
+    return render();
+  }
+  if (b.dataset.menuLista){ estado.capa = {tipo:'lista', id:+b.dataset.menuLista}; return render(); }
+  if (b.dataset.nuevaEn){ estado.capa = {tipo:'nueva', lista:+b.dataset.nuevaEn}; return render(); }
+  if (b.dataset.permiso){
+    const [u, k] = b.dataset.permiso.split(':'); const p = proyectoDe(estado.proyecto);
+    p.permisos[u] = p.permisos[u] || {}; p.permisos[u][k] = !p.permisos[u][k];
+    toast(`Se actualizaron los permisos de ${usuarios[u].nombre}.`); return render();
+  }
+  const a = b.dataset.accion;
+  if (a === 'cerrar-fondo' && e.target !== b) return;
+  if (a === 'cerrar' || a === 'cerrar-fondo'){ estado.capa = null; return render(); }
+  if (a === 'nuevo-proyecto'){ estado.capa = {tipo:'nuevo-proyecto'}; return render(); }
+  if (a === 'editar'){ estado.capa = {tipo:'editar', id:estado.capa.id}; return render(); }
+  if (a === 'solo-mias'){ estado.soloMias = !estado.soloMias; return render(); }
+  if (a === 'filtros'){ estado.capa = {tipo:'filtros'}; return render(); }
+  if (a === 'quitar-filtros'){ Object.assign(estado, {soloMias:false, filtroTipo:null, capa:null}); return render(); }
+  if (a === 'agregar-lista'){ estado.agregandoLista = true; return render(); }
+  if (a === 'cancelar-lista'){ estado.agregandoLista = false; return render(); }
+  if (a === 'lista-izq' || a === 'lista-der'){
+    const p = proyectoDe(estado.proyecto), l = listaDe(p, estado.capa.id), i = p.listas.indexOf(l), j = a === 'lista-izq' ? i - 1 : i + 1;
+    p.listas.splice(i, 1); p.listas.splice(j, 0, l); toast('Se cambió el orden de las listas.'); return render();
+  }
+  if (a === 'eliminar-lista'){
+    const p = proyectoDe(estado.proyecto), l = listaDe(p, estado.capa.id);
+    estado.capa = {tipo:'confirmar', mensaje:`¿Eliminar la lista «${l.nombre}»? Está vacía; esta acción no se puede deshacer.`, boton:'Eliminar lista',
+      hacer:() => { p.listas = p.listas.filter(x => x !== l); toast('Se eliminó la lista.'); }};
+    return render();
+  }
+  if (a === 'eliminar-tarjeta'){
+    const t = tarjetas.find(x => x.id === estado.capa.id);
+    estado.capa = {tipo:'confirmar', mensaje:`¿Eliminar la tarjeta «${t.titulo}»? Esta acción no se puede deshacer.`, boton:'Eliminar',
+      hacer:() => { const l = t.lista; tarjetas.splice(tarjetas.indexOf(t), 1); deLista(l).forEach((x, i) => x.pos = i); toast('Se eliminó la tarjeta.'); }};
+    return render();
+  }
+  if (a === 'confirmar'){ const c = estado.capa; estado.capa = null; c.hacer(); return render(); }
+});
+
+document.addEventListener('submit', e => {
+  const f = e.target; e.preventDefault();
+  const p = proyectoDe(estado.proyecto);
+  if (f.id === 'form-filtros'){
+    const tipo = f.querySelector('[name=fl-tipo]:checked');
+    Object.assign(estado, {soloMias:$('#fl-mias').checked, filtroTipo:tipo ? +tipo.value || null : null, capa:null});
+    return render();
+  }
+  if (f.id === 'form-tarjeta'){
+    const titulo = $('#f-titulo').value.trim(), desc = $('#f-desc').value.trim();
+    const inicio = $('#f-inicio').value, fin = $('#f-fecha').value;
+    const finAntes = inicio && fin && fin < inicio;
+    $('#e-titulo').hidden = !!titulo; $('#e-desc').hidden = !!desc; $('#e-inicio').hidden = !!inicio; $('#e-fecha').hidden = !finAntes;
+    if (!titulo || !desc || !inicio || finAntes) return;
+    const datos = {titulo, descripcion:desc, prioridad:f.querySelector('[name=prioridad]:checked').value,
+      inicio:new Date(inicio + 'T12:00:00'),
+      fecha:fin ? new Date(fin + 'T12:00:00') : null,
+      asignados:[...f.querySelectorAll('[name=asig]:checked')].map(x => x.value),
+      tipos:[...f.querySelectorAll('[name=tipo]:checked')].map(x => +x.value)};
+    if (estado.capa.tipo === 'editar'){
+      const t = tarjetas.find(x => x.id === estado.capa.id);
+      Object.assign(t, datos); estado.capa = {tipo:'detalle', id:t.id}; toast('Se guardó la tarjeta.');
+    } else {
+      const lista = +$('#f-lista-t').value;
+      tarjetas.push({id:sigId++, proyecto:p.id, lista, pos:deLista(lista).length, creada_por:estado.yo, creada:ahora(), ...datos,
+        historial:[{cuando:ahora(), quien:estado.yo, de:null, a:listaDe(p, lista).nombre}]});
+      estado.capa = null; toast('Se creó la tarjeta.');
+    }
+    return render();
+  }
+  if (f.id === 'form-lista-nueva' || f.id === 'form-lista'){
+    const inp = f.id === 'form-lista' ? $('#f-lnombre') : $('#f-lista'), err = f.id === 'form-lista' ? $('#e-lnombre') : $('#e-lista');
+    const nombre = inp.value.trim(), propia = f.id === 'form-lista' ? estado.capa.id : null;
+    const repetido = p.listas.some(l => l.id !== propia && l.nombre.toLowerCase() === nombre.toLowerCase());
+    err.textContent = !nombre ? 'Escribe un nombre.' : repetido ? 'Ya hay una lista con ese nombre en este espacio.' : '';
+    err.hidden = !err.textContent; if (err.textContent) return;
+    if (propia){ listaDe(p, propia).nombre = nombre; estado.capa = null; toast('Se renombró la lista.'); }
+    else { p.listas.push({id:sigLista++, nombre}); estado.agregandoLista = false; toast('Se agregó la lista.'); }
+    render();
+    if (!propia) document.getElementById('tablero').scrollLeft = 1e6;
+    return;
+  }
+  if (f.id === 'form-proyecto'){
+    const nombre = $('#f-nombre').value.trim();
+    $('#e-nombre').hidden = !!nombre; if (!nombre) return;
+    const id = Math.max(...proyectos.map(x => x.id)) + 1;
+    proyectos.push({id, nombre, dueno:estado.yo, miembros:[estado.yo], archivado:false, permisos:{}, tipos:[],
+      listas:LISTAS_INICIALES.map(n => ({id:sigLista++, nombre:n}))});
+    Object.assign(estado, {capa:null, proyecto:id, pantalla:'tablero'}); toast('Se creó el espacio.');
+    return render();
+  }
+});
+
+/* Arrastrar y soltar en computadora (en la app se usaría una librería con soporte táctil y de teclado). */
+let arrastrada = null;
+document.addEventListener('dragstart', e => {
+  const el = e.target.closest('.tarjeta[draggable="true"]'); if (!el) return;
+  arrastrada = tarjetas.find(t => t.id === +el.dataset.tarjeta);
+  e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', el.dataset.tarjeta);
+  requestAnimationFrame(() => el.classList.add('arrastrando'));
+});
+document.addEventListener('dragend', () => { arrastrada = null; limpiarDestino(); document.querySelectorAll('.arrastrando').forEach(x => x.classList.remove('arrastrando')); });
+function limpiarDestino(){ document.querySelectorAll('.marcador').forEach(x => x.remove()); document.querySelectorAll('.lista.destino').forEach(x => x.classList.remove('destino')); }
+function indiceSoltar(cont, y, excluir = '.arrastrando'){
+  const hijos = [...cont.querySelectorAll(`.tarjeta:not(${excluir})`)];
+  const i = hijos.findIndex(h => { const r = h.getBoundingClientRect(); return y < r.top + r.height / 2; });
+  return {i: i === -1 ? hijos.length : i, hijos};
+}
+document.addEventListener('dragover', e => {
+  const lista = e.target.closest('.lista[data-lista]'); if (!arrastrada || !lista) return;
+  e.preventDefault();
+  const cont = lista.querySelector('.lista-tarjetas');
+  const {i, hijos} = indiceSoltar(cont, e.clientY);
+  limpiarDestino(); lista.classList.add('destino');
+  const m = document.createElement('div'); m.className = 'marcador';
+  hijos[i] ? cont.insertBefore(m, hijos[i]) : cont.appendChild(m);
+});
+document.addEventListener('drop', e => {
+  const lista = e.target.closest('.lista[data-lista]'); if (!arrastrada || !lista) return;
+  e.preventDefault();
+  const {i, hijos} = indiceSoltar(lista.querySelector('.lista-tarjetas'), e.clientY);
+  // El índice es sobre las tarjetas visibles (con filtros); se traduce al de la lista completa.
+  const destino = deLista(+lista.dataset.lista).filter(t => t !== arrastrada);
+  const ref = hijos[i] ? tarjetas.find(t => t.id === +hijos[i].dataset.tarjeta) : null;
+  mover(arrastrada, +lista.dataset.lista, ref ? destino.indexOf(ref) : destino.length);
+  arrastrada = null; render();
+});
+
+/* Arrastrar en teléfono: mantener presionada para levantar la tarjeta. Si el dedo se mueve antes
+   de tiempo es un desplazamiento normal y no se levanta nada. Pointer events, así que en la
+   maqueta también funciona con el mouse en la vista «Teléfono». */
+const ESPERA_MS = 350, TOLERANCIA_PX = 8, BORDE_PX = 48;
+let tactil = null;   // {t, el, x0, y0, timer, fantasma, dx, dy, x, y, activo}
+let ignorarClicHasta = 0;
+document.addEventListener('click', e => { if (Date.now() < ignorarClicHasta){ e.stopPropagation(); e.preventDefault(); } }, true);
+document.addEventListener('pointerdown', e => {
+  const el = e.target.closest('.tablero.tactil .tarjeta'); if (!el || e.button > 0) return;
+  tactil = {t:tarjetas.find(x => x.id === +el.dataset.tarjeta), el, x0:e.clientX, y0:e.clientY, x:e.clientX, y:e.clientY, activo:false};
+  el.classList.add('presionando');
+  tactil.timer = setTimeout(levantar, ESPERA_MS);
+});
+function levantar(){
+  const {el, x, y} = tactil, r = el.getBoundingClientRect();
+  const f = el.cloneNode(true);
+  f.classList.remove('presionando'); f.classList.add('fantasma');
+  Object.assign(f.style, {width:r.width + 'px', left:r.left + 'px', top:r.top + 'px'});
+  document.body.appendChild(f);
+  Object.assign(tactil, {activo:true, fantasma:f, dx:x - r.left, dy:y - r.top});
+  el.classList.remove('presionando'); el.classList.add('hueco');
+  $('#tablero').classList.add('arrastrando-tactil');
+  if (navigator.vibrate) navigator.vibrate(15);
+  autoDesplazar();
+}
+document.addEventListener('pointermove', e => {
+  if (!tactil) return;
+  tactil.x = e.clientX; tactil.y = e.clientY;
+  if (!tactil.activo){
+    if (Math.hypot(e.clientX - tactil.x0, e.clientY - tactil.y0) > TOLERANCIA_PX) cancelarTactil();
+    return;
+  }
+  tactil.fantasma.style.left = (e.clientX - tactil.dx) + 'px';
+  tactil.fantasma.style.top = (e.clientY - tactil.dy) + 'px';
+  marcarDestinoTactil();
+});
+// Mientras se arrastra, el dedo no debe desplazar la página.
+document.addEventListener('touchmove', e => { if (tactil && tactil.activo) e.preventDefault(); }, {passive:false});
+document.addEventListener('contextmenu', e => { if (e.target.closest('.tablero.tactil .tarjeta')) e.preventDefault(); });
+function listaBajo(x, y){ const el = document.elementFromPoint(x, y); return el && el.closest('.lista[data-lista]'); }
+function marcarDestinoTactil(){
+  limpiarDestino();
+  const lista = listaBajo(tactil.x, tactil.y); if (!lista) return;
+  const cont = lista.querySelector('.lista-tarjetas');
+  const {i, hijos} = indiceSoltar(cont, tactil.y, '.hueco');
+  lista.classList.add('destino');
+  const m = document.createElement('div'); m.className = 'marcador';
+  hijos[i] ? cont.insertBefore(m, hijos[i]) : cont.appendChild(m);
+}
+// Cerca de los bordes, el tablero se desplaza solo (a los lados) y el contenido (arriba y abajo).
+function autoDesplazar(){
+  if (!tactil || !tactil.activo) return;
+  const tb = $('#tablero').getBoundingClientRect(), ct = $('#contenido').getBoundingClientRect();
+  if (tactil.x < tb.left + BORDE_PX) $('#tablero').scrollLeft -= 9;
+  else if (tactil.x > tb.right - BORDE_PX) $('#tablero').scrollLeft += 9;
+  if (tactil.y < ct.top + BORDE_PX) $('#contenido').scrollTop -= 7;
+  else if (tactil.y > ct.bottom - BORDE_PX - 70) $('#contenido').scrollTop += 7;
+  marcarDestinoTactil();
+  requestAnimationFrame(autoDesplazar);
+}
+document.addEventListener('pointerup', () => {
+  if (!tactil) return;
+  if (!tactil.activo) return cancelarTactil();
+  const {t, x, y} = tactil;
+  const lista = listaBajo(x, y);
+  if (lista){
+    const {i, hijos} = indiceSoltar(lista.querySelector('.lista-tarjetas'), y, '.hueco');
+    const destino = deLista(+lista.dataset.lista).filter(z => z !== t);
+    const ref = hijos[i] ? tarjetas.find(z => z.id === +hijos[i].dataset.tarjeta) : null;
+    const antes = {lista:t.lista, pos:t.pos};
+    mover(t, +lista.dataset.lista, ref ? destino.indexOf(ref) : destino.length);
+    if (antes.lista === t.lista && antes.pos !== t.pos) toast('Se cambió el orden de la tarjeta.');
+  }
+  ignorarClicHasta = Date.now() + 400;   // soltar no debe abrir el detalle
+  cancelarTactil(); render();
+});
+document.addEventListener('pointercancel', () => cancelarTactil());
+function cancelarTactil(){
+  if (!tactil) return;
+  clearTimeout(tactil.timer);
+  tactil.el.classList.remove('presionando', 'hueco');
+  if (tactil.fantasma) tactil.fantasma.remove();
+  const tb = $('#tablero'); if (tb) tb.classList.remove('arrastrando-tactil');
+  limpiarDestino(); tactil = null;
+}
+
+/* Teléfono: marca en el salto rápido la lista que está a la vista al deslizar. */
+document.addEventListener('scroll', e => {
+  if (e.target.id !== 'tablero') return;
+  const t = e.target, listas = [...t.querySelectorAll('.lista[data-lista]')];
+  const actual = listas.find(l => l.offsetLeft + l.offsetWidth / 2 > t.scrollLeft) || listas[0];
+  if (actual) marcarSalto(actual.dataset.lista);
+}, true);
+function marcarSalto(id){ document.querySelectorAll('[data-saltar]').forEach(x => x.setAttribute('aria-current', x.dataset.saltar === String(id))); }
+
+$('#hoy').addEventListener('change', e => { if (e.target.value){ estado.hoy = new Date(e.target.value + 'T12:00:00'); render(); } });
+function marcar(sel, b){ document.querySelectorAll(sel).forEach(x => x.setAttribute('aria-pressed', x === b)); }
+
+render();
+</script>
+</body>
+</html>
