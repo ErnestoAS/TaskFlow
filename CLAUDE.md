@@ -9,10 +9,11 @@ opcional, uno o más asignados y uno de tres estatus: Pendiente → En curso →
   No crear modelos de dominio que no estén ahí.
 - **El documento se actualiza en el mismo cambio, siempre** (ver §Sincronía con la propuesta).
 - Operación en producción (primera instalación, despliegue, respaldos, vuelta atrás):
-  [docs/operacion.md](docs/operacion.md). Producción: **https://sistemas.reduaz.mx/taskflow/**, en el
-  mismo servidor que actividades-uaz y mi-campus. Inventario del montaje, configuraciones que
-  existen solo por compartir y checklists para dominio propio o servidor propio:
-  [docs/despliegue-actual.md](docs/despliegue-actual.md) (mantenerlo al día).
+  [docs/operacion.md](docs/operacion.md). Producción: **https://taskflow.rourendev.com/**, en
+  `srv-01` (Hetzner), servidor propio preparado para varias apps (una por subdominio de
+  `rourendev.com`; correo por Resend). Inventario del montaje, riesgos aceptados y checklists para
+  agregar apps o mudarse: [docs/despliegue-actual.md](docs/despliegue-actual.md) (mantenerlo al día).
+  Hasta 2026-10-03 estuvo en `sistemas.reduaz.mx/taskflow/` (servidor de la UAZ); ya se retiró.
 - Todo se ejecuta en Docker: la skill `taskflow-dev` tiene los comandos, las convenciones y la
   definición de terminado.
 - Documentación de Django: skill `django-docs` (no responder de memoria sobre APIs de Django).
@@ -23,21 +24,24 @@ opcional, uno o más asignados y uno de tres estatus: Pendiente → En curso →
   revise el diff; solo hacer `git commit` (o `push`) cuando lo pida explícitamente.
 - **Estado actual:** Etapas 1–3 listas: backend (proyectos, miembros, permisos, invitaciones,
   tipos e historial; §4.5), API `/api/v1/` (§6), PWA en `/app/` y portada de instalación en `/`
-  (§5). En producción solo está la Etapa 1 (`f6d2e40`); ver «Pasos propios» en docs/operacion.md
-  antes de desplegar.
+  (§5), más correo verificado con código, recuperación de contraseña y apellidos separados (§4.3,
+  §7). En producción: `3b54d39` desde 2026-10-02. Ver «Pasos propios» en docs/operacion.md antes de
+  desplegar.
 - **Las reglas de negocio viven en `apps/<app>/servicios.py`.** Toda acción (también la API)
   pasa por esas funciones; nunca cambiar `Tarjeta.estatus` directamente, sino con
   `tarjetas.servicios.cambiar_estatus`, para que quede en el historial.
 
-## Publicación bajo `/taskflow/` (reglas)
+## URLs y publicación bajo una ruta (reglas)
 
-En producción TaskFlow no tiene dominio propio: vive en una ruta de `sistemas.reduaz.mx`
-(`DJANGO_FORCE_SCRIPT_NAME=/taskflow`, ver docs/operacion.md). Para que eso no se rompa:
+Producción vive en la raíz de su dominio, pero el código **debe seguir funcionando bajo una ruta**
+de otro dominio (`DJANGO_FORCE_SCRIPT_NAME=/taskflow`, como hasta 2026-10-03; ver docs/operacion.md,
+«Publicar bajo una ruta»). Para que eso no se rompa:
 
 - Toda URL se genera con `{% url %}`, `reverse()`, `redirect("nombre")` o `{% static %}`;
-  **nunca** rutas absolutas escritas a mano (`href="/tarjetas/"`, `fetch("/api/…")`), que en
-  producción saltarían fuera de `/taskflow/` y caerían en actividades-uaz.
-- `STATIC_URL` y `MEDIA_URL` se arman con `RUTA_BASE` (`/taskflow/static/`); no volverlas relativas
+  **nunca** rutas absolutas escritas a mano (`href="/tarjetas/"`, `fetch("/api/…")`), que bajo
+  una ruta saltarían fuera de `/taskflow/` y caerían en otra aplicación. Tampoco dominios escritos
+  a mano en plantillas: `{{ request.get_host }}` (la portada lo usa así).
+- `STATIC_URL` y `MEDIA_URL` se arman con `RUTA_BASE` (`/static/` o `/taskflow/static/`); no volverlas relativas
   (`static/`): con gunicorn quedan en caché sin el prefijo y el admin pierde los estilos.
 - Las cookies tienen nombre propio (`taskflow_sessionid`, `taskflow_csrftoken`); en JS, leer el
   CSRF de `taskflow_csrftoken`, no de `csrftoken`.
@@ -204,8 +208,8 @@ aprobarse.
   (mismo enlace) o las cancela.
 - **Dueño con la cuenta desactivada** sin haber transferido *(decidido 2026-10-01)*: un
   administrador transfiere el proyecto a otro miembro desde el admin de Django.
-- **Instalación:** portada propia en `/taskflow/` con botón que usa `beforeinstallprompt` (Android
-  y computadora) y pasos de Safari en iPhone; la app vive en `/taskflow/app/`. Igual que mi-campus.
+- **Instalación:** portada propia en `/` con botón que usa `beforeinstallprompt` (Android
+  y computadora) y pasos de Safari en iPhone; la app vive en `/app/`. Igual que mi-campus.
 
 ### Decisiones de `app-v3.html` *(pendientes de aprobar, 2026-10-02; diseño en §4.6 de la propuesta)*
 

@@ -1,0 +1,12 @@
+# Todos los días a las 03:30 (hora del servidor), antes de los reinicios automáticos de las 04:00.
+# Persistent: si el servidor estaba apagado a esa hora, respalda en cuanto arranca.
+[Unit]
+Description=Respaldo diario de TaskFlow a las 03:30
+
+[Timer]
+OnCalendar=*-*-* 03:30:00
+Persistent=true
+RandomizedDelaySec=5min
+
+[Install]
+WantedBy=timers.target

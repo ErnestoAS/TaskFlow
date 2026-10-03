@@ -20,7 +20,7 @@ umask 027
 DIR="${TASKFLOW_DIR:-/opt/taskflow}"
 IMAGEN="${TASKFLOW_IMAGEN:-ghcr.io/ernestoas/taskflow}"
 RESPALDOS="${TASKFLOW_RESPALDOS:-/var/backups/taskflow}"
-HOST_SALUD="${TASKFLOW_HOST_SALUD:-sistemas.reduaz.mx}"
+HOST_SALUD="${TASKFLOW_HOST_SALUD:-taskflow.rourendev.com}"
 ESPERA="${TASKFLOW_ESPERA:-300}"            # segundos para que `web` quede sano
 SUDO="${TASKFLOW_SUDO-sudo}"                # /opt/taskflow y .env.prod pertenecen a root
 PROYECTO="taskflow-prod"

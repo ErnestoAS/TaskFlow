@@ -2,14 +2,15 @@
 
 > **Estado:** v3. Etapa 1 (esqueleto) y Etapa 2 (backend de proyectos, miembros, permisos,
 > invitaciones, tipos e historial, §4.5) implementadas el 2026-10-01. **Etapa 3 (API `/api/v1/`,
-> PWA y portada de instalación, §5–§7) implementada el 2026-10-01**, sin desplegar todavía.
-> CI (GitHub Actions + ghcr.io) y despliegue en `https://sistemas.reduaz.mx/taskflow/` en
-> producción desde el 2026-10-01 (versión `f6d2e40`, solo Etapa 1). **Cuentas con correo
+> PWA y portada de instalación, §5–§7) implementada el 2026-10-01**. **Cuentas con correo
 > verificado, recuperación de contraseña y apellidos separados** implementados el 2026-10-02
-> (§4.3, §7), sin desplegar. **Pendiente (2026-10-02): listas libres por proyecto, estilo
-> Trello, en lugar de los tres estatus** (§4.6, maqueta `app-v3.html` por aprobar); hasta
-> implementarse, §4.4–§7 describen lo que hay hoy.
-> **Fecha:** 2026-10-02
+> (§4.3, §7). **En producción todo lo anterior (`3b54d39`) desde el 2026-10-02 en
+> `https://taskflow.rourendev.com/`**, servidor propio en Hetzner (§9). La instalación anterior en
+> `sistemas.reduaz.mx/taskflow/` (solo Etapa 1) se retiró el 2026-10-03.
+> **Pendiente (2026-10-02): listas libres por proyecto, estilo Trello, en lugar de los tres
+> estatus** (§4.6, maqueta `app-v3.html` por aprobar); hasta implementarse, §4.4–§7 describen lo
+> que hay hoy.
+> **Fecha:** 2026-10-03
 > **Alcance:** describe el funcionamiento general y el esquema. Lo pendiente de decidir está en
 > [§10](#10-preguntas-abiertas); los ajustes hechos al implementar, en [§11](#11-notas-de-implementación).
 
@@ -23,10 +24,13 @@ a una o más personas.
 
 | Frente | Usuarios | Tecnología | Ruta | Estado |
 | --- | --- | --- | --- | --- |
-| Administración del sistema | Superadministrador | Django admin | `/taskflow/django-admin/` | ✅ |
-| Portada de instalación | Cualquiera | Plantilla de Django | `/taskflow/` | ✅ (sin desplegar) |
-| Aplicación (tablero de tarjetas) | Usuarios con cuenta | PWA: Vue 3 + Vite (§5) | `/taskflow/app/` | ✅ (sin desplegar) |
-| API de la PWA | La PWA (misma sesión) | Django REST Framework (§6) | `/taskflow/api/v1/` | ✅ (sin desplegar) |
+| Administración del sistema | Superadministrador | Django admin | `/django-admin/` | ✅ en producción |
+| Portada de instalación | Cualquiera | Plantilla de Django | `/` | ✅ en producción |
+| Aplicación (tablero de tarjetas) | Usuarios con cuenta | PWA: Vue 3 + Vite (§5) | `/app/` | ✅ en producción |
+| API de la PWA | La PWA (misma sesión) | Django REST Framework (§6) | `/api/v1/` | ✅ en producción |
+
+Las rutas son relativas a `https://taskflow.rourendev.com`. El código funciona también bajo una
+ruta de otro dominio (`/taskflow/…`, como hasta 2026-10-03; §9).
 
 ## 2. Stack
 
@@ -276,7 +280,7 @@ Propuesto al implementar (2026-10-02, a confirmar con la maqueta):
 *Aprobadas el 2026-10-01* con las maquetas `docs/_mockups/app-v2.html` y
 `docs/_mockups/instalacion-v2.html` (paleta y componentes en `docs/identidad-visual.md`).
 
-### 5.1 Portada de instalación — `/taskflow/`
+### 5.1 Portada de instalación — `/`
 
 Plantilla de Django (`apps/core/templates/core/portada.html`, sin la PWA): qué es TaskFlow y cómo
 instalarla. Detecta iPhone/iPad, Android o computadora (`static/js/portada.js`) y resalta los pasos
@@ -284,7 +288,7 @@ de esa plataforma. Botones: **Abrir e instalar** (`/app/?instalar=1`: la PWA mue
 instalación aunque se haya descartado), **Crear mi cuenta** (`/app/#/registro`, solo si
 `TASKFLOW_REGISTRO_ABIERTO`) y **Entrar**.
 
-### 5.2 PWA — `/taskflow/app/`
+### 5.2 PWA — `/app/`
 
 Código en `frontend/`. Rutas con `#` (decisión en §9):
 
@@ -372,12 +376,16 @@ límite `acceso`.
   cuenta, se le pide salir y entrar con la correcta.
 - **Lo ajeno responde 404, no 403**, para no revelar que un proyecto o tarjeta existe. Las reglas
   (dueño, permisos, archivado) las aplican los servicios y responden 403.
-- Admin de Django en `/taskflow/django-admin/` (`is_staff`).
-- Producción: `https://sistemas.reduaz.mx/taskflow/` (§9). HTTPS lo termina el nginx del servidor;
-  Django confía en `X-Forwarded-Proto` (`SECURE_PROXY_SSL_HEADER`), cookies `Secure` y `Lax`.
-- Cookies propias (`taskflow_sessionid`, `taskflow_csrftoken`) con ruta `/taskflow/`: el dominio lo
-  comparte actividades-uaz, que usa los nombres por omisión en `/`.
-- `SECURE_HSTS_SECONDS = 0` mientras `sistemas.reduaz.mx` conserve el 8080 de actividades-uaz.
+- Admin de Django en `/django-admin/` (`is_staff`).
+- Producción: `https://taskflow.rourendev.com/` (§9). HTTPS lo termina el nginx del servidor con un
+  certificado propio de Let's Encrypt; Django confía en `X-Forwarded-Proto`
+  (`SECURE_PROXY_SSL_HEADER`), cookies `Secure` y `Lax`. Solo entran 22, 80 y 443 (firewall de
+  Hetzner); SSH solo con llave y sin `root`.
+- Cookies con nombre propio (`taskflow_sessionid`, `taskflow_csrftoken`) y ruta `RUTA_BASE`: no
+  pisan las de otra app del mismo dominio o de `localhost` en desarrollo.
+- HSTS solo para `taskflow.rourendev.com` (sin subdominios): `300` desde 2026-10-02, *pendiente*
+  subirlo a un año. En `sistemas.reduaz.mx` estaba en 0 porque el dominio conservaba el 8080 de
+  actividades-uaz.
 - Visibilidad (§4.5): un usuario ve solo los proyectos de los que es miembro y todas sus tarjetas.
   Cada endpoint tiene prueba de que un no miembro no puede leer ni modificar
   (`apps/api/tests/test_api.py`).
@@ -387,10 +395,11 @@ límite `acceso`.
 | Etapa | Contenido | Estado |
 | --- | --- | --- |
 | 1 | Esqueleto: Docker, settings, `Usuario`, `Tarjeta`, admin, pruebas básicas | ✅ 2026-10-01 |
-| 1.5 | CI (GitHub Actions + ghcr.io) y despliegue en el servidor compartido (docs/operacion.md, docs/despliegue-actual.md) | ✅ 2026-10-01 · en producción `f6d2e40` |
+| 1.5 | CI (GitHub Actions + ghcr.io) y despliegue en el servidor compartido de la UAZ | ✅ 2026-10-01 · `f6d2e40` · retirado 2026-10-03 |
+| 1.6 | Servidor propio `srv-01` (Hetzner), dominio `rourendev.com`, correo por Resend (docs/operacion.md, docs/despliegue-actual.md) | ✅ 2026-10-02 · en producción `3b54d39` |
 | 2 | Proyectos, miembros, permisos, invitaciones, tipos e historial (§4.5): modelos, migraciones, servicios, admin y pruebas | ✅ 2026-10-01 (maquetas en `docs/_mockups/`) |
-| 3 | API `/api/v1/`, PWA (tablero, tarjetas, miembros, invitaciones, tipos, perfil) y portada de instalación (§5–§7) | ✅ 2026-10-01 · sin desplegar |
-| 3.5 | Correo verificado con código, recuperar contraseña y apellidos separados (§4.3, §7) | ✅ 2026-10-02 · sin desplegar |
+| 3 | API `/api/v1/`, PWA (tablero, tarjetas, miembros, invitaciones, tipos, perfil) y portada de instalación (§5–§7) | ✅ 2026-10-01 · en producción 2026-10-02 |
+| 3.5 | Correo verificado con código, recuperar contraseña y apellidos separados (§4.3, §7) | ✅ 2026-10-02 · en producción 2026-10-02 |
 | 3.6 | Listas libres por proyecto en lugar de estatus, arrastrar y soltar, historial de movimientos (§4.6) | Decidido 2026-10-02 · maqueta `app-v3.html` por aprobar |
 | 4 | Por definir: avisos por correo de asignación o vencimiento, búsqueda, comentarios en tarjetas | — |
 
@@ -400,14 +409,27 @@ límite `acceso`.
   unidad. Si en el futuro hiciera falta separar tableros por equipo, se modelaría con una FK
   explícita, no con multi-site.
 
-- **Publicación bajo `/taskflow/` de `sistemas.reduaz.mx` en vez de dominio propio** (2026-10-01):
+- **Servidor propio en Hetzner con dominio propio** (2026-10-02, Ernesto; sustituye a la decisión
+  siguiente): TaskFlow pasa a `https://taskflow.rourendev.com/`, en `srv-01` (Hetzner Cloud, 2 vCPU,
+  4 GB), servidor pensado para alojar varias apps propias, una por subdominio de `rourendev.com`
+  (dominio en Cloudflare). Motivos: dejar de compartir el servidor de la UAZ (y sus restricciones:
+  sin HSTS, 2 workers, ruta en vez de dominio) y poder publicar y monetizar apps personales.
+  Descartados: **Vercel** (serverless: sin Docker, sin procesos permanentes ni disco persistente;
+  habría que rehacer el despliegue y mover los archivos a S3), **DigitalOcean** (mismo esquema pero
+  el doble de precio por la mitad de RAM), **Clouding** (1 GB de RAM y 0.5 vCPU por el mismo precio)
+  y **Render/Railway/Fly** (más caros y dejan sin uso `desplegar.sh` y los respaldos). Correo por
+  **Resend** (SMTP; gratis hasta 3,000 al mes) porque no requiere código y la verificación del
+  dominio se hizo con Cloudflare en un paso. No se contrataron los Backups de Hetzner ni se instaló
+  el respaldo diario (riesgo aceptado, docs/despliegue-actual.md §4).
+- **Publicación bajo `/taskflow/` de `sistemas.reduaz.mx` en vez de dominio propio** (2026-10-01;
+  *sustituida el 2026-10-02 por la anterior; se conserva el razonamiento*):
   no se pueden pedir más dominios por ahora. Se descartó entrar por IP y puerto
   (`http://148.217.94.155:8082`) porque dejaría la aplicación sin HTTPS (contraseñas en claro) y
   obligaría a abrir un puerto en el firewall. La ruta reutiliza el certificado existente; el costo
   es `FORCE_SCRIPT_NAME`, cookies con nombre y ruta propios y la regla de no escribir URLs a mano.
   Pasar a dominio propio después es cambiar dos variables y el `server{}` (docs/operacion.md).
-- **PWA con rutas `#` y `base: "./"`** (2026-10-01): la misma build funciona en `/app/` (local) y
-  en `/taskflow/app/` (producción) sin recompilar, y el servidor solo entrega `index.html`; no hace
+- **PWA con rutas `#` y `base: "./"`** (2026-10-01): la misma build funciona en `/app/` y bajo una
+  ruta (`/taskflow/app/`, producción hasta 2026-10-03) sin recompilar, y el servidor solo entrega `index.html`; no hace
   falta un *catch-all* en Django ni en nginx. La raíz de la API se calcula de la URL
   (`frontend/src/api.ts`). Costo: URLs con `#`, sin importancia en una app instalada.
 - **API con vistas de función de DRF y salida a mano** (2026-10-01), no `ViewSet` ni `Serializer`:
@@ -552,3 +574,16 @@ límite `acceso`.
   badges de CLAUDE.md. Motivo: Ernesto quiere organizar las tarjetas como en Trello, con listas
   propias de cada proyecto, sin el concepto de terminada. Diseño en §4.6, alternativas en §9,
   maqueta `docs/_mockups/app-v3.html`. Esas secciones se reescriben al implementar.
+- (2026-10-03) **Cambio a lo aprobado: producción en servidor y dominio propios.** Antes (§7, §9)
+  TaskFlow vivía en `sistemas.reduaz.mx/taskflow/` con `DJANGO_FORCE_SCRIPT_NAME=/taskflow`; desde
+  el 2026-10-02 vive en la raíz de `taskflow.rourendev.com` (`srv-01`, Hetzner) con
+  `DJANGO_FORCE_SCRIPT_NAME` vacío, y el 2026-10-03 se retiró la instalación de la UAZ sin
+  conservar datos (solo tenía la Etapa 1). Motivo y alternativas en §9; inventario y riesgos en
+  docs/despliegue-actual.md. Se conserva el soporte para publicar bajo una ruta (cookies con
+  nombre propio, `RUTA_BASE`, rutas `#` en la PWA). Cambios de código: la portada ya no escribe el
+  dominio a mano (usa `request.get_host`; prueba
+  `test_portada_muestra_el_dominio_desde_el_que_se_abre`) y su pregunta frecuente dice que llega
+  un **código** (no un enlace) para recuperar la contraseña; `desplegar.sh` prueba la salud con
+  `taskflow.rourendev.com`; `docker/nginx/taskflow.conf` pasa de snippet a sitio propio. Se
+  agregan `docker/respaldo-diario.sh` y `docker/systemd/` (respaldo diario, *pendiente* de
+  instalar).
