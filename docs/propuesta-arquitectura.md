@@ -4,10 +4,10 @@
 > invitaciones, tipos e historial, §4.5) implementadas el 2026-10-01. **Etapa 3 (API `/api/v1/`,
 > PWA y portada de instalación, §5–§7) implementada el 2026-10-01**. **Cuentas con correo
 > verificado, recuperación de contraseña y apellidos separados** implementados el 2026-10-02
-> (§4.3, §7). **En producción todo lo anterior (`3b54d39`) desde el 2026-10-02 en
-> `https://taskflow.rourendev.com/`**, servidor propio en Hetzner (§9). La instalación anterior en
-> `sistemas.reduaz.mx/taskflow/` (solo Etapa 1) se retiró el 2026-10-03.
-> **Etapa 3.6 implementada el 2026-10-05, sin desplegar:** «proyecto» pasa a **«pizarra»** en todo
+> (§4.3, §7), en producción desde el 2026-10-02 (`3b54d39`) en `https://taskflow.rourendev.com/`,
+> servidor propio en Hetzner (§9). La instalación anterior en `sistemas.reduaz.mx/taskflow/` (solo
+> Etapa 1) se retiró el 2026-10-03.
+> **Etapa 3.6 implementada y en producción el 2026-10-05 (`90939ed`):** «proyecto» pasa a **«pizarra»** en todo
 > el sistema, **listas libres** por pizarra en lugar de los tres estatus, listas de cierre,
 > arrastrar y soltar, checklist con elementos convertibles en tarjetas enlazadas, descripción
 > opcional y fecha de inicio (§4.4–§4.6, maqueta `app-v3.html`).
@@ -232,7 +232,7 @@ Decisiones tomadas al implementar (2026-10-01):
   PWA que la acepta (§5). El correo sale por SMTP (`DJANGO_EMAIL_*`); sin configurar, se imprime en el
   registro del contenedor.
 
-### 4.6 Listas en lugar de estatus *(decidido 2026-10-02 a 2026-10-05 · implementado 2026-10-05, sin desplegar)*
+### 4.6 Listas en lugar de estatus *(decidido 2026-10-02 a 2026-10-05 · implementado y en producción 2026-10-05, `90939ed`)*
 
 **Qué cambia.** Ernesto pidió (2026-10-02) que las tarjetas se manejen como en Trello y quitar los
 estatus. Cada pizarra tiene **sus propias listas** (columnas con nombre libre: «Ideas»,
@@ -473,11 +473,11 @@ límite `acceso`.
 | --- | --- | --- |
 | 1 | Esqueleto: Docker, settings, `Usuario`, `Tarjeta`, admin, pruebas básicas | ✅ 2026-10-01 |
 | 1.5 | CI (GitHub Actions + ghcr.io) y despliegue en el servidor compartido de la UAZ | ✅ 2026-10-01 · `f6d2e40` · retirado 2026-10-03 |
-| 1.6 | Servidor propio `srv-01` (Hetzner), dominio `rourendev.com`, correo por Resend (docs/operacion.md, docs/despliegue-actual.md) | ✅ 2026-10-02 · en producción `3b54d39` |
+| 1.6 | Servidor propio `srv-01` (Hetzner), dominio `rourendev.com`, correo por Resend (docs/operacion.md, docs/despliegue-actual.md) | ✅ 2026-10-02 · `3b54d39`; hoy `90939ed` |
 | 2 | Proyectos (hoy pizarras), miembros, permisos, invitaciones, tipos e historial (§4.5): modelos, migraciones, servicios, admin y pruebas | ✅ 2026-10-01 (maquetas en `docs/_mockups/`) |
 | 3 | API `/api/v1/`, PWA (tablero, tarjetas, miembros, invitaciones, tipos, perfil) y portada de instalación (§5–§7) | ✅ 2026-10-01 · en producción 2026-10-02 |
 | 3.5 | Correo verificado con código, recuperar contraseña y apellidos separados (§4.3, §7) | ✅ 2026-10-02 · en producción 2026-10-02 |
-| 3.6 | «Proyecto» → «Pizarra» en todo el sistema; listas libres en lugar de estatus, listas de cierre, arrastrar y soltar, historial de movimientos, checklist con tarjetas enlazadas, descripción opcional y fecha de inicio (§4.4–§4.6) | ✅ 2026-10-05 · sin desplegar |
+| 3.6 | «Proyecto» → «Pizarra» en todo el sistema; listas libres en lugar de estatus, listas de cierre, arrastrar y soltar, historial de movimientos, checklist con tarjetas enlazadas, descripción opcional y fecha de inicio (§4.4–§4.6) | ✅ 2026-10-05 · en producción `90939ed` |
 | 4 | Por definir: avisos por correo de asignación o vencimiento, búsqueda, comentarios en tarjetas | — |
 
 ## 9. Decisiones de diseño
@@ -689,7 +689,7 @@ límite `acceso`.
   `taskflow.rourendev.com`; `docker/nginx/taskflow.conf` pasa de snippet a sitio propio. Se
   agregan `docker/respaldo-diario.sh` y `docker/systemd/` (respaldo diario, *pendiente* de
   instalar).
-- (2026-10-05) **Etapa 3.6 implementada** (sin desplegar): «proyecto» → «pizarra» en todo el
+- (2026-10-05) **Etapa 3.6 implementada y desplegada** (`90939ed`): «proyecto» → «pizarra» en todo el
   sistema, listas, listas de cierre, arrastre, checklist enlazada, descripción opcional y fecha de
   inicio (§4.4–§4.6, §5, §6). Notas:
   - **Renombre de la app:** `apps/proyectos` → `apps/pizarras` (etiqueta `pizarras`). Las

@@ -28,10 +28,10 @@ tarjetas enlazadas.
 - **Estado actual:** Etapas 1–3 listas: backend (pizarras, miembros, permisos, invitaciones,
   tipos e historial; §4.5), API `/api/v1/` (§6), PWA en `/app/` y portada de instalación en `/`
   (§5), más correo verificado con código, recuperación de contraseña y apellidos separados (§4.3,
-  §7). En producción: `3b54d39` desde 2026-10-02. **Etapa 3.6 implementada el 2026-10-05, sin
-  desplegar:** «proyecto» → «pizarra» en todo el sistema, listas libres, listas de cierre,
-  arrastrar y soltar, checklist enlazada, descripción opcional y fecha de inicio (§4.4–§4.6). Ver
-  «Pasos propios» en docs/operacion.md antes de desplegar.
+  §7), y la **Etapa 3.6**: «proyecto» → «pizarra» en todo el sistema, listas libres, listas de cierre,
+  arrastrar y soltar, checklist enlazada, descripción opcional y fecha de inicio (§4.4–§4.6).
+  **En producción: `90939ed` desde 2026-10-05** (todo lo anterior). Ver «Pasos propios» en
+  docs/operacion.md antes de desplegar.
 - **Las reglas de negocio viven en `apps/<app>/servicios.py`.** Toda acción (también la API)
   pasa por esas funciones; nunca cambiar `Tarjeta.lista` (ni su `posicion`) directamente, sino con
   `tarjetas.servicios.mover_tarjeta`, para que quede en el historial (`Movimiento`).

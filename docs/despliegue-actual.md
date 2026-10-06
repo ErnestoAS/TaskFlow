@@ -1,6 +1,6 @@
 # TaskFlow — Cómo está montado hoy
 
-> **Fecha:** 2026-10-03 · **Versión activa:** `3b54d39` en `srv-01` (Hetzner).
+> **Fecha:** 2026-10-05 · **Versión activa:** `90939ed` en `srv-01` (Hetzner), desde el 2026-10-05 (antes `3b54d39`).
 > Este documento es el **inventario** del despliegue: qué hay en el servidor, qué se configuró a
 > mano fuera de `/opt/taskflow` y qué hacer para agregar otra app o mudar TaskFlow de servidor.
 > Procedimientos (instalar, desplegar, respaldar, volver atrás): [operacion.md](operacion.md).
