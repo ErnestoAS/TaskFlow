@@ -34,7 +34,7 @@ async function confirmar() {
   try {
     sesion.usuario = await api<Usuario>("auth/verificar/", "POST", { correo, codigo: codigo.value.trim() });
     avisar("Se confirmó tu correo.");
-    const siguiente = typeof route.query.siguiente === "string" ? route.query.siguiente : "/proyectos";
+    const siguiente = typeof route.query.siguiente === "string" ? route.query.siguiente : "/pizarras";
     await router.replace(siguiente);
   } catch (e) {
     error.value = e instanceof ErrorApi && e.campos.codigo ? e.campos.codigo : mensajeDeError(e);

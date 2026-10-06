@@ -34,7 +34,7 @@ async function enviar() {
     <div class="marca"><Logo /><span>TaskFlow</span></div>
     <div class="caja">
       <h1>Crear cuenta</h1>
-      <p class="intro">Con tu cuenta puedes crear proyectos e invitar a otras personas.</p>
+      <p class="intro">Con tu cuenta puedes crear pizarras e invitar a otras personas.</p>
       <div v-if="!sesion.registroAbierto" class="error-general">El registro está cerrado. Pide una invitación.</div>
       <form v-else novalidate @submit.prevent="enviar">
         <div v-if="errorGeneral" class="error-general" role="alert">{{ errorGeneral }}</div>

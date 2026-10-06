@@ -10,7 +10,7 @@ import { registerSW } from "virtual:pwa-register";
 
 import Icono, { type NombreIcono } from "./componentes/Icono.vue";
 import Logo from "./componentes/Logo.vue";
-import { misProyectos, recargarProyectos } from "./proyectos";
+import { misPizarras, recargarPizarras } from "./pizarras";
 import { sesion } from "./sesion";
 import { ui } from "./ui";
 
@@ -20,20 +20,20 @@ const router = useRouter();
 const conArmazon = computed(() => !route.meta.publica && !!sesion.usuario);
 
 const SECCIONES: [string, string, NombreIcono][] = [
-  ["proyectos", "Proyectos", "carpetas"],
+  ["pizarras", "Pizarras", "carpetas"],
   ["mis-tarjetas", "Mis tarjetas", "check"],
   ["perfil", "Perfil", "persona"],
 ];
-const enProyecto = computed(() => route.name === "tablero" || route.name === "ajustes");
-const proyectoActual = computed(() => (enProyecto.value ? Number(route.params.id) : null));
-const seccionActiva = computed(() => (enProyecto.value ? "proyectos" : String(route.name)));
-const activos = computed(() => misProyectos.lista.filter((p) => !p.archivado));
+const enPizarra = computed(() => route.name === "tablero" || route.name === "ajustes");
+const pizarraActual = computed(() => (enPizarra.value ? Number(route.params.id) : null));
+const seccionActiva = computed(() => (enPizarra.value ? "pizarras" : String(route.name)));
+const activas = computed(() => misPizarras.lista.filter((p) => !p.archivada));
 
-// La barra lateral necesita la lista de proyectos en cualquier pantalla.
+// La barra lateral necesita la lista de pizarras en cualquier pantalla.
 watch(
   conArmazon,
   (si) => {
-    if (si && !misProyectos.cargados) recargarProyectos().catch(() => undefined);
+    if (si && !misPizarras.cargadas) recargarPizarras().catch(() => undefined);
   },
   { immediate: true },
 );
@@ -81,18 +81,18 @@ if (import.meta.env.PROD) {
       <button
         v-for="[nombre, texto, icono] in SECCIONES"
         :key="nombre"
-        :aria-current="!enProyecto && seccionActiva === nombre ? 'page' : undefined"
+        :aria-current="!enPizarra && seccionActiva === nombre ? 'page' : undefined"
         @click="router.push({ name: nombre })"
       >
         <Icono :nombre="icono" /><span>{{ texto }}</span>
       </button>
-      <template v-if="activos.length">
+      <template v-if="activas.length">
         <div class="separador" />
-        <div class="rotulo-nav">Mis proyectos</div>
+        <div class="rotulo-nav">Mis pizarras</div>
         <button
-          v-for="p in activos"
+          v-for="p in activas"
           :key="p.id"
-          :aria-current="proyectoActual === p.id ? 'page' : undefined"
+          :aria-current="pizarraActual === p.id ? 'page' : undefined"
           @click="router.push({ name: 'tablero', params: { id: p.id } })"
         >
           <svg width="8" height="8" viewBox="0 0 8 8" aria-hidden="true"><circle cx="4" cy="4" r="3" fill="currentColor" opacity=".6" /></svg>

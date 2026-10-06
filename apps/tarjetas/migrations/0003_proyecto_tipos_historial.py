@@ -9,7 +9,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('proyectos', '0001_initial'),
+        ('pizarras', '0001_initial'),
         ('tarjetas', '0002_initial'),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
     ]
@@ -32,12 +32,12 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='tarjeta',
             name='proyecto',
-            field=models.ForeignKey(null=True, on_delete=django.db.models.deletion.CASCADE, related_name='tarjetas', to='proyectos.proyecto', verbose_name='proyecto'),
+            field=models.ForeignKey(null=True, on_delete=django.db.models.deletion.CASCADE, related_name='tarjetas', to='pizarras.proyecto', verbose_name='proyecto'),
         ),
         migrations.AddField(
             model_name='tarjeta',
             name='tipos',
-            field=models.ManyToManyField(blank=True, related_name='tarjetas', to='proyectos.tipotarjeta', verbose_name='tipos'),
+            field=models.ManyToManyField(blank=True, related_name='tarjetas', to='pizarras.tipotarjeta', verbose_name='tipos'),
         ),
         migrations.AddIndex(
             model_name='tarjeta',

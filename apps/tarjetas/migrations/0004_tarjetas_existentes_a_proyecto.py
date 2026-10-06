@@ -14,8 +14,8 @@ from django.db import migrations
 def a_proyecto(apps, schema_editor):
     Tarjeta = apps.get_model("tarjetas", "Tarjeta")
     CambioEstatus = apps.get_model("tarjetas", "CambioEstatus")
-    Proyecto = apps.get_model("proyectos", "Proyecto")
-    MiembroProyecto = apps.get_model("proyectos", "MiembroProyecto")
+    Proyecto = apps.get_model("pizarras", "Proyecto")
+    MiembroProyecto = apps.get_model("pizarras", "MiembroProyecto")
     Usuario = apps.get_model("usuarios", "Usuario")
 
     huerfanas = Tarjeta.objects.filter(proyecto__isnull=True).order_by("creado_en", "pk")
@@ -47,7 +47,7 @@ def a_proyecto(apps, schema_editor):
 class Migration(migrations.Migration):
     dependencies = [
         ("tarjetas", "0003_proyecto_tipos_historial"),
-        ("proyectos", "0001_initial"),
+        ("pizarras", "0001_initial"),
         ("usuarios", "0001_initial"),
     ]
 

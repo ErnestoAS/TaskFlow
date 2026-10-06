@@ -1,6 +1,6 @@
 {% autoescape off %}Hola:
 
-{% if invitada_por %}{{ invitada_por }} te invitó{% else %}Te invitaron{% endif %} a colaborar en el proyecto «{{ proyecto.nombre }}» en TaskFlow.
+{% if invitada_por %}{{ invitada_por }} te invitó{% else %}Te invitaron{% endif %} a colaborar en la pizarra «{{ pizarra.nombre }}» en TaskFlow.
 
 Para unirte, abre este enlace:
 

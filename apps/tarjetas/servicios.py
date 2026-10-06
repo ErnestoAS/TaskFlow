@@ -1,54 +1,64 @@
 """
-Reglas de negocio de las tarjetas (§4.5 de la propuesta).
+Reglas de negocio de las tarjetas y su checklist (§4.6 de la propuesta).
 
-Todo cambio de estatus pasa por `cambiar_estatus` (o por `crear_tarjeta`, que registra la
-creación), para que ninguno quede fuera del historial.
+Toda tarjeta cambia de lista por `mover_tarjeta` (o nace en una con `crear_tarjeta`), para que
+ningún movimiento quede fuera del historial. Nunca se escribe `Tarjeta.lista` directamente.
 """
 
 from django.core.exceptions import ValidationError
 from django.db import transaction
 
-from apps.proyectos.models import MiembroProyecto, Proyecto, TipoTarjeta
-from apps.proyectos.servicios import exigir_permiso
+from apps.pizarras.models import Lista, MiembroPizarra, Pizarra, TipoTarjeta
+from apps.pizarras.servicios import exigir_permiso
 
-from .models import CambioEstatus, Estatus, Prioridad, Tarjeta
+from .models import ElementoChecklist, Movimiento, Prioridad, Tarjeta, hoy
 
-CAMPOS_EDITABLES = ("titulo", "descripcion", "prioridad", "fecha_fin", "asignados", "tipos")
+CAMPOS_EDITABLES = (
+    "titulo",
+    "descripcion",
+    "prioridad",
+    "fecha_inicio",
+    "fecha_fin",
+    "asignados",
+    "tipos",
+)
+
+# «Sin indicar» para `lista_terminado` al convertir: distinto de None, que pide palomeo manual.
+POR_OMISION = object()
 
 
-def _validar_asignados(proyecto: Proyecto, asignados) -> list:
-    asignados = list(asignados or [])
-    ids = {getattr(u, "pk", u) for u in asignados}
+# ---------------------------------------------------------------------------------------------
+# Validaciones
+# ---------------------------------------------------------------------------------------------
+
+
+def _validar_asignados(pizarra: Pizarra, asignados) -> list:
+    ids = {getattr(u, "pk", u) for u in (asignados or [])}
     miembros = set(
-        MiembroProyecto.objects.filter(proyecto=proyecto, usuario_id__in=ids).values_list(
+        MiembroPizarra.objects.filter(pizarra=pizarra, usuario_id__in=ids).values_list(
             "usuario_id", flat=True
         )
     )
     if ids - miembros:
-        raise ValidationError({"asignados": "Solo se puede asignar a miembros del proyecto."})
+        raise ValidationError({"asignados": "Solo se puede asignar a miembros de la pizarra."})
     return list(ids)
 
 
-def _validar_tipos(proyecto: Proyecto, tipos) -> list:
+def _validar_tipos(pizarra: Pizarra, tipos) -> list:
     ids = {getattr(t, "pk", t) for t in (tipos or [])}
-    del_proyecto = set(
-        TipoTarjeta.objects.filter(proyecto=proyecto, pk__in=ids).values_list("pk", flat=True)
+    de_la_pizarra = set(
+        TipoTarjeta.objects.filter(pizarra=pizarra, pk__in=ids).values_list("pk", flat=True)
     )
-    if ids - del_proyecto:
-        raise ValidationError({"tipos": "Solo se pueden usar tipos de este proyecto."})
+    if ids - de_la_pizarra:
+        raise ValidationError({"tipos": "Solo se pueden usar tipos de esta pizarra."})
     return list(ids)
 
 
-def _validar_textos(titulo, descripcion) -> tuple[str, str]:
-    titulo, descripcion = (titulo or "").strip(), (descripcion or "").strip()
-    errores = {}
+def _validar_titulo(titulo) -> str:
+    titulo = (titulo or "").strip()
     if not titulo:
-        errores["titulo"] = "Escribe un título."
-    if not descripcion:
-        errores["descripcion"] = "Escribe una descripción."
-    if errores:
-        raise ValidationError(errores)
-    return titulo, descripcion
+        raise ValidationError({"titulo": "Escribe un título."})
+    return titulo
 
 
 def _validar_prioridad(prioridad: str) -> str:
@@ -57,85 +67,294 @@ def _validar_prioridad(prioridad: str) -> str:
     return prioridad
 
 
-def registrar_cambio(tarjeta: Tarjeta, usuario, anterior: str, nuevo: str) -> CambioEstatus:
-    """Una fila del historial. `anterior=""` = creación. Lo usan los servicios y el admin."""
-    return CambioEstatus.objects.create(
-        tarjeta=tarjeta, usuario=usuario, estatus_anterior=anterior or "", estatus_nuevo=nuevo
+def _validar_fechas(fecha_inicio, fecha_fin) -> None:
+    if fecha_inicio is None:
+        raise ValidationError({"fecha_inicio": "Escribe la fecha de inicio."})
+    if fecha_fin and fecha_fin < fecha_inicio:
+        raise ValidationError({"fecha_fin": "No puede ser anterior a la fecha de inicio."})
+
+
+def _lista_de(pizarra: Pizarra, lista) -> Lista:
+    """La lista (objeto o id) debe ser de la pizarra."""
+    pk = getattr(lista, "pk", lista)
+    encontrada = Lista.objects.filter(pizarra=pizarra, pk=pk).first() if pk else None
+    if encontrada is None:
+        raise ValidationError({"lista": "Elige una lista de esta pizarra."})
+    return encontrada
+
+
+def registrar_movimiento(tarjeta: Tarjeta, usuario, anterior="", nueva="", nota="") -> Movimiento:
+    """Una fila del historial. `anterior=""` y sin nota = creación. También la usa el admin."""
+    return Movimiento.objects.create(
+        tarjeta=tarjeta,
+        usuario=usuario,
+        lista_anterior=anterior or "",
+        lista_nueva=nueva or "",
+        nota=nota or "",
     )
+
+
+def _renumerar(lista_id: int, orden: list[Tarjeta] | None = None) -> None:
+    """Deja las posiciones de la lista en 0, 1, 2… (en `orden` o en el orden actual)."""
+    tarjetas = orden if orden is not None else list(Tarjeta.objects.filter(lista_id=lista_id))
+    cambiadas = []
+    for posicion, t in enumerate(tarjetas):
+        if t.posicion != posicion:
+            t.posicion = posicion
+            cambiadas.append(t)
+    Tarjeta.objects.bulk_update(cambiadas, ["posicion"])
+
+
+# ---------------------------------------------------------------------------------------------
+# Tarjetas
+# ---------------------------------------------------------------------------------------------
 
 
 @transaction.atomic
 def crear_tarjeta(
-    proyecto: Proyecto,
+    pizarra: Pizarra,
     usuario,
     *,
     titulo: str,
-    descripcion: str,
+    descripcion: str = "",
+    lista=None,
     prioridad: str = Prioridad.MEDIA,
+    fecha_inicio=None,
     fecha_fin=None,
     asignados=(),
     tipos=(),
 ) -> Tarjeta:
-    exigir_permiso(proyecto, usuario, "crear")
-    titulo, descripcion = _validar_textos(titulo, descripcion)
-    ids_asignados = _validar_asignados(proyecto, asignados)
-    ids_tipos = _validar_tipos(proyecto, tipos)
+    """Nace al final de `lista` (por omisión, la primera de la pizarra) y queda en el historial."""
+    exigir_permiso(pizarra, usuario, "crear")
+    titulo = _validar_titulo(titulo)
+    if lista is None:
+        lista = pizarra.listas.first()
+        if lista is None:
+            raise ValidationError({"lista": "La pizarra no tiene listas: crea una antes."})
+    else:
+        lista = _lista_de(pizarra, lista)
+    fecha_inicio = fecha_inicio or hoy()
+    _validar_fechas(fecha_inicio, fecha_fin)
+    ids_asignados = _validar_asignados(pizarra, asignados)
+    ids_tipos = _validar_tipos(pizarra, tipos)
+    ultima = lista.tarjetas.order_by("-posicion").values_list("posicion", flat=True).first()
     tarjeta = Tarjeta.objects.create(
-        proyecto=proyecto,
+        pizarra=pizarra,
+        lista=lista,
+        posicion=0 if ultima is None else ultima + 1,
         titulo=titulo,
-        descripcion=descripcion,
+        descripcion=(descripcion or "").strip(),
         prioridad=_validar_prioridad(prioridad),
+        fecha_inicio=fecha_inicio,
         fecha_fin=fecha_fin,
         creada_por=usuario,
     )
     tarjeta.asignados.set(ids_asignados)
     tarjeta.tipos.set(ids_tipos)
-    registrar_cambio(tarjeta, usuario, "", tarjeta.estatus)
+    registrar_movimiento(tarjeta, usuario, nueva=lista.nombre)
     return tarjeta
 
 
 @transaction.atomic
 def editar_tarjeta(tarjeta: Tarjeta, usuario, **campos) -> Tarjeta:
-    """Edita título, descripción, prioridad, fecha fin, asignados y tipos (no el estatus)."""
-    exigir_permiso(tarjeta.proyecto, usuario, "editar")
+    """Edita los datos de la tarjeta (no su lista ni su posición: eso es `mover_tarjeta`)."""
+    exigir_permiso(tarjeta.pizarra, usuario, "editar")
     desconocidos = set(campos) - set(CAMPOS_EDITABLES)
     if desconocidos:
         raise ValidationError(f"Campos no editables: {', '.join(sorted(desconocidos))}.")
-    titulo, descripcion = _validar_textos(
-        campos.get("titulo", tarjeta.titulo), campos.get("descripcion", tarjeta.descripcion)
-    )
-    tarjeta.titulo, tarjeta.descripcion = titulo, descripcion
+    if "titulo" in campos:
+        tarjeta.titulo = _validar_titulo(campos["titulo"])
+    if "descripcion" in campos:
+        tarjeta.descripcion = (campos["descripcion"] or "").strip()
     if "prioridad" in campos:
         tarjeta.prioridad = _validar_prioridad(campos["prioridad"])
+    if "fecha_inicio" in campos:
+        tarjeta.fecha_inicio = campos["fecha_inicio"]
     if "fecha_fin" in campos:
         tarjeta.fecha_fin = campos["fecha_fin"]
+    _validar_fechas(tarjeta.fecha_inicio, tarjeta.fecha_fin)
     tarjeta.save()
     if "asignados" in campos:
-        tarjeta.asignados.set(_validar_asignados(tarjeta.proyecto, campos["asignados"]))
+        tarjeta.asignados.set(_validar_asignados(tarjeta.pizarra, campos["asignados"]))
     if "tipos" in campos:
-        tarjeta.tipos.set(_validar_tipos(tarjeta.proyecto, campos["tipos"]))
+        tarjeta.tipos.set(_validar_tipos(tarjeta.pizarra, campos["tipos"]))
     return tarjeta
 
 
 @transaction.atomic
-def cambiar_estatus(tarjeta: Tarjeta, usuario, estatus: str) -> Tarjeta:
-    """Mueve la tarjeta a cualquier estatus, también hacia atrás desde Finalizada (§4.5)."""
-    exigir_permiso(tarjeta.proyecto, usuario, "cambiar_estatus")
-    if estatus not in Estatus.values:
-        raise ValidationError({"estatus": "Estatus inválido."})
-    # Bloquea la fila: dos personas moviendo la misma tarjeta a la vez dejan un historial coherente.
-    actual = Tarjeta.objects.select_for_update().get(pk=tarjeta.pk)
-    if actual.estatus == estatus:
-        return actual
-    anterior = actual.estatus
-    actual.estatus = estatus
-    actual.save(update_fields=["estatus", "actualizado_en"])
-    registrar_cambio(actual, usuario, anterior, estatus)
-    tarjeta.estatus = estatus
+def mover_tarjeta(tarjeta: Tarjeta, usuario, lista, posicion=None) -> Tarjeta:
+    """
+    Pone la tarjeta en `lista` (de la misma pizarra) en `posicion` (0 = arriba; None = al final)
+    y renumera las listas afectadas. Cambiar de lista queda en el historial; reordenar dentro de
+    la misma lista no (sería ruido, §4.6).
+    """
+    exigir_permiso(tarjeta.pizarra, usuario, "mover")
+    destino = _lista_de(tarjeta.pizarra, lista)
+    # Bloquea la tarjeta: dos personas moviéndola a la vez dejan un historial coherente.
+    actual = Tarjeta.objects.select_for_update().select_related("lista").get(pk=tarjeta.pk)
+    origen = actual.lista
+    hermanas = list(Tarjeta.objects.select_for_update().filter(lista=destino).exclude(pk=actual.pk))
+    if posicion is None:
+        posicion = len(hermanas)
+    try:
+        posicion = max(0, min(int(posicion), len(hermanas)))
+    except (TypeError, ValueError) as e:
+        raise ValidationError({"posicion": "Posición inválida."}) from e
+    actual.lista = destino
+    hermanas.insert(posicion, actual)
+    actual.save(update_fields=["lista", "actualizado_en"])
+    actual.posicion = -1  # fuerza que _renumerar la guarde
+    _renumerar(destino.pk, hermanas)
+    if origen.pk != destino.pk:
+        _renumerar(origen.pk)
+        registrar_movimiento(actual, usuario, origen.nombre, destino.nombre)
+    tarjeta.lista, tarjeta.posicion = actual.lista, actual.posicion
     return actual
 
 
+@transaction.atomic
 def eliminar_tarjeta(tarjeta: Tarjeta, usuario) -> None:
-    """Borra la tarjeta y su historial (CASCADE)."""
-    exigir_permiso(tarjeta.proyecto, usuario, "eliminar")
+    """
+    Borra la tarjeta con su historial y su checklist (CASCADE). Si venía de la checklist de otra,
+    ese elemento vuelve a ser texto y conserva si estaba hecho.
+    """
+    exigir_permiso(tarjeta.pizarra, usuario, "eliminar")
+    origen = ElementoChecklist.objects.filter(tarjeta_creada=tarjeta).first()
+    if origen:
+        origen.hecho = _hecho_ahora(origen)
+        origen.tarjeta_creada = None
+        origen.lista_terminado = None
+        origen.save(update_fields=["hecho", "tarjeta_creada", "lista_terminado", "actualizado_en"])
+    lista_id = tarjeta.lista_id
     tarjeta.delete()
+    _renumerar(lista_id)
+
+
+# ---------------------------------------------------------------------------------------------
+# Checklist (§4.6): palomear, agregar, editar, ordenar y quitar = permiso «editar»;
+# convertir un elemento en tarjeta enlazada = permiso «crear».
+# ---------------------------------------------------------------------------------------------
+
+
+def _hecho_ahora(elemento: ElementoChecklist) -> bool:
+    """Como `esta_hecho`, pero leyendo de la base dónde está hoy la tarjeta enlazada (el objeto en
+    memoria puede traer una lista vieja si la tarjeta se movió por otro camino)."""
+    if not elemento.automatico:
+        return elemento.hecho
+    lista_id = (
+        Tarjeta.objects.filter(pk=elemento.tarjeta_creada_id)
+        .values_list("lista_id", flat=True)
+        .first()
+    )
+    return lista_id == elemento.lista_terminado_id
+
+
+def _validar_texto(texto) -> str:
+    texto = (texto or "").strip()
+    if not texto:
+        raise ValidationError({"texto": "Escribe el elemento."})
+    if len(texto) > 200:
+        raise ValidationError({"texto": "Máximo 200 caracteres."})
+    return texto
+
+
+@transaction.atomic
+def agregar_elemento(tarjeta: Tarjeta, usuario, texto: str) -> ElementoChecklist:
+    exigir_permiso(tarjeta.pizarra, usuario, "editar")
+    ultima = tarjeta.checklist.order_by("-posicion").values_list("posicion", flat=True).first()
+    return ElementoChecklist.objects.create(
+        tarjeta=tarjeta, texto=_validar_texto(texto), posicion=0 if ultima is None else ultima + 1
+    )
+
+
+@transaction.atomic
+def editar_elemento(elemento: ElementoChecklist, usuario, **campos) -> ElementoChecklist:
+    """
+    Cambia `texto`, `hecho` (solo si se palomea a mano) o `lista_terminado` (solo si ya es
+    tarjeta; None = palomeo manual, conservando el estado que tenía en ese momento).
+    """
+    pizarra = elemento.tarjeta.pizarra
+    exigir_permiso(pizarra, usuario, "editar")
+    desconocidos = set(campos) - {"texto", "hecho", "lista_terminado"}
+    if desconocidos:
+        raise ValidationError(f"Campos no editables: {', '.join(sorted(desconocidos))}.")
+    if "texto" in campos:
+        elemento.texto = _validar_texto(campos["texto"])
+    if "lista_terminado" in campos:
+        if not elemento.tarjeta_creada_id:
+            raise ValidationError(
+                {"lista_terminado": "Solo un elemento convertido en tarjeta se marca solo."}
+            )
+        nueva = campos["lista_terminado"]
+        if nueva in (None, ""):
+            elemento.hecho = _hecho_ahora(elemento)
+            elemento.lista_terminado = None
+        else:
+            elemento.lista_terminado = _lista_de(pizarra, nueva)
+    if "hecho" in campos:
+        if elemento.automatico:
+            raise ValidationError(
+                {"hecho": "Este elemento se marca solo cuando su tarjeta llega a su lista."}
+            )
+        elemento.hecho = bool(campos["hecho"])
+    elemento.save()
+    return elemento
+
+
+@transaction.atomic
+def ordenar_checklist(tarjeta: Tarjeta, usuario, ids: list[int]) -> None:
+    """`ids` = todos los elementos de la checklist en el orden nuevo."""
+    exigir_permiso(tarjeta.pizarra, usuario, "editar")
+    elementos = {e.pk: e for e in tarjeta.checklist.select_for_update()}
+    try:
+        ids = [int(i) for i in ids or []]
+    except (TypeError, ValueError) as e:
+        raise ValidationError({"ids": "Orden inválido."}) from e
+    if sorted(ids) != sorted(elementos):
+        raise ValidationError({"ids": "El orden debe incluir todos los elementos."})
+    for posicion, pk in enumerate(ids):
+        elementos[pk].posicion = posicion
+    ElementoChecklist.objects.bulk_update(elementos.values(), ["posicion"])
+
+
+def quitar_elemento(elemento: ElementoChecklist, usuario) -> None:
+    """Si era tarjeta, la tarjeta se queda (solo pierde el «Viene de»)."""
+    exigir_permiso(elemento.tarjeta.pizarra, usuario, "editar")
+    elemento.delete()
+
+
+@transaction.atomic
+def convertir_elemento(
+    elemento: ElementoChecklist, usuario, *, lista_terminado=POR_OMISION, **datos
+) -> Tarjeta:
+    """
+    Crea una tarjeta en la misma pizarra a partir del elemento y las enlaza (§4.6). `datos` son
+    los de `crear_tarjeta` (el título por omisión es el texto del elemento). `lista_terminado`:
+    en qué lista se da por hecho el elemento; sin indicar, la primera lista de cierre (o la
+    última); None = se palomea a mano.
+    """
+    padre = elemento.tarjeta
+    pizarra = padre.pizarra
+    exigir_permiso(pizarra, usuario, "crear")
+    if elemento.tarjeta_creada_id:
+        raise ValidationError("Este elemento ya se convirtió en tarjeta.")
+    if lista_terminado is POR_OMISION:
+        lista_terminado = (
+            pizarra.listas.filter(es_cierre=True).first()
+            or pizarra.listas.order_by("-posicion").first()
+        )
+    elif lista_terminado not in (None, ""):
+        lista_terminado = _lista_de(pizarra, lista_terminado)
+    else:
+        lista_terminado = None
+    datos.setdefault("titulo", elemento.texto)
+    datos.setdefault("lista", padre.lista)
+    nueva = crear_tarjeta(pizarra, usuario, **datos)
+    elemento.tarjeta_creada = nueva
+    elemento.lista_terminado = lista_terminado
+    elemento.save(update_fields=["tarjeta_creada", "lista_terminado", "actualizado_en"])
+    registrar_movimiento(
+        padre, usuario, nota=f"convirtió «{elemento.texto}» de la checklist en tarjeta"
+    )
+    registrar_movimiento(nueva, usuario, nota=f"la creó desde la checklist de «{padre.titulo}»")
+    return nueva

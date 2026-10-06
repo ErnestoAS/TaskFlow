@@ -1,5 +1,5 @@
 /*
- * Componentes de la PWA (maqueta aprobada docs/_mockups/app-v2.html).
+ * Componentes de la PWA (maquetas aprobadas docs/_mockups/app-v2.html y app-v3.html).
  * Colores solo por variable --tf-* (static/css/tema.css); nada de hex sueltos aquí.
  * En la maqueta «.computadora» simulaba el ancho; aquí es @media (min-width: 900px).
  */
@@ -41,26 +41,26 @@ svg{flex-shrink:0}
 .seccion-titulo:first-child{margin-top:4px}
 .vacio{color:var(--tf-text-muted);text-align:center;padding:36px 16px;font-size:14px}
 
-/* ---------- proyectos ---------- */
-.lista-proyectos{display:grid;gap:10px}
-.proyecto{background:var(--tf-surface);border-radius:var(--tf-radius-card);border:1px solid var(--tf-border);box-shadow:var(--tf-shadow);padding:14px;text-align:left;width:100%;display:flex;flex-direction:column;gap:10px;transition:border-color .12s,box-shadow .12s}
-.proyecto:hover{border-color:color-mix(in srgb,var(--tf-primary) 30%,var(--tf-border));box-shadow:var(--tf-shadow-float)}
-.proyecto .fila{display:flex;align-items:center;gap:8px}
-.proyecto h3{margin:0;font-size:15.5px;flex:1;font-weight:650}
-.proyecto .conteos{display:flex;gap:6px;flex-wrap:wrap}
-.proyecto .progreso{height:4px;border-radius:99px;background:var(--tf-status-pending-soft);overflow:hidden;display:flex}
-.proyecto .progreso i{display:block;height:100%}
+/* ---------- pizarras ---------- */
+.lista-pizarras,.mis-tarjetas{display:grid;gap:10px}
+.pizarra{background:var(--tf-surface);border-radius:var(--tf-radius-card);border:1px solid var(--tf-border);box-shadow:var(--tf-shadow);padding:14px;text-align:left;width:100%;display:flex;flex-direction:column;gap:10px;transition:border-color .12s,box-shadow .12s}
+.pizarra:hover{border-color:color-mix(in srgb,var(--tf-primary) 30%,var(--tf-border));box-shadow:var(--tf-shadow-float)}
+.pizarra .fila{display:flex;align-items:center;gap:8px}
+.pizarra h3{margin:0;font-size:15.5px;flex:1;font-weight:650}
+/* Resumen de una sola línea: no crece con el número de listas (§4.6). */
+.pizarra .resumen{font-size:12.5px;color:var(--tf-text-muted)}
+.pizarra .resumen b{color:var(--tf-text);font-weight:600}
+.pizarra .fila .chip.vencida{margin-left:auto}
 .etiqueta-rol{font-size:11px;padding:2px 8px;border-radius:99px;background:var(--tf-primary-soft);color:var(--tf-primary);font-weight:600}
 
 /* ---------- chips / badges: punto de color, texto oscuro, fondo suave ---------- */
 .chip{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;font-weight:600;padding:3px 9px;border-radius:9999px;white-space:nowrap;line-height:1.3}
 .punto{width:7px;height:7px;border-radius:50%;background:currentColor;flex-shrink:0}
-.chip.pendiente{background:var(--tf-status-pending-soft);color:var(--tf-status-pending-text)}
-.chip.pendiente .punto{background:var(--tf-status-pending)}
-.chip.en_curso{background:var(--tf-status-progress-soft);color:var(--tf-status-progress-text)}
-.chip.en_curso .punto{background:var(--tf-status-progress)}
-.chip.finalizada{background:var(--tf-status-done-soft);color:var(--tf-status-done-text)}
-.chip.finalizada .punto{background:var(--tf-status-done)}
+/* Nombre de una lista: neutro, las listas no tienen color (las nombra el usuario). */
+.chip.nombre-lista{background:var(--tf-primary-soft);color:var(--tf-primary)}
+.chip.neutro{background:var(--tf-bg);color:var(--tf-text-muted);border:1px solid var(--tf-border)}
+.chip.avance-checklist{background:var(--tf-bg);color:var(--tf-text-muted)}
+.chip.avance-checklist.completo{background:var(--tf-success-soft);color:var(--tf-success-text)}
 .chip.vencida{background:var(--tf-danger-soft);color:var(--tf-danger-text)}
 .chip.por-vencer{background:var(--tf-warning-soft);color:var(--tf-warning-text)}
 .chip.fecha{background:var(--tf-bg);color:var(--tf-text-muted);font-weight:500}
@@ -80,33 +80,49 @@ svg{flex-shrink:0}
 .avatar.grande{width:36px;height:36px;font-size:12.5px;margin:0;border:0}
 .avatar.mas{background:var(--tf-border);color:var(--tf-text-muted)}
 
-/* ---------- tablero ---------- */
-.segmentos{display:flex;background:var(--tf-surface);border:1px solid var(--tf-border);border-radius:12px;padding:4px;gap:4px;position:sticky;top:calc(64px + env(safe-area-inset-top));z-index:2;margin-bottom:12px}
-.segmentos button{flex:1;border:0;background:transparent;border-radius:9px;padding:8px 4px;font-size:13px;font-weight:600;color:var(--tf-text-muted);display:flex;justify-content:center;align-items:center;gap:6px}
-.segmentos button .punto{opacity:.9}
-.segmentos button.pendiente .punto{background:var(--tf-status-pending)}
-.segmentos button.en_curso .punto{background:var(--tf-status-progress)}
-.segmentos button.finalizada .punto{background:var(--tf-status-done)}
-.segmentos button[aria-pressed="true"].pendiente{background:var(--tf-status-pending-soft);color:var(--tf-status-pending-text)}
-.segmentos button[aria-pressed="true"].en_curso{background:var(--tf-status-progress-soft);color:var(--tf-status-progress-text)}
-.segmentos button[aria-pressed="true"].finalizada{background:var(--tf-status-done-soft);color:var(--tf-status-done-text)}
-.segmentos .num{font-size:11.5px;opacity:.85}
-.filtros{display:flex;justify-content:space-between;align-items:center;margin:0 2px 10px;font-size:13px;color:var(--tf-text-muted)}
+/* ---------- tablero de listas (§4.6) ---------- */
+.contenido-tablero{max-width:none}
+.filtros{display:flex;justify-content:space-between;align-items:center;margin:0 2px 10px;font-size:13px;color:var(--tf-text-muted);gap:8px}
 .interruptor{display:flex;align-items:center;gap:8px;border:0;background:transparent;color:var(--tf-text-muted);padding:4px}
 .interruptor .pista{width:32px;height:18px;border-radius:99px;background:var(--tf-border);position:relative;transition:.15s}
 .interruptor .pista::after{content:"";position:absolute;top:2px;left:2px;width:14px;height:14px;border-radius:50%;background:var(--tf-surface);transition:.15s;box-shadow:var(--tf-shadow)}
 .interruptor[aria-pressed="true"] .pista{background:var(--tf-accent)}
 .interruptor[aria-pressed="true"] .pista::after{left:16px}
-.columnas{display:grid;gap:10px}
-.columna{display:flex;flex-direction:column;gap:10px}
-/* Columnas sin fondo de color: se distinguen por título, punto, contador y una línea fina. */
-.columna-cab{display:none;align-items:center;gap:8px;font-weight:700;font-size:12px;letter-spacing:.07em;text-transform:uppercase;padding:2px 2px 8px;border-bottom:2px solid var(--tf-border);margin-bottom:2px}
-.columna-cab .punto{width:8px;height:8px}
-.columna-cab.pendiente{border-bottom-color:var(--tf-status-pending)} .columna-cab.pendiente .punto{background:var(--tf-status-pending)}
-.columna-cab.en_curso{border-bottom-color:var(--tf-status-progress)} .columna-cab.en_curso .punto{background:var(--tf-status-progress)}
-.columna-cab.finalizada{border-bottom-color:var(--tf-status-done)} .columna-cab.finalizada .punto{background:var(--tf-status-done)}
-.columna-cab .num{margin-left:auto;color:var(--tf-text-muted);font-weight:600;font-size:12px;background:var(--tf-surface);border:1px solid var(--tf-border);border-radius:99px;padding:1px 8px;letter-spacing:0}
-
+/* Teléfono: pestañas subrayadas con las listas y un solo botón «Filtrar». */
+.pestanas-listas{display:flex;overflow-x:auto;margin:-14px -14px 12px;padding:0 8px;background:var(--tf-surface);border-bottom:1px solid var(--tf-border);scrollbar-width:none;position:sticky;top:calc(61px + env(safe-area-inset-top));z-index:3}
+.pestanas-listas::-webkit-scrollbar{display:none}
+.pestanas-listas button{border:0;background:transparent;padding:11px 10px 10px;font-size:13.5px;font-weight:600;color:var(--tf-text-muted);white-space:nowrap;border-bottom:2px solid transparent;display:inline-flex;gap:6px;align-items:center}
+.pestanas-listas button[aria-current="true"]{color:var(--tf-primary);border-bottom-color:var(--tf-accent)}
+.pestanas-listas .num{font-size:11px;font-weight:600;background:var(--tf-bg);color:var(--tf-text-muted);border-radius:99px;padding:1px 7px}
+.barra-tel{display:flex;align-items:center;gap:8px;margin:0 2px 10px;font-size:13px;color:var(--tf-text-muted)}
+.barra-tel .activos{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.contador{background:var(--tf-primary);color:var(--tf-on-btn);border-radius:99px;font-size:11px;padding:0 6px;line-height:17px;margin-left:2px}
+.opciones-filtro{display:flex;flex-direction:column;gap:2px}
+.opciones-filtro label{display:flex;align-items:center;gap:10px;padding:9px 6px;border-radius:10px;cursor:pointer;font-size:14px}
+.opciones-filtro label:hover{background:var(--tf-bg)}
+.opciones-filtro input{width:18px;height:18px;accent-color:var(--tf-accent);margin:0}
+/* Las listas en fila; en teléfono, una por pantalla con imán al deslizar. */
+.tablero{display:flex;gap:12px;overflow-x:auto;align-items:flex-start;scroll-snap-type:x mandatory;margin:0 -14px;padding:0 14px 16px;scroll-padding:0 14px}
+.lista{flex:0 0 86%;scroll-snap-align:start;background:color-mix(in srgb,var(--tf-border) 55%,var(--tf-bg));border-radius:14px;padding:10px;display:flex;flex-direction:column;gap:8px}
+.lista-cab{display:flex;align-items:center;gap:6px;padding:2px 2px 2px 6px}
+.lista-cab h3{margin:0;font-size:14px;font-weight:700;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lista-cab .num{color:var(--tf-text-muted);font-weight:600;font-size:12px;background:var(--tf-surface);border-radius:99px;padding:1px 8px}
+.lista-cab .btn-icono{width:30px;height:30px;color:var(--tf-text-muted)}
+.marca-cierre{color:var(--tf-success-text);display:inline-flex}
+.lista-tarjetas{display:flex;flex-direction:column;gap:8px;min-height:40px}
+.lista-tarjetas .vacio{padding:12px 8px;font-size:13px}
+.agregar-tarjeta{border:0;background:transparent;color:var(--tf-text-muted);font-weight:600;font-size:13.5px;text-align:left;padding:8px;border-radius:9px;display:flex;align-items:center;gap:6px}
+.agregar-tarjeta:hover{background:color-mix(in srgb,var(--tf-text) 6%,transparent);color:var(--tf-text)}
+.lista.nueva{background:transparent;border:2px dashed var(--tf-border)}
+.lista.nueva form{display:flex;flex-direction:column;gap:8px}
+.lista.nueva input{border:1px solid var(--tf-border);border-radius:var(--tf-radius-btn);padding:9px 11px;background:var(--tf-surface)}
+.lista.nueva input:focus{outline:none;border-color:var(--tf-accent);box-shadow:0 0 0 3px var(--tf-accent-soft)}
+.lista.nueva .error{font-size:12px;color:var(--tf-danger-text)}
+/* Arrastrar (arrastre.ts): la tarjeta levantada sigue al puntero y deja un hueco punteado. */
+.lista-tarjetas .tarjeta,.checklist .manija{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+.elegida{transform:scale(.98)}
+.hueco{opacity:.35;box-shadow:none!important;border-style:dashed!important}
+.fantasma{transform:rotate(2.5deg) scale(1.03);box-shadow:0 18px 40px color-mix(in srgb,var(--tf-text) 28%,transparent)!important;border-color:var(--tf-accent)!important;opacity:1!important}
 .tarjeta{position:relative;background:var(--tf-surface);border-radius:var(--tf-radius-card);border:1px solid var(--tf-border);box-shadow:var(--tf-shadow);padding:12px 13px;text-align:left;width:100%;display:flex;flex-direction:column;gap:8px;overflow:hidden;transition:border-color .12s,box-shadow .12s,transform .12s}
 .tarjeta:hover{border-color:color-mix(in srgb,var(--tf-primary) 28%,var(--tf-border));box-shadow:var(--tf-shadow-float)}
 .tarjeta:active{transform:scale(.995)}
@@ -117,13 +133,9 @@ svg{flex-shrink:0}
 .tarjeta .etiquetas{display:flex;gap:5px;flex-wrap:wrap}
 .tarjeta .pie{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
 .tarjeta .pie .avatares{margin-left:auto}
-.tarjeta .proyecto-de{font-size:11.5px;color:var(--tf-primary);font-weight:600}
-.tarjeta.terminada h4{color:var(--tf-text-muted);text-decoration:line-through;text-decoration-color:var(--tf-border)}
+.tarjeta .pizarra-de{font-size:11.5px;color:var(--tf-primary);font-weight:600}
 
 /* ---------- botones ---------- */
-.fab{position:fixed;right:18px;bottom:calc(84px + env(safe-area-inset-bottom));z-index:5;width:56px;height:56px;border-radius:16px;border:0;background:var(--tf-btn);color:var(--tf-on-btn);display:grid;place-items:center;box-shadow:var(--tf-shadow-float);transition:background .12s,transform .12s}
-.fab:hover{background:var(--tf-btn-hover)}
-.fab:active{transform:scale(.96)}
 .btn{border:0;border-radius:var(--tf-radius-btn);padding:10px 16px;font-weight:600;font-size:14px;display:inline-flex;align-items:center;justify-content:center;gap:7px;transition:background .12s,box-shadow .12s}
 .btn-primario{background:var(--tf-btn);color:var(--tf-on-btn)}
 .btn-primario:hover{background:var(--tf-btn-hover)}
@@ -133,6 +145,8 @@ svg{flex-shrink:0}
 .btn-peligro:hover{background:var(--tf-danger-soft)}
 .btn-peligro-lleno{background:var(--tf-danger-text);color:var(--tf-surface)}
 .btn-chico{padding:6px 11px;font-size:12.5px;border-radius:8px}
+.btn-link{border:0;background:transparent;color:var(--tf-accent-text);font-weight:600;font-size:13px;padding:4px;text-decoration:none}
+.btn:disabled{opacity:.5}
 .btn-bloque{width:100%}
 .acciones-cab{display:none;gap:8px}
 
@@ -160,21 +174,49 @@ svg{flex-shrink:0}
 .hoja-cab .btn-icono{color:var(--tf-text-muted)}
 .campo{margin-bottom:16px}
 .campo>label,.campo>.etiqueta{display:block;font-size:11.5px;font-weight:600;color:var(--tf-text-muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:.06em}
-.campo input[type=text],.campo input[type=email],.campo input[type=password],.campo input[type=date],.campo textarea{width:100%;border:1px solid var(--tf-border);border-radius:var(--tf-radius-btn);padding:10px 12px;background:var(--tf-surface);font-size:14.5px;transition:border-color .12s,box-shadow .12s}
-.campo input:focus,.campo textarea:focus{outline:none;border-color:var(--tf-accent);box-shadow:0 0 0 3px var(--tf-accent-soft)}
+.campo input[type=text],.campo input[type=email],.campo input[type=password],.campo input[type=date],.campo textarea,.campo select{width:100%;border:1px solid var(--tf-border);border-radius:var(--tf-radius-btn);padding:10px 12px;background:var(--tf-surface);font-size:14.5px;transition:border-color .12s,box-shadow .12s}
+.campo input:focus,.campo textarea:focus,.campo select:focus{outline:none;border-color:var(--tf-accent);box-shadow:0 0 0 3px var(--tf-accent-soft)}
 .campo textarea{min-height:96px;resize:vertical}
-.campo .ayuda{font-size:12px;color:var(--tf-text-muted);margin-top:5px}
+.ayuda,.campo .ayuda{font-size:12px;color:var(--tf-text-muted);margin-top:5px}
 .campo .error{font-size:12px;color:var(--tf-danger-text);margin-top:5px}
 .texto-largo{font-size:14.5px;line-height:1.55;white-space:pre-wrap;margin:0}
-.selector-estatus{display:flex;gap:6px}
-.selector-estatus button{flex:1;border:1px solid var(--tf-border);background:var(--tf-surface);border-radius:var(--tf-radius-btn);padding:9px 4px;font-size:13px;font-weight:600;color:var(--tf-text-muted);display:flex;align-items:center;justify-content:center;gap:6px}
-.selector-estatus button.pendiente .punto{background:var(--tf-status-pending)}
-.selector-estatus button.en_curso .punto{background:var(--tf-status-progress)}
-.selector-estatus button.finalizada .punto{background:var(--tf-status-done)}
-.selector-estatus button[aria-pressed="true"].pendiente{background:var(--tf-status-pending-soft);color:var(--tf-status-pending-text);border-color:var(--tf-status-pending)}
-.selector-estatus button[aria-pressed="true"].en_curso{background:var(--tf-status-progress-soft);color:var(--tf-status-progress-text);border-color:var(--tf-status-progress)}
-.selector-estatus button[aria-pressed="true"].finalizada{background:var(--tf-status-done-soft);color:var(--tf-status-done-text);border-color:var(--tf-status-done)}
-.selector-estatus button:disabled{opacity:.5;cursor:not-allowed}
+.opcional{text-transform:none;font-weight:400}
+.dos-campos{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.linea-campo{display:flex;gap:8px}
+.linea-campo input{flex:1;min-width:0}
+/* Cambiar de lista con un toque (detalle): sustituye a los tres botones de estatus. */
+.elegir-lista{display:flex;gap:6px;overflow-x:auto;padding-bottom:2px;scrollbar-width:none}
+.elegir-lista::-webkit-scrollbar{display:none}
+.elegir-lista button{border:1px solid var(--tf-border);background:var(--tf-surface);border-radius:99px;padding:7px 13px;font-size:13px;font-weight:600;color:var(--tf-text-muted);white-space:nowrap;display:inline-flex;gap:6px;align-items:center}
+.elegir-lista button:hover{border-color:color-mix(in srgb,var(--tf-primary) 35%,var(--tf-border))}
+.elegir-lista button[aria-checked="true"]{background:var(--tf-primary-soft);border-color:var(--tf-primary);color:var(--tf-primary);cursor:default}
+.viene-de{display:flex;align-items:center;gap:8px;background:var(--tf-primary-soft);color:var(--tf-primary);border-radius:10px;padding:8px 11px;font-size:13px;margin-bottom:14px}
+.viene-de button{border:0;background:transparent;color:var(--tf-primary);font-weight:700;padding:0;text-decoration:underline;text-underline-offset:2px}
+/* Checklist (§4.6) */
+.avance{height:4px;border-radius:99px;background:var(--tf-border);overflow:hidden;margin:2px 0 8px}
+.avance i{display:block;height:100%;background:var(--tf-accent);transition:width .2s}
+.avance.completo i{background:var(--tf-success)}
+.checklist{list-style:none;margin:0 0 8px;padding:0;display:flex;flex-direction:column}
+.checklist li{display:flex;align-items:center;flex-wrap:wrap;gap:6px;padding:4px 2px 4px 4px;border-radius:8px;min-height:40px;background:var(--tf-surface)}
+.checklist li:hover{background:var(--tf-bg)}
+.checklist label{flex:1;display:flex;gap:10px;align-items:center;font-size:14px;cursor:pointer;min-width:0}
+.checklist input[type=checkbox]{width:18px;height:18px;accent-color:var(--tf-accent);flex-shrink:0;margin:0}
+.checklist li.hecho .texto{color:var(--tf-text-muted);text-decoration:line-through}
+.checklist .btn-icono{width:30px;height:30px;color:var(--tf-text-muted)}
+.checklist .manija{color:var(--tf-text-disabled);cursor:grab;display:inline-flex;padding:4px 0}
+.caja-enlace{width:18px;height:18px;border-radius:4px;border:2px solid var(--tf-text-disabled);display:grid;place-items:center;flex-shrink:0;color:var(--tf-surface)}
+.checklist li.hecho .caja-enlace{background:var(--tf-accent);border-color:var(--tf-accent)}
+.enlace-tarjeta{flex:1;min-width:0;border:0;background:transparent;text-align:left;padding:0;font-size:14px;display:flex;flex-direction:column;gap:1px;margin-left:4px}
+.enlace-tarjeta .texto{color:var(--tf-accent-text);font-weight:600}
+.checklist li.hecho .enlace-tarjeta .texto{color:var(--tf-text-muted)}
+.enlace-tarjeta small{font-size:12px;color:var(--tf-text-muted);display:block}
+.enlace-tarjeta small svg{vertical-align:-2px;margin-right:2px}
+.checklist .termina{width:100%;padding:6px 0 4px 28px;display:flex;flex-direction:column;gap:6px;font-size:12px;color:var(--tf-text-muted)}
+.checklist .termina .linea{display:flex;gap:6px;flex-wrap:wrap}
+.checklist .termina select{flex:1;min-width:160px;border:1px solid var(--tf-border);border-radius:var(--tf-radius-btn);padding:7px 9px;background:var(--tf-surface);font-size:13.5px}
+.agregar-item{display:flex;gap:8px}
+.agregar-item input{flex:1;min-width:0;border:1px solid var(--tf-border);border-radius:var(--tf-radius-btn);padding:8px 11px;background:var(--tf-surface);font-size:14px}
+.agregar-item input:focus{outline:none;border-color:var(--tf-accent);box-shadow:0 0 0 3px var(--tf-accent-soft)}
 /* Prioridad en el formulario: cuatro opciones de radio con apariencia de botón. */
 .elegir-prioridad{display:flex;gap:6px}
 .elegir-prioridad label{flex:1;cursor:pointer}
@@ -216,16 +258,13 @@ label.persona:hover{background:var(--tf-bg)}
 .muestras button[aria-pressed="true"]{box-shadow:0 0 0 2px var(--tf-primary)}
 .muestras input[type=color]{width:42px;height:34px;border:1px solid var(--tf-border);border-radius:8px;padding:2px;background:var(--tf-surface)}
 .historial{list-style:none;margin:0;padding:0 0 0 4px;display:flex;flex-direction:column}
-.historial li{position:relative;padding:0 0 14px 22px;font-size:13.5px;line-height:1.45}
+.historial li{position:relative;padding:0 0 14px 22px;font-size:13.5px;line-height:1.6}
 .historial li::before{content:"";position:absolute;left:4px;top:6px;width:9px;height:9px;border-radius:50%;background:var(--tf-surface);border:2px solid var(--tf-text-muted)}
 .historial li::after{content:"";position:absolute;left:9px;top:18px;bottom:0;width:1px;background:var(--tf-border)}
+.historial li:first-child::before{border-color:var(--tf-accent)}
 .historial li:last-child{padding-bottom:0}
 .historial li:last-child::after{display:none}
-.historial li.pendiente::before{border-color:var(--tf-status-pending)}
-.historial li.en_curso::before{border-color:var(--tf-status-progress)}
-.historial li.finalizada::before{border-color:var(--tf-status-done)}
 .historial .cuando{display:block;font-size:12px;color:var(--tf-text-muted)}
-.historial .flecha{color:var(--tf-text-muted);margin:0 2px}
 .historial .chip{font-size:11px;padding:1px 8px}
 .meta{display:flex;flex-direction:column;gap:4px;font-size:12.5px;color:var(--tf-text-muted);border-top:1px solid var(--tf-border);padding-top:12px;margin-top:6px}
 .fila-botones{display:flex;gap:8px;margin-top:8px}
@@ -246,9 +285,9 @@ label.persona:hover{background:var(--tf-bg)}
 .permisos button[aria-pressed="true"],.permisos span.si{background:var(--tf-accent-soft);border-color:var(--tf-accent);color:var(--tf-primary)}
 .permisos button[aria-pressed="true"] svg,.permisos span.si svg{display:inline;color:var(--tf-accent-text)}
 .permisos .rotulo{border:0;padding:4px 0;background:transparent;font-weight:500}
-.banner{display:flex;gap:10px;align-items:center;background:var(--tf-status-pending-soft);color:var(--tf-text);border-radius:12px;padding:10px 12px;font-size:13px;margin-bottom:12px}
+.banner{display:flex;gap:10px;align-items:center;background:var(--tf-primary-soft);color:var(--tf-text);border-radius:12px;padding:10px 12px;font-size:13px;margin-bottom:12px}
 .banner span{flex:1}
-.proyecto.archivado{opacity:.75}
+.pizarra.archivada{opacity:.75}
 .aviso{font-size:13px;color:var(--tf-text-muted);background:var(--tf-surface);border:1px solid var(--tf-border);border-radius:12px;padding:10px 12px;display:flex;gap:8px;align-items:flex-start}
 
 /* ---------- confirmación y toast ---------- */
@@ -285,22 +324,19 @@ label.persona:hover{background:var(--tf-bg)}
 .lista-acciones .nombre{flex:1}
 .enlace-nav{text-decoration:none}
 
-/* En teléfono el tablero muestra solo la columna de la pestaña elegida. */
-.columna.solo-pestana{display:none}
+/* Lo que solo va en computadora (filtros a la vista); en teléfono va en la hoja «Filtrar». */
+@media (max-width:899px){.solo-computadora{display:none!important}}
 
 /* ---------- computadora ---------- */
 @media (min-width:900px){
-  .columna.solo-pestana{display:flex}
   .armazon{display:grid;grid-template-columns:232px 1fr}
   .nav-lateral{display:flex;flex-direction:column;gap:2px;background:var(--tf-primary);padding:18px 12px;position:sticky;top:0;height:100vh;overflow:auto}
   .cabecera{padding:14px 24px}
   .sello{display:none}
   .contenido{padding:20px 24px 24px}
-  .lista-proyectos{grid-template-columns:repeat(auto-fill,minmax(300px,1fr))}
-  .columnas{grid-template-columns:repeat(3,1fr);gap:18px;align-items:start}
-  .columna-cab{display:flex}
-  .segmentos{display:none}
-  .fab{display:none}
+  .lista-pizarras,.mis-tarjetas{grid-template-columns:repeat(auto-fill,minmax(300px,1fr))}
+  .tablero{margin:0;padding:0 0 16px;scroll-snap-type:none}
+  .lista{flex-basis:284px}
   .acciones-cab{display:flex}
   .solo-telefono{display:none!important}
   .nav-inferior{display:none}

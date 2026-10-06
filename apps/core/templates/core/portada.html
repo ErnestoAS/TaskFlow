@@ -20,7 +20,7 @@
       <div>
         <div class="marca-grande">{% include "core/_simbolo.html" %}</div>
         <h1>Organiza las actividades de tu equipo <span>en tarjetas</span></h1>
-        <p class="intro">Crea proyectos, invita a tu equipo y lleva cada actividad de <b>pendiente</b> a <b>en curso</b> y a <b>finalizada</b>. Funciona en el teléfono y en la computadora, y se instala desde el navegador: no necesitas tienda de aplicaciones.</p>
+        <p class="intro">Crea pizarras, invita a tu equipo y organiza cada actividad en <b>listas</b> que tú defines: de <b>pendiente</b> a <b>finalizada</b>, o como trabaje tu equipo. Funciona en el teléfono y en la computadora, y se instala desde el navegador: no necesitas tienda de aplicaciones.</p>
         <div class="acciones" id="acciones-portada">
           <a class="btn btn-primario" href="{% url 'pwa' %}?instalar=1" data-solo="instalable">Abrir e instalar TaskFlow</a>
           <a class="btn btn-primario" href="#instalar" data-solo="ios" hidden>Ver cómo instalar en iPhone</a>
@@ -35,11 +35,11 @@
   <section class="caracteristicas" aria-label="Qué puedes hacer">
     <div class="contenedor rejilla">
       <div class="caract"><div class="ic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg></div>
-        <h3>Proyectos y equipos</h3><p>Crea un proyecto e invita por correo a quien participa. Todos los miembros ven todas sus tarjetas.</p></div>
+        <h3>Pizarras y equipos</h3><p>Crea una pizarra e invita por correo a quien participa. Todos los miembros ven todas sus tarjetas.</p></div>
       <div class="caract"><div class="ic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="5" height="16" rx="1.5"/><rect x="10" y="4" width="5" height="11" rx="1.5"/><rect x="17" y="4" width="4" height="7" rx="1.5"/></svg></div>
-        <h3>Tablero por estatus</h3><p>Pendiente, en curso y finalizada. Cambia el estatus con un toque y asigna cada tarjeta a una o más personas.</p></div>
+        <h3>Listas a tu medida</h3><p>Pendiente, en curso, finalizada o las que necesites. Arrastra las tarjetas entre listas, lleva una checklist en cada una y asígnalas a una o más personas.</p></div>
       <div class="caract"><div class="ic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18"/></svg></div>
-        <h3>Fechas a la vista</h3><p>Pon fecha de fin cuando haga falta: las tarjetas vencidas resaltan y «Mis tarjetas» reúne lo tuyo de todos los proyectos.</p></div>
+        <h3>Fechas a la vista</h3><p>Pon fecha límite cuando haga falta: las tarjetas vencidas resaltan y «Mis tarjetas» reúne lo tuyo de todas tus pizarras.</p></div>
     </div>
   </section>
 
@@ -88,15 +88,15 @@
   <section class="bloque alt" aria-labelledby="t-acceso">
     <div class="contenedor dos-col">
       <div>
-        <h2 class="titulo-seccion" id="t-acceso">¿Te invitaron a un proyecto?</h2>
-        <p class="sub-seccion">Quien es dueño de un proyecto te invita con tu correo. No necesitas pedir una cuenta a nadie.</p>
+        <h2 class="titulo-seccion" id="t-acceso">¿Te invitaron a una pizarra?</h2>
+        <p class="sub-seccion">Quien es dueño de una pizarra te invita con tu correo. No necesitas pedir una cuenta a nadie.</p>
       </div>
       <div class="caja">
         <h3>Tu primer acceso</h3>
         <ol class="pasos">
-          <li>Abre el correo <b>«Te invitaron a un proyecto en TaskFlow»</b> y toca el enlace.</li>
+          <li>Abre el correo <b>«Te invitaron a … en TaskFlow»</b> y toca el enlace.</li>
           <li>Si es tu primera vez, escribe tu nombre y crea tu contraseña; si ya tienes cuenta, inicia sesión.</li>
-          <li>Entras directo al proyecto y ya ves sus tarjetas.</li>
+          <li>Entras directo a la pizarra y ya ves sus tarjetas.</li>
           <li>Instala la app con los pasos de arriba para tenerla a la mano.</li>
         </ol>
       </div>
@@ -109,8 +109,8 @@
       <p class="sub-seccion">Lo que más suele preguntarse al instalar y empezar.</p>
       <details><summary>¿Por qué no está en la tienda de aplicaciones?</summary><p>TaskFlow es una aplicación web progresiva: se instala desde el navegador, ocupa muy poco espacio y siempre tienes la versión más reciente, sin descargar actualizaciones.</p></details>
       <details><summary>No me aparece la opción de instalar</summary><p>Revisa que uses Chrome o Edge (Android y computadora) o Safari (iPhone y iPad), y que no estés en una ventana privada. Si ya la instalaste, la opción no vuelve a aparecer. También puedes usar TaskFlow sin instalar, directamente en el navegador.</p></details>
-      <details><summary>¿Cómo creo un proyecto?</summary><p>Desde «Mis proyectos», toca «Nuevo proyecto». Quedas como dueño y puedes invitar a otras personas desde «Miembros».</p></details>
-      <details><summary>¿Quién ve mis tarjetas?</summary><p>Todos los miembros del proyecto ven todas sus tarjetas. Quien no es miembro no ve el proyecto.</p></details>
+      <details><summary>¿Cómo creo una pizarra?</summary><p>Desde «Mis pizarras», toca «Nueva pizarra». Quedas como dueño y puedes invitar a otras personas desde «Miembros».</p></details>
+      <details><summary>¿Quién ve mis tarjetas?</summary><p>Todos los miembros de la pizarra ven todas sus tarjetas. Quien no es miembro no ve la pizarra.</p></details>
       <details><summary>¿Funciona sin internet?</summary><p>Puedes abrir la app y ver las últimas tarjetas que cargaste. Para crear o cambiar tarjetas necesitas conexión.</p></details>
       <details><summary>Olvidé mi contraseña</summary><p>En la pantalla de entrada, toca «¿Olvidaste tu contraseña?» y te llegará un código a tu correo para crear una nueva.</p></details>
     </div>

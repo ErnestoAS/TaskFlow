@@ -1,10 +1,12 @@
+import datetime
 import re
 
 import pytest
 from django.test import Client
 
-from apps.proyectos import servicios as sp
+from apps.pizarras import servicios as sp
 from apps.tarjetas import servicios as st
+from apps.tarjetas.models import Tarjeta
 
 pytestmark = pytest.mark.django_db
 API = "/api/v1"
@@ -28,7 +30,7 @@ def _patch(c, url, datos):
 
 
 def test_sin_sesion_no_hay_datos(client):
-    assert client.get(f"{API}/proyectos/").status_code == 403
+    assert client.get(f"{API}/pizarras/").status_code == 403
 
 
 def test_entrar_salir_y_yo(client, crear_usuario):
@@ -176,98 +178,154 @@ def test_recuperar_verifica_el_correo(client, crear_usuario, mailoutbox):
     assert u.correo_verificado
 
 
-# --- proyectos ----------------------------------------------------------------------------------
+# --- pizarras -----------------------------------------------------------------------------------
 
 
-def test_crear_y_listar_proyectos(cliente):
-    r = _post(cliente, "/proyectos/", {"nombre": "Feria 2027"})
+def test_crear_y_listar_pizarras(cliente):
+    r = _post(cliente, "/pizarras/", {"nombre": "Feria 2027"})
     assert r.status_code == 201 and r.json()["rol"] == "dueno"
     assert r.json()["permisos"]["eliminar"] is True
-    nombres = [p["nombre"] for p in cliente.get(f"{API}/proyectos/").json()]
-    assert "Feria 2027" in nombres
+    assert [lst["nombre"] for lst in r.json()["listas"]] == ["Pendiente", "En curso", "Finalizada"]
+    resumen = next(p for p in cliente.get(f"{API}/pizarras/").json() if p["nombre"] == "Feria 2027")
+    assert resumen["conteos"] == {"tarjetas": 0, "listas": 3, "mias": 0, "vencidas": 0}
 
 
-def test_proyecto_ajeno_es_404(proyecto, client, crear_usuario):
+def test_pizarra_ajena_es_404(pizarra, listas, client, crear_usuario):
     client.force_login(crear_usuario())
-    assert client.get(f"{API}/proyectos/{proyecto.pk}/").status_code == 404
-    assert client.get(f"{API}/proyectos/{proyecto.pk}/tarjetas/").status_code == 404
+    assert client.get(f"{API}/pizarras/{pizarra.pk}/").status_code == 404
+    assert client.get(f"{API}/pizarras/{pizarra.pk}/tarjetas/").status_code == 404
+    assert _post(client, f"/pizarras/{pizarra.pk}/listas/", {"nombre": "x"}).status_code == 404
+    assert _post(client, f"/pizarras/{pizarra.pk}/listas/orden/", {"ids": []}).status_code == 404
+    lista = listas["Pendiente"].pk
+    assert _patch(client, f"/listas/{lista}/", {"nombre": "x"}).status_code == 404
+    assert client.delete(f"{API}/listas/{lista}/").status_code == 404
 
 
-def test_miembro_ve_su_rol_y_permisos(proyecto, client, crear_usuario, agregar_miembro):
+def test_miembro_ve_su_rol_y_permisos(pizarra, client, crear_usuario, agregar_miembro):
     luis = crear_usuario()
     agregar_miembro(luis)
     client.force_login(luis)
-    d = client.get(f"{API}/proyectos/{proyecto.pk}/").json()
-    assert d["rol"] == "miembro" and d["permisos"]["crear"] and not d["permisos"]["eliminar"]
+    d = client.get(f"{API}/pizarras/{pizarra.pk}/").json()
+    assert d["rol"] == "miembro" and d["permisos"]["crear"] and d["permisos"]["mover"]
+    assert not d["permisos"]["eliminar"] and not d["permisos"]["gestionar_listas"]
     assert d["invitaciones"] == []  # solo el dueño las ve
 
 
-def test_acciones_del_dueno(cliente, proyecto, crear_usuario, agregar_miembro):
+def test_acciones_del_dueno(cliente, pizarra, crear_usuario, agregar_miembro):
     luis = crear_usuario()
     agregar_miembro(luis)
-    r = _patch(cliente, f"/proyectos/{proyecto.pk}/miembros/{luis.pk}/", {"eliminar": True})
+    r = _patch(cliente, f"/pizarras/{pizarra.pk}/miembros/{luis.pk}/", {"gestionar_listas": True})
     assert r.status_code == 200
     luis_d = next(m for m in r.json()["miembros"] if m["usuario"]["id"] == luis.pk)
-    assert luis_d["permisos"]["eliminar"] is True
-    assert _post(cliente, f"/proyectos/{proyecto.pk}/archivar/").json()["archivado"] is True
-    assert _post(cliente, f"/proyectos/{proyecto.pk}/restaurar/").json()["archivado"] is False
-    r = _post(cliente, f"/proyectos/{proyecto.pk}/transferir/", {"usuario": luis.pk})
+    assert luis_d["permisos"]["gestionar_listas"] is True
+    assert _post(cliente, f"/pizarras/{pizarra.pk}/archivar/").json()["archivada"] is True
+    assert _post(cliente, f"/pizarras/{pizarra.pk}/restaurar/").json()["archivada"] is False
+    r = _post(cliente, f"/pizarras/{pizarra.pk}/transferir/", {"usuario": luis.pk})
     assert r.status_code == 200 and r.json()["rol"] == "miembro"
 
 
-def test_miembro_no_hace_acciones_de_dueno(proyecto, client, crear_usuario, agregar_miembro):
+def test_miembro_no_hace_acciones_de_dueno(pizarra, client, crear_usuario, agregar_miembro):
     luis = crear_usuario()
     agregar_miembro(luis)
     client.force_login(luis)
-    assert _post(client, f"/proyectos/{proyecto.pk}/archivar/").status_code == 403
+    assert _post(client, f"/pizarras/{pizarra.pk}/archivar/").status_code == 403
     assert (
         _post(
-            client, f"/proyectos/{proyecto.pk}/invitaciones/", {"correo": "x@ejemplo.mx"}
+            client, f"/pizarras/{pizarra.pk}/invitaciones/", {"correo": "x@ejemplo.mx"}
         ).status_code
         == 403
     )
-    assert client.delete(f"{API}/proyectos/{proyecto.pk}/").status_code == 403
+    assert client.delete(f"{API}/pizarras/{pizarra.pk}/").status_code == 403
+
+
+def test_conteos_de_mis_pizarras(cliente, pizarra, dueno, listas):
+    st.crear_tarjeta(pizarra, dueno, titulo="mía", asignados=[dueno])
+    vieja = datetime.date(2020, 1, 1)
+    st.crear_tarjeta(pizarra, dueno, titulo="vencida", fecha_inicio=vieja, fecha_fin=vieja)
+    st.crear_tarjeta(
+        pizarra,
+        dueno,
+        titulo="cerrada",
+        lista=listas["Finalizada"],
+        fecha_inicio=vieja,
+        fecha_fin=vieja,
+    )
+    (p,) = cliente.get(f"{API}/pizarras/").json()
+    assert p["conteos"] == {"tarjetas": 3, "listas": 3, "mias": 1, "vencidas": 1}
+
+
+# --- listas -------------------------------------------------------------------------------------
+
+
+def test_listas_crear_renombrar_cierre_ordenar_y_eliminar(cliente, pizarra, listas):
+    r = _post(cliente, f"/pizarras/{pizarra.pk}/listas/", {"nombre": "Ideas"})
+    assert r.status_code == 201
+    ideas = next(lst for lst in r.json()["listas"] if lst["nombre"] == "Ideas")
+    r = _post(cliente, f"/pizarras/{pizarra.pk}/listas/", {"nombre": "ideas"})
+    assert r.status_code == 400 and "nombre" in r.json()
+    r = _patch(cliente, f"/listas/{ideas['id']}/", {"nombre": "Lluvia de ideas", "es_cierre": True})
+    cambiada = next(lst for lst in r.json()["listas"] if lst["id"] == ideas["id"])
+    assert cambiada["nombre"] == "Lluvia de ideas" and cambiada["es_cierre"] is True
+    ids = [ideas["id"], *(lst.pk for lst in listas.values())]
+    r = _post(cliente, f"/pizarras/{pizarra.pk}/listas/orden/", {"ids": ids})
+    assert [lst["id"] for lst in r.json()["listas"]] == ids
+    assert cliente.delete(f"{API}/listas/{ideas['id']}/").status_code == 200
+
+
+def test_lista_con_tarjetas_no_se_elimina(cliente, pizarra, dueno, listas):
+    st.crear_tarjeta(pizarra, dueno, titulo="a")
+    r = cliente.delete(f"{API}/listas/{listas['Pendiente'].pk}/")
+    assert r.status_code == 400 and "muévelas" in r.json()["detalle"]
+
+
+def test_gestionar_listas_sin_permiso_es_403(
+    pizarra, listas, client, crear_usuario, agregar_miembro
+):
+    luis = crear_usuario()
+    agregar_miembro(luis)
+    client.force_login(luis)
+    assert _post(client, f"/pizarras/{pizarra.pk}/listas/", {"nombre": "x"}).status_code == 403
+    assert _patch(client, f"/listas/{listas['Pendiente'].pk}/", {"nombre": "x"}).status_code == 403
 
 
 # --- invitaciones -------------------------------------------------------------------------------
 
 
 def test_flujo_de_invitacion_con_registro(
-    cliente, proyecto, mailoutbox, django_capture_on_commit_callbacks
+    cliente, pizarra, mailoutbox, django_capture_on_commit_callbacks
 ):
     with django_capture_on_commit_callbacks(execute=True):
-        r = _post(
-            cliente, f"/proyectos/{proyecto.pk}/invitaciones/", {"correo": "sofia@ejemplo.mx"}
-        )
+        r = _post(cliente, f"/pizarras/{pizarra.pk}/invitaciones/", {"correo": "sofia@ejemplo.mx"})
     assert r.status_code == 201 and len(mailoutbox) == 1
     inv = r.json()["invitaciones"][0]
-    token = proyecto.invitaciones.get(pk=inv["id"]).token
+    token = pizarra.invitaciones.get(pk=inv["id"]).token
     anonimo = Client()
     info = anonimo.get(f"{API}/invitaciones/{token}/").json()
-    assert info["proyecto"] == proyecto.nombre and info["existe_cuenta"] is False
+    assert info["pizarra"] == pizarra.nombre and info["existe_cuenta"] is False
     r = _post(
         anonimo,
         f"/invitaciones/{token}/registro/",
         {"nombre": "Sofía", "primer_apellido": "Méndez", "password": "una-clave-larga-9"},
     )
-    assert r.status_code == 201 and r.json()["proyecto"] == proyecto.pk
+    assert r.status_code == 201 and r.json()["pizarra"] == pizarra.pk
     # El enlace llegó a su correo: entra sin código.
     assert len(mailoutbox) == 1 and r.json()["usuario"]["correo"] == "sofia@ejemplo.mx"
-    assert anonimo.get(f"{API}/proyectos/{proyecto.pk}/").status_code == 200
+    assert anonimo.get(f"{API}/pizarras/{pizarra.pk}/").status_code == 200
 
 
-def test_aceptar_invitacion_con_cuenta(proyecto, dueno, client, crear_usuario):
-    inv = sp.invitar(proyecto, dueno, "luis@ejemplo.mx")
+def test_aceptar_invitacion_con_cuenta(pizarra, dueno, client, crear_usuario):
+    inv = sp.invitar(pizarra, dueno, "luis@ejemplo.mx")
     client.force_login(crear_usuario("luis@ejemplo.mx"))
-    assert _post(client, f"/invitaciones/{inv.token}/aceptar/").status_code == 200
+    r = _post(client, f"/invitaciones/{inv.token}/aceptar/")
+    assert r.status_code == 200 and r.json() == {"pizarra": pizarra.pk}
     client.force_login(crear_usuario("otro@ejemplo.mx"))
-    inv2 = sp.invitar(proyecto, dueno, "maria@ejemplo.mx")
+    inv2 = sp.invitar(pizarra, dueno, "maria@ejemplo.mx")
     assert _post(client, f"/invitaciones/{inv2.token}/aceptar/").status_code == 403
 
 
-def test_reenviar_y_cancelar(cliente, proyecto, dueno):
-    inv = sp.invitar(proyecto, dueno, "sofia@ejemplo.mx")
-    url = f"/proyectos/{proyecto.pk}/invitaciones/{inv.pk}"
+def test_reenviar_y_cancelar(cliente, pizarra, dueno):
+    inv = sp.invitar(pizarra, dueno, "sofia@ejemplo.mx")
+    url = f"/pizarras/{pizarra.pk}/invitaciones/{inv.pk}"
     assert _post(cliente, f"{url}/reenviar/").json()["invitaciones"][0]["veces_enviada"] == 2
     assert _post(cliente, f"{url}/cancelar/").json()["invitaciones"] == []
 
@@ -275,75 +333,160 @@ def test_reenviar_y_cancelar(cliente, proyecto, dueno):
 # --- tipos y tarjetas ---------------------------------------------------------------------------
 
 
-def test_tipos(cliente, proyecto):
-    r = _post(cliente, f"/proyectos/{proyecto.pk}/tipos/", {"nombre": "Diseño", "color": "#EC4899"})
+def test_tipos(cliente, pizarra):
+    r = _post(cliente, f"/pizarras/{pizarra.pk}/tipos/", {"nombre": "Diseño", "color": "#EC4899"})
     assert r.status_code == 201 and r.json()["color"] == "#ec4899"
     tid = r.json()["id"]
     assert (
-        _patch(cliente, f"/proyectos/{proyecto.pk}/tipos/{tid}/", {"color": "#6366f1"}).json()[
+        _patch(cliente, f"/pizarras/{pizarra.pk}/tipos/{tid}/", {"color": "#6366f1"}).json()[
             "color"
         ]
         == "#6366f1"
     )
-    r = _post(cliente, f"/proyectos/{proyecto.pk}/tipos/", {"nombre": "diseño", "color": "#000000"})
+    r = _post(cliente, f"/pizarras/{pizarra.pk}/tipos/", {"nombre": "diseño", "color": "#000000"})
     assert r.status_code == 400 and "nombre" in r.json()
-    assert cliente.delete(f"{API}/proyectos/{proyecto.pk}/tipos/{tid}/").status_code == 204
+    assert cliente.delete(f"{API}/pizarras/{pizarra.pk}/tipos/{tid}/").status_code == 204
 
 
-def test_ciclo_de_una_tarjeta(cliente, proyecto, dueno):
-    tipo = sp.crear_tipo(proyecto, dueno, nombre="Logística", color="#0ea5e9")
+def test_ciclo_de_una_tarjeta(cliente, pizarra, dueno, listas):
+    tipo = sp.crear_tipo(pizarra, dueno, nombre="Logística", color="#0ea5e9")
     r = _post(
         cliente,
-        f"/proyectos/{proyecto.pk}/tarjetas/",
+        f"/pizarras/{pizarra.pk}/tarjetas/",
         {
             "titulo": "Auditorio",
-            "descripcion": "Reservar",
+            "lista": listas["En curso"].pk,
             "prioridad": "urgente",
+            "fecha_inicio": "2026-10-01",
             "fecha_fin": "2026-10-20",
             "asignados": [dueno.pk],
             "tipos": [tipo.pk],
         },
     )
-    assert r.status_code == 201
+    assert r.status_code == 201, r.json()
     t = r.json()
-    assert (
-        t["prioridad"] == "urgente" and t["fecha_fin"] == "2026-10-20" and t["tipos"] == [tipo.pk]
+    assert (t["descripcion"], t["lista_nombre"], t["en_cierre"]) == ("", "En curso", False)
+    assert (t["fecha_inicio"], t["fecha_fin"], t["tipos"]) == (
+        "2026-10-01",
+        "2026-10-20",
+        [tipo.pk],
     )
-    assert t["historial"][0]["a"] == "pendiente" and t["historial"][0]["de"] is None
-    r = _post(cliente, f"/tarjetas/{t['id']}/estatus/", {"estatus": "finalizada"})
-    assert r.json()["estatus"] == "finalizada" and len(r.json()["historial"]) == 2
+    assert t["historial"] == [
+        {**t["historial"][0], "de": None, "a": "En curso", "nota": None},
+    ]
+    r = _post(cliente, f"/tarjetas/{t['id']}/mover/", {"lista": listas["Finalizada"].pk})
+    assert r.json()["lista_nombre"] == "Finalizada" and r.json()["en_cierre"] is True
+    assert len(r.json()["historial"]) == 2
     r = _patch(cliente, f"/tarjetas/{t['id']}/", {"titulo": "Auditorio central", "fecha_fin": None})
     assert r.json()["titulo"] == "Auditorio central" and r.json()["fecha_fin"] is None
     assert _patch(cliente, f"/tarjetas/{t['id']}/", {"fecha_fin": "mañana"}).status_code == 400
+    r = _patch(cliente, f"/tarjetas/{t['id']}/", {"fecha_fin": "2026-09-01"})
+    assert r.status_code == 400 and "fecha_fin" in r.json()
     assert cliente.delete(f"{API}/tarjetas/{t['id']}/").status_code == 204
 
 
-def test_tablero_ordenado_por_prioridad(cliente, proyecto, dueno):
-    for titulo, prioridad in [("b", "baja"), ("u", "urgente"), ("m", "media"), ("a", "alta")]:
-        st.crear_tarjeta(proyecto, dueno, titulo=titulo, descripcion="x", prioridad=prioridad)
-    titulos = [t["titulo"] for t in cliente.get(f"{API}/proyectos/{proyecto.pk}/tarjetas/").json()]
-    assert titulos == ["u", "a", "m", "b"]
+def test_tablero_en_orden_de_lista_y_posicion(cliente, pizarra, dueno, listas):
+    for titulo, lista in [("b", "En curso"), ("p1", "Pendiente"), ("p2", "Pendiente")]:
+        st.crear_tarjeta(pizarra, dueno, titulo=titulo, lista=listas[lista])
+    p2 = Tarjeta.objects.get(titulo="p2")
+    _post(cliente, f"/tarjetas/{p2.pk}/mover/", {"lista": listas["Pendiente"].pk, "posicion": 0})
+    titulos = [t["titulo"] for t in cliente.get(f"{API}/pizarras/{pizarra.pk}/tarjetas/").json()]
+    assert titulos == ["p2", "p1", "b"]
 
 
 def test_tarjeta_ajena_es_404_y_sin_permiso_es_403(
-    proyecto, dueno, client, crear_usuario, agregar_miembro
+    pizarra, dueno, client, crear_usuario, agregar_miembro, listas
 ):
-    t = st.crear_tarjeta(proyecto, dueno, titulo="a", descripcion="b")
+    t = st.crear_tarjeta(pizarra, dueno, titulo="a")
+    e = st.agregar_elemento(t, dueno, "paso")
     client.force_login(crear_usuario())
     assert client.get(f"{API}/tarjetas/{t.pk}/").status_code == 404
+    assert (
+        _post(client, f"/tarjetas/{t.pk}/mover/", {"lista": listas["En curso"].pk}).status_code
+        == 404
+    )
+    assert _post(client, f"/tarjetas/{t.pk}/checklist/", {"texto": "x"}).status_code == 404
+    assert _post(client, f"/tarjetas/{t.pk}/checklist/orden/", {"ids": [e.pk]}).status_code == 404
+    assert _patch(client, f"/checklist/{e.pk}/", {"hecho": True}).status_code == 404
+    assert client.delete(f"{API}/checklist/{e.pk}/").status_code == 404
+    assert _post(client, f"/checklist/{e.pk}/convertir/").status_code == 404
     luis = crear_usuario()
-    agregar_miembro(luis, cambiar_estatus=False)
+    agregar_miembro(luis, mover=False, editar=False, crear=False)
     client.force_login(luis)
-    r = _post(client, f"/tarjetas/{t.pk}/estatus/", {"estatus": "en_curso"})
+    r = _post(client, f"/tarjetas/{t.pk}/mover/", {"lista": listas["En curso"].pk})
     assert r.status_code == 403 and "permiso" in r.json()["detalle"]
+    assert _post(client, f"/tarjetas/{t.pk}/checklist/", {"texto": "x"}).status_code == 403
+    assert _patch(client, f"/checklist/{e.pk}/", {"hecho": True}).status_code == 403
+    assert _post(client, f"/checklist/{e.pk}/convertir/").status_code == 403
 
 
-def test_mis_tarjetas(cliente, proyecto, dueno):
-    st.crear_tarjeta(proyecto, dueno, titulo="mía", descripcion="x", asignados=[dueno])
-    st.crear_tarjeta(proyecto, dueno, titulo="de nadie", descripcion="x")
-    hecha = st.crear_tarjeta(proyecto, dueno, titulo="hecha", descripcion="x", asignados=[dueno])
-    st.cambiar_estatus(hecha, dueno, "finalizada")
+def test_mover_a_lista_de_otra_pizarra_es_400(cliente, pizarra, dueno):
+    t = st.crear_tarjeta(pizarra, dueno, titulo="a")
+    otra = sp.crear_pizarra(dueno, "Otra")
+    r = _post(cliente, f"/tarjetas/{t.pk}/mover/", {"lista": otra.listas.first().pk})
+    assert r.status_code == 400 and "lista" in r.json()
+
+
+def test_mis_tarjetas_sin_las_de_listas_de_cierre(cliente, pizarra, dueno, listas):
+    st.crear_tarjeta(pizarra, dueno, titulo="mía", asignados=[dueno])
+    st.crear_tarjeta(pizarra, dueno, titulo="de nadie")
+    hecha = st.crear_tarjeta(pizarra, dueno, titulo="hecha", asignados=[dueno])
+    st.mover_tarjeta(hecha, dueno, listas["Finalizada"])
     assert [t["titulo"] for t in cliente.get(f"{API}/yo/tarjetas/").json()] == ["mía"]
+
+
+# --- checklist ----------------------------------------------------------------------------------
+
+
+def test_checklist_y_conversion_enlazada(cliente, pizarra, dueno, listas):
+    t = st.crear_tarjeta(pizarra, dueno, titulo="Programa")
+    r = _post(cliente, f"/tarjetas/{t.pk}/checklist/", {"texto": "Asignar salas"})
+    assert r.status_code == 201
+    _post(cliente, f"/tarjetas/{t.pk}/checklist/", {"texto": "Imprimir"})
+    salas, imprimir = (e["id"] for e in cliente.get(f"{API}/tarjetas/{t.pk}/").json()["checklist"])
+    r = _patch(cliente, f"/checklist/{imprimir}/", {"hecho": True})
+    assert r.json()["checklist_conteo"] == {"hechos": 1, "total": 2}
+    r = _post(
+        cliente,
+        f"/checklist/{salas}/convertir/",
+        {"prioridad": "alta", "lista_terminado": listas["En curso"].pk},
+    )
+    assert r.status_code == 201
+    padre, nueva = r.json()["tarjeta"], r.json()["nueva"]
+    elemento = next(e for e in padre["checklist"] if e["id"] == salas)
+    assert elemento["tarjeta"] == {
+        "id": nueva["id"],
+        "titulo": "Asignar salas",
+        "lista": listas["Pendiente"].pk,
+        "lista_nombre": "Pendiente",
+    }
+    assert elemento["lista_terminado"]["nombre"] == "En curso" and elemento["automatico"]
+    assert nueva["viene_de"] == {"id": t.pk, "titulo": "Programa", "elemento": "Asignar salas"}
+    # Se palomea solo cuando su tarjeta llega a «En curso».
+    _post(cliente, f"/tarjetas/{nueva['id']}/mover/", {"lista": listas["En curso"].pk})
+    padre = cliente.get(f"{API}/tarjetas/{t.pk}/").json()
+    assert padre["checklist_conteo"] == {"hechos": 2, "total": 2}
+    assert _patch(cliente, f"/checklist/{salas}/", {"hecho": False}).status_code == 400
+    # A palomeo manual, conservando el estado.
+    r = _patch(cliente, f"/checklist/{salas}/", {"lista_terminado": None})
+    elemento = next(e for e in r.json()["checklist"] if e["id"] == salas)
+    assert elemento["hecho"] is True and elemento["automatico"] is False
+    r = _post(cliente, f"/tarjetas/{t.pk}/checklist/orden/", {"ids": [imprimir, salas]})
+    assert [e["id"] for e in r.json()["checklist"]] == [imprimir, salas]
+    assert cliente.delete(f"{API}/checklist/{imprimir}/").status_code == 200
+
+
+def test_convertir_sin_lista_usa_la_de_cierre(cliente, pizarra, dueno, listas):
+    t = st.crear_tarjeta(pizarra, dueno, titulo="Programa")
+    e = st.agregar_elemento(t, dueno, "Imprimir")
+    r = _post(cliente, f"/checklist/{e.pk}/convertir/")
+    elemento = r.json()["tarjeta"]["checklist"][0]
+    assert elemento["lista_terminado"] == {"id": listas["Finalizada"].pk, "nombre": "Finalizada"}
+    r = _post(cliente, f"/checklist/{e.pk}/convertir/")
+    assert r.status_code == 400  # ya convertido
+
+
+# --- cuenta, portada y PWA ----------------------------------------------------------------------
 
 
 def test_cambiar_contraseña(cliente):

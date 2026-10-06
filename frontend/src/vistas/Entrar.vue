@@ -22,7 +22,7 @@ async function enviar() {
   ocupado.value = true;
   try {
     await entrar(correo.value.trim(), password.value);
-    const siguiente = typeof route.query.siguiente === "string" ? route.query.siguiente : "/proyectos";
+    const siguiente = typeof route.query.siguiente === "string" ? route.query.siguiente : "/pizarras";
     await router.replace(siguiente);
   } catch (e) {
     // Cuenta sin confirmar: el servidor ya mandó (o reenvió) el código; se pasa a capturarlo.
@@ -42,7 +42,7 @@ async function enviar() {
     <div class="marca"><Logo /><span>TaskFlow</span></div>
     <div class="caja">
       <h1>Entrar</h1>
-      <p class="intro">Organiza las actividades de tus proyectos en tarjetas.</p>
+      <p class="intro">Organiza tus actividades en pizarras con listas y tarjetas.</p>
       <form novalidate @submit.prevent="enviar">
         <div v-if="error" class="error-general" role="alert">{{ error }}</div>
         <div class="campo">
@@ -66,6 +66,6 @@ async function enviar() {
     <p v-if="sesion.registroAbierto" class="pie-acceso">
       ¿No tienes cuenta? <RouterLink :to="{ name: 'registro' }">Crea una</RouterLink>
     </p>
-    <p v-else class="pie-acceso">Para tener cuenta, pide a alguien que te invite a su proyecto.</p>
+    <p v-else class="pie-acceso">Para tener cuenta, pide a alguien que te invite a su pizarra.</p>
   </main>
 </template>

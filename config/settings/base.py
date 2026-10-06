@@ -25,7 +25,7 @@ CSRF_TRUSTED_ORIGINS = env.list("DJANGO_CSRF_TRUSTED_ORIGINS", default=[])
 LOCAL_APPS = [
     "apps.core",
     "apps.usuarios",
-    "apps.proyectos",
+    "apps.pizarras",
     "apps.tarjetas",
     "apps.api",
 ]

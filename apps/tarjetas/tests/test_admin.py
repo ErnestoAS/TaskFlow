@@ -1,10 +1,19 @@
 import pytest
 
-from apps.proyectos.models import MiembroProyecto
+from apps.pizarras.models import MiembroPizarra
 from apps.tarjetas.models import Tarjeta
 from apps.tarjetas.servicios import crear_tarjeta
 
 pytestmark = pytest.mark.django_db
+
+VACIO = {"TOTAL_FORMS": "0", "INITIAL_FORMS": "0", "MIN_NUM_FORMS": "0", "MAX_NUM_FORMS": "1000"}
+
+
+def _formset(prefijo, total=0, iniciales=0):
+    return {
+        f"{prefijo}-{k}": v
+        for k, v in {**VACIO, "TOTAL_FORMS": str(total), "INITIAL_FORMS": str(iniciales)}.items()
+    }
 
 
 @pytest.fixture
@@ -14,69 +23,75 @@ def admin(crear_usuario, client):
     return usuario
 
 
-def test_cambiar_estatus_en_el_admin_deja_rastro(admin, client, proyecto, dueno):
-    t = crear_tarjeta(proyecto, dueno, titulo="Una", descripcion="x")
+def test_mover_de_lista_en_el_admin_deja_rastro(admin, client, pizarra, dueno, listas):
+    t = crear_tarjeta(pizarra, dueno, titulo="Una")
     datos = {
-        "proyecto": proyecto.pk,
+        "pizarra": pizarra.pk,
+        "lista": listas["Finalizada"].pk,
+        "posicion": 0,
         "titulo": "Una",
-        "descripcion": "x",
-        "estatus": "finalizada",
+        "descripcion": "",
         "prioridad": "media",
+        "fecha_inicio": t.fecha_inicio.isoformat(),
         "fecha_fin": "",
         "creada_por": dueno.pk,
-        "cambios_estatus-TOTAL_FORMS": "1",
-        "cambios_estatus-INITIAL_FORMS": "1",
-        "cambios_estatus-MIN_NUM_FORMS": "0",
-        "cambios_estatus-MAX_NUM_FORMS": "1000",
-        "cambios_estatus-0-id": t.cambios_estatus.get().pk,
-        "cambios_estatus-0-tarjeta": t.pk,
+        **_formset("checklist"),
+        **_formset("movimientos", 1, 1),
+        "movimientos-0-id": t.movimientos.get().pk,
+        "movimientos-0-tarjeta": t.pk,
     }
     r = client.post(f"/django-admin/tarjetas/tarjeta/{t.pk}/change/", datos)
     assert r.status_code == 302, r.content.decode()[:2000]
     t = Tarjeta.objects.get(pk=t.pk)
-    assert t.estatus == "finalizada"
-    ultimo = t.cambios_estatus.first()
-    assert (ultimo.estatus_anterior, ultimo.estatus_nuevo, ultimo.usuario) == (
-        "pendiente",
-        "finalizada",
+    assert t.lista == listas["Finalizada"]
+    ultimo = t.movimientos.first()
+    assert (ultimo.lista_anterior, ultimo.lista_nueva, ultimo.usuario) == (
+        "Pendiente",
+        "Finalizada",
         admin,
     )
 
 
-def test_el_admin_transfiere_un_proyecto(
-    admin, client, proyecto, dueno, crear_usuario, agregar_miembro
+def test_el_admin_transfiere_una_pizarra(
+    admin, client, pizarra, dueno, crear_usuario, agregar_miembro
 ):
     luis = crear_usuario()
     m_luis = agregar_miembro(luis)
-    m_dueno = MiembroProyecto.objects.get(proyecto=proyecto, usuario=dueno)
+    m_dueno = MiembroPizarra.objects.get(pizarra=pizarra, usuario=dueno)
     filas = {}
     for i, m in enumerate([m_dueno, m_luis]):
         filas.update(
             {
                 f"miembros-{i}-id": m.pk,
-                f"miembros-{i}-proyecto": proyecto.pk,
+                f"miembros-{i}-pizarra": pizarra.pk,
                 f"miembros-{i}-usuario": m.usuario.pk,
                 f"miembros-{i}-puede_crear": "on",
                 f"miembros-{i}-puede_editar": "on",
-                f"miembros-{i}-puede_cambiar_estatus": "on",
+                f"miembros-{i}-puede_mover": "on",
+            }
+        )
+    listas = list(pizarra.listas.all())
+    for i, lista in enumerate(listas):
+        filas.update(
+            {
+                f"listas-{i}-id": lista.pk,
+                f"listas-{i}-pizarra": pizarra.pk,
+                f"listas-{i}-nombre": lista.nombre,
+                f"listas-{i}-posicion": lista.posicion,
+                **({f"listas-{i}-es_cierre": "on"} if lista.es_cierre else {}),
             }
         )
     datos = {
-        "nombre": proyecto.nombre,
+        "nombre": pizarra.nombre,
         "creado_por": dueno.pk,
-        "archivado_en_0": "",
-        "archivado_en_1": "",
+        "archivada_en_0": "",
+        "archivada_en_1": "",
         "transferir_a": luis.pk,
-        "miembros-TOTAL_FORMS": "2",
-        "miembros-INITIAL_FORMS": "2",
-        "miembros-MIN_NUM_FORMS": "0",
-        "miembros-MAX_NUM_FORMS": "1000",
-        "tipos-TOTAL_FORMS": "0",
-        "tipos-INITIAL_FORMS": "0",
-        "tipos-MIN_NUM_FORMS": "0",
-        "tipos-MAX_NUM_FORMS": "1000",
+        **_formset("miembros", 2, 2),
+        **_formset("listas", len(listas), len(listas)),
+        **_formset("tipos"),
         **filas,
     }
-    r = client.post(f"/django-admin/proyectos/proyecto/{proyecto.pk}/change/", datos)
+    r = client.post(f"/django-admin/pizarras/pizarra/{pizarra.pk}/change/", datos)
     assert r.status_code == 302, r.content.decode()[:3000]
-    assert proyecto.dueno == luis
+    assert pizarra.dueno == luis

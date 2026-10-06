@@ -58,7 +58,7 @@ async function cambiar() {
       password: form.password,
     });
     avisar("Se cambió tu contraseña.");
-    await router.replace({ name: "proyectos" });
+    await router.replace({ name: "pizarras" });
   } catch (e) {
     if (e instanceof ErrorApi && Object.keys(e.campos).length) errores.value = e.campos;
     else errorGeneral.value = mensajeDeError(e);

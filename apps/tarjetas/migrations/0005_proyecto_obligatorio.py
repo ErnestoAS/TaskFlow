@@ -7,7 +7,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('proyectos', '0001_initial'),
+        ('pizarras', '0001_initial'),
         ('tarjetas', '0004_tarjetas_existentes_a_proyecto'),
     ]
 
@@ -15,6 +15,6 @@ class Migration(migrations.Migration):
         migrations.AlterField(
             model_name='tarjeta',
             name='proyecto',
-            field=models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='tarjetas', to='proyectos.proyecto', verbose_name='proyecto'),
+            field=models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='tarjetas', to='pizarras.proyecto', verbose_name='proyecto'),
         ),
     ]

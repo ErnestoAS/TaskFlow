@@ -1,5 +1,5 @@
 <!--
-  Miembros y ajustes del proyecto (§4.5): invitar, reenviar o cancelar invitaciones, permisos por
+  Miembros y ajustes de la pizarra (§4.5): invitar, reenviar o cancelar invitaciones, permisos por
   miembro, transferir, quitar, tipos de tarjeta, archivar/restaurar, eliminar y salir.
   Solo el dueño ve los controles de miembros; los tipos, quien tenga «Gestionar tipos».
 -->
@@ -10,19 +10,19 @@ import { useRouter } from "vue-router";
 import { api, ErrorApi, mensajeDeError } from "../api";
 import Avatar from "../componentes/Avatar.vue";
 import Cabecera from "../componentes/Cabecera.vue";
-import FormProyecto from "../componentes/FormProyecto.vue";
+import FormPizarra from "../componentes/FormPizarra.vue";
 import FormTipo from "../componentes/FormTipo.vue";
 import Icono from "../componentes/Icono.vue";
-import { recargarProyectos } from "../proyectos";
+import { recargarPizarras } from "../pizarras";
 import { sesion } from "../sesion";
-import type { Miembro, Permiso, ProyectoDetalle, Tipo } from "../tipos";
+import type { Miembro, Permiso, PizarraDetalle, Tipo } from "../tipos";
 import { avisar, confirmar } from "../ui";
 import { fechaHora, MUESTRAS, PERMISOS, plural } from "../utilidades";
 
 const props = defineProps<{ id: number }>();
 const router = useRouter();
 
-const p = ref<ProyectoDetalle | null>(null);
+const p = ref<PizarraDetalle | null>(null);
 const correo = ref("");
 const errorInvitar = ref("");
 const ocupado = ref(false);
@@ -30,27 +30,25 @@ const formTipo = ref<{ tipo: Tipo | null } | null>(null);
 const renombrar = ref(false);
 
 const soyDueno = computed(() => p.value?.rol === "dueno");
-const activo = computed(() => !!p.value && !p.value.archivado);
+const activo = computed(() => !!p.value && !p.value.archivada);
 const gestionaTipos = computed(() => !!p.value?.permisos.gestionar_tipos);
-const totalTarjetas = computed(() =>
-  p.value ? p.value.conteos.pendiente + p.value.conteos.en_curso + p.value.conteos.finalizada : 0,
-);
+const totalTarjetas = computed(() => p.value?.conteos.tarjetas ?? 0);
 
 async function cargar() {
   try {
-    p.value = await api<ProyectoDetalle>(`proyectos/${props.id}/`);
+    p.value = await api<PizarraDetalle>(`pizarras/${props.id}/`);
   } catch (e) {
-    avisar(e instanceof ErrorApi && e.estado === 404 ? "Ese proyecto no existe o ya no eres miembro." : mensajeDeError(e));
-    await router.replace({ name: "proyectos" });
+    avisar(e instanceof ErrorApi && e.estado === 404 ? "Esa pizarra no existe o ya no eres miembro." : mensajeDeError(e));
+    await router.replace({ name: "pizarras" });
   }
 }
 watch(() => props.id, cargar, { immediate: true });
 
-/** Ejecuta una acción que devuelve el proyecto actualizado. */
+/** Ejecuta una acción que devuelve la pizarra actualizada. */
 async function hacer(ruta: string, metodo: "POST" | "PATCH" | "DELETE", datos: unknown, aviso: string) {
   ocupado.value = true;
   try {
-    p.value = await api<ProyectoDetalle>(ruta, metodo, datos);
+    p.value = await api<PizarraDetalle>(ruta, metodo, datos);
     avisar(aviso);
     return true;
   } catch (e) {
@@ -70,7 +68,7 @@ async function invitar() {
   }
   ocupado.value = true;
   try {
-    p.value = await api<ProyectoDetalle>(`proyectos/${props.id}/invitaciones/`, "POST", { correo: c });
+    p.value = await api<PizarraDetalle>(`pizarras/${props.id}/invitaciones/`, "POST", { correo: c });
     correo.value = "";
     avisar(`Se envió la invitación a ${c}.`);
   } catch (e) {
@@ -81,32 +79,32 @@ async function invitar() {
 }
 
 const reenviar = (invId: number, c: string) =>
-  hacer(`proyectos/${props.id}/invitaciones/${invId}/reenviar/`, "POST", undefined, `Se reenvió la invitación a ${c}.`);
+  hacer(`pizarras/${props.id}/invitaciones/${invId}/reenviar/`, "POST", undefined, `Se reenvió la invitación a ${c}.`);
 
 async function cancelarInvitacion(invId: number, c: string) {
   if (!(await confirmar(`¿Cancelar la invitación a ${c}? El enlace que recibió dejará de funcionar.`, "Cancelar invitación")))
     return;
-  await hacer(`proyectos/${props.id}/invitaciones/${invId}/cancelar/`, "POST", undefined, "Se canceló la invitación.");
+  await hacer(`pizarras/${props.id}/invitaciones/${invId}/cancelar/`, "POST", undefined, "Se canceló la invitación.");
 }
 
 const alternarPermiso = (m: Miembro, k: Permiso) =>
-  hacer(`proyectos/${props.id}/miembros/${m.usuario.id}/`, "PATCH", { [k]: !m.permisos[k] }, "Se actualizaron los permisos.");
+  hacer(`pizarras/${props.id}/miembros/${m.usuario.id}/`, "PATCH", { [k]: !m.permisos[k] }, "Se actualizaron los permisos.");
 
 async function transferir(m: Miembro) {
   const ok = await confirmar(
-    `¿Transferir «${p.value?.nombre}» a ${m.usuario.nombre}? Será el nuevo dueño y tú quedarás como miembro con todos los permisos sobre las tarjetas. Solo esa persona podrá devolvértelo.`,
+    `¿Transferir «${p.value?.nombre}» a ${m.usuario.nombre}? Será el nuevo dueño y tú quedarás como miembro con todos los permisos. Solo esa persona podrá devolvértelo.`,
     "Transferir",
   );
-  if (ok && (await hacer(`proyectos/${props.id}/transferir/`, "POST", { usuario: m.usuario.id }, `Ahora ${m.usuario.nombre} es el dueño.`)))
-    recargarProyectos().catch(() => undefined);
+  if (ok && (await hacer(`pizarras/${props.id}/transferir/`, "POST", { usuario: m.usuario.id }, `Ahora ${m.usuario.nombre} es el dueño.`)))
+    recargarPizarras().catch(() => undefined);
 }
 
 async function quitar(m: Miembro) {
   const ok = await confirmar(
-    `¿Quitar a ${m.usuario.nombre} del proyecto? Dejará de ver sus tarjetas y se le quitará de las que tenga asignadas.`,
+    `¿Quitar a ${m.usuario.nombre} de la pizarra? Dejará de ver sus tarjetas y se le quitará de las que tenga asignadas.`,
     "Quitar",
   );
-  if (ok) await hacer(`proyectos/${props.id}/miembros/${m.usuario.id}/`, "DELETE", undefined, `Se quitó a ${m.usuario.nombre}.`);
+  if (ok) await hacer(`pizarras/${props.id}/miembros/${m.usuario.id}/`, "DELETE", undefined, `Se quitó a ${m.usuario.nombre}.`);
 }
 
 async function eliminarTipo(tp: Tipo) {
@@ -117,7 +115,7 @@ async function eliminarTipo(tp: Tipo) {
   );
   if (!ok) return;
   try {
-    await api(`proyectos/${props.id}/tipos/${tp.id}/`, "DELETE");
+    await api(`pizarras/${props.id}/tipos/${tp.id}/`, "DELETE");
     avisar("Se eliminó el tipo.");
     await cargar();
   } catch (e) {
@@ -132,16 +130,16 @@ async function tipoGuardado() {
 
 async function archivar() {
   const ok = await confirmar(
-    `¿Archivar «${p.value?.nombre}»? Queda en solo lectura para todos sus miembros: nadie podrá crear, editar ni mover tarjetas. Puedes restaurarlo cuando quieras.`,
+    `¿Archivar «${p.value?.nombre}»? Queda en solo lectura para todos sus miembros: nadie podrá crear, editar ni mover tarjetas. Puedes restaurarla cuando quieras.`,
     "Archivar",
   );
-  if (ok && (await hacer(`proyectos/${props.id}/archivar/`, "POST", undefined, "Se archivó el proyecto.")))
-    recargarProyectos().catch(() => undefined);
+  if (ok && (await hacer(`pizarras/${props.id}/archivar/`, "POST", undefined, "Se archivó la pizarra.")))
+    recargarPizarras().catch(() => undefined);
 }
 
 async function restaurar() {
-  if (await hacer(`proyectos/${props.id}/restaurar/`, "POST", undefined, "Se restauró el proyecto."))
-    recargarProyectos().catch(() => undefined);
+  if (await hacer(`pizarras/${props.id}/restaurar/`, "POST", undefined, "Se restauró la pizarra."))
+    recargarPizarras().catch(() => undefined);
 }
 
 async function salirOEliminar(accion: "eliminar" | "salir") {
@@ -150,29 +148,29 @@ async function salirOEliminar(accion: "eliminar" | "salir") {
     accion === "eliminar"
       ? `¿Eliminar «${nombre}» y sus ${plural(totalTarjetas.value, "tarjeta")}? Se borra para todos sus miembros y no se puede deshacer.`
       : `¿Salir de «${nombre}»? Dejarás de ver sus tarjetas y se te quitará de las que tengas asignadas.`,
-    accion === "eliminar" ? "Eliminar proyecto" : "Salir",
+    accion === "eliminar" ? "Eliminar pizarra" : "Salir",
   );
   if (!ok) return;
   try {
-    if (accion === "eliminar") await api(`proyectos/${props.id}/`, "DELETE");
-    else await api(`proyectos/${props.id}/salir/`, "POST");
+    if (accion === "eliminar") await api(`pizarras/${props.id}/`, "DELETE");
+    else await api(`pizarras/${props.id}/salir/`, "POST");
     avisar(accion === "eliminar" ? `Se eliminó «${nombre}».` : `Saliste de «${nombre}».`);
-    await recargarProyectos().catch(() => undefined);
-    await router.replace({ name: "proyectos" });
+    await recargarPizarras().catch(() => undefined);
+    await router.replace({ name: "pizarras" });
   } catch (e) {
     avisar(mensajeDeError(e));
   }
 }
 
-async function renombrado(np: ProyectoDetalle) {
+async function renombrado(np: PizarraDetalle) {
   renombrar.value = false;
   p.value = np;
-  recargarProyectos().catch(() => undefined);
+  recargarPizarras().catch(() => undefined);
 }
 </script>
 
 <template>
-  <Cabecera :titulo="p?.nombre ?? 'Proyecto'" sub="Miembros y ajustes" :atras="{ name: 'tablero', params: { id } }" />
+  <Cabecera :titulo="p?.nombre ?? 'Pizarra'" sub="Miembros y ajustes" :atras="{ name: 'tablero', params: { id } }" />
   <main class="contenido" style="max-width: 760px">
     <div v-if="!p" class="cargando">Cargando…</div>
     <template v-else>
@@ -185,16 +183,16 @@ async function renombrado(np: ProyectoDetalle) {
           </div>
           <div v-if="errorInvitar" class="error">{{ errorInvitar }}</div>
           <div class="ayuda">
-            Le llega un correo con un enlace que no vence. Si aún no tiene cuenta, la crea desde ahí y entra directo al
-            proyecto con permiso de crear, editar y cambiar estatus (puedes cambiarlo abajo).
+            Le llega un correo con un enlace que no vence. Si aún no tiene cuenta, la crea desde ahí y entra directo a la
+            pizarra con permiso de crear, editar y mover tarjetas (puedes cambiarlo abajo).
           </div>
         </form>
       </div>
       <div v-else-if="!soyDueno" class="aviso">
         <Icono nombre="info" />
         <span
-          >Solo el dueño del proyecto ({{ p.dueno?.nombre }}) puede invitar, quitar personas y decidir qué puede hacer cada
-          miembro con las tarjetas.</span
+          >Solo el dueño de la pizarra ({{ p.dueno?.nombre }}) puede invitar, quitar personas y decidir qué puede hacer
+          cada miembro.</span
         >
       </div>
 
@@ -268,7 +266,7 @@ async function renombrado(np: ProyectoDetalle) {
             <button class="btn btn-chico btn-peligro" @click="eliminarTipo(tp)">Eliminar</button>
           </div>
         </div>
-        <div v-if="!p.tipos.length" class="vacio" style="padding: 16px">Este proyecto aún no tiene tipos.</div>
+        <div v-if="!p.tipos.length" class="vacio" style="padding: 16px">Esta pizarra aún no tiene tipos.</div>
         <div v-if="gestionaTipos" style="padding: 10px 0 8px">
           <button class="btn btn-secundario btn-bloque" @click="formTipo = { tipo: null }">
             <Icono nombre="masChico" /> Nuevo tipo
@@ -279,31 +277,31 @@ async function renombrado(np: ProyectoDetalle) {
         Crear y editar tipos lo puede el dueño o quien tenga el permiso «Gestionar tipos».
       </div>
 
-      <div class="seccion-titulo">Proyecto</div>
+      <div class="seccion-titulo">Pizarra</div>
       <div v-if="soyDueno" class="tarjeta-blanca" style="padding: 14px; display: flex; flex-direction: column; gap: 10px">
         <button v-if="activo" class="btn btn-secundario btn-bloque" @click="renombrar = true">Cambiar nombre</button>
-        <button v-if="p.archivado" class="btn btn-secundario btn-bloque" :disabled="ocupado" @click="restaurar">
-          Restaurar proyecto
+        <button v-if="p.archivada" class="btn btn-secundario btn-bloque" :disabled="ocupado" @click="restaurar">
+          Restaurar pizarra
         </button>
         <button v-else class="btn btn-secundario btn-bloque" :disabled="ocupado" @click="archivar">
-          <Icono nombre="archivo" /> Archivar proyecto
+          <Icono nombre="archivo" /> Archivar pizarra
         </button>
-        <button class="btn btn-peligro btn-bloque" @click="salirOEliminar('eliminar')">Eliminar proyecto</button>
+        <button class="btn btn-peligro btn-bloque" @click="salirOEliminar('eliminar')">Eliminar pizarra</button>
         <div class="ayuda" style="font-size: 12px; color: var(--tf-text-muted)">
-          Para salir del proyecto, primero transfiérelo a otro miembro con «Hacer dueño».
+          Para salir de la pizarra, primero transfiérela a otro miembro con «Hacer dueño».
         </div>
       </div>
-      <button v-else class="btn btn-peligro btn-bloque" @click="salirOEliminar('salir')">Salir del proyecto</button>
+      <button v-else class="btn btn-peligro btn-bloque" @click="salirOEliminar('salir')">Salir de la pizarra</button>
     </template>
   </main>
 
   <FormTipo
     v-if="formTipo && p"
-    :proyecto-id="p.id"
+    :pizarra-id="p.id"
     :tipo="formTipo.tipo"
     :sugerido="MUESTRAS[p.tipos.length % MUESTRAS.length]"
     @cerrar="formTipo = null"
     @guardado="tipoGuardado"
   />
-  <FormProyecto v-if="renombrar && p" :proyecto="p" @cerrar="renombrar = false" @guardado="renombrado" />
+  <FormPizarra v-if="renombrar && p" :pizarra="p" @cerrar="renombrar = false" @guardada="renombrado" />
 </template>

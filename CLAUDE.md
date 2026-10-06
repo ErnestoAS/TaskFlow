@@ -1,7 +1,10 @@
 # TaskFlow
 
-Gestor de tarjetas para organizar actividades. Cada tarjeta tiene título, descripción, fecha de fin
-opcional, uno o más asignados y uno de tres estatus: Pendiente → En curso → Finalizada.
+Gestor de tarjetas para organizar actividades. Las tarjetas viven en **pizarras** (antes
+«proyectos»), en **listas** con nombre libre (algunas «de cierre»: lo que llega ahí cuenta como
+terminado). Cada tarjeta tiene título, descripción opcional, fecha de inicio, fecha límite opcional,
+cero o más asignados, prioridad, tipos y una checklist cuyos elementos se pueden convertir en
+tarjetas enlazadas.
 
 - Stack: Python 3.13 · Django 5.2 LTS · DRF · PostgreSQL 18 · uv · Docker. PWA en `frontend/`:
   Vue 3 + Vite + TypeScript. Mismas convenciones que mi-campus.
@@ -17,19 +20,21 @@ opcional, uno o más asignados y uno de tres estatus: Pendiente → En curso →
 - Todo se ejecuta en Docker: la skill `taskflow-dev` tiene los comandos, las convenciones y la
   definición de terminado.
 - Documentación de Django: skill `django-docs` (no responder de memoria sobre APIs de Django).
-- Maquetas de diseño: [docs/_mockups/](docs/_mockups/); las v2 están aprobadas e implementadas
-  (ver §Maquetas de diseño).
+- Maquetas de diseño: [docs/_mockups/](docs/_mockups/); `app-v3.html` (y la portada v2) están
+  aprobadas e implementadas (ver §Maquetas de diseño).
 - Idioma: código de dominio, UI y commits en español.
 - **No hacer commits automáticamente.** Al terminar un cambio, dejarlo sin commit para que yo
   revise el diff; solo hacer `git commit` (o `push`) cuando lo pida explícitamente.
-- **Estado actual:** Etapas 1–3 listas: backend (proyectos, miembros, permisos, invitaciones,
+- **Estado actual:** Etapas 1–3 listas: backend (pizarras, miembros, permisos, invitaciones,
   tipos e historial; §4.5), API `/api/v1/` (§6), PWA en `/app/` y portada de instalación en `/`
   (§5), más correo verificado con código, recuperación de contraseña y apellidos separados (§4.3,
-  §7). En producción: `3b54d39` desde 2026-10-02. Ver «Pasos propios» en docs/operacion.md antes de
-  desplegar.
+  §7). En producción: `3b54d39` desde 2026-10-02. **Etapa 3.6 implementada el 2026-10-05, sin
+  desplegar:** «proyecto» → «pizarra» en todo el sistema, listas libres, listas de cierre,
+  arrastrar y soltar, checklist enlazada, descripción opcional y fecha de inicio (§4.4–§4.6). Ver
+  «Pasos propios» en docs/operacion.md antes de desplegar.
 - **Las reglas de negocio viven en `apps/<app>/servicios.py`.** Toda acción (también la API)
-  pasa por esas funciones; nunca cambiar `Tarjeta.estatus` directamente, sino con
-  `tarjetas.servicios.cambiar_estatus`, para que quede en el historial.
+  pasa por esas funciones; nunca cambiar `Tarjeta.lista` (ni su `posicion`) directamente, sino con
+  `tarjetas.servicios.mover_tarjeta`, para que quede en el historial (`Movimiento`).
 
 ## URLs y publicación bajo una ruta (reglas)
 
@@ -96,8 +101,9 @@ mecanismos propios; usar los que aquí se documentan y agregar aquí los nuevos 
   pronto); nada de coral ni naranja decorativo. Texto en petróleo con `--tf-accent-text`; sobre la barra
   navy, `--tf-accent-on-dark`; ante la duda, **neutro**.
 - Logo en `static/img/marca/` (SVG navy y blanco); conserva su color propio `--tf-logo`.
-- **Componentes de la PWA:** las clases de `frontend/src/estilos.css`, tomadas de la maqueta
-  aprobada `app-v2.html` (`.btn-primario`, `.chip`, `.tarjeta`, `.hoja`, `.segmentos`, …). **Sin
+- **Componentes de la PWA:** las clases de `frontend/src/estilos.css`, tomadas de las maquetas
+  aprobadas `app-v2.html` y `app-v3.html` (`.btn-primario`, `.chip`, `.tarjeta`, `.hoja`,
+  `.tablero`/`.lista`, `.pestanas-listas`, `.elegir-lista`, `.checklist`, …). **Sin
   Bootstrap** (decidido 2026-10-01): la maqueta aprobada ya define cada componente con los `--tf-*`
   y Bootstrap solo agregaría peso y estilos que habría que deshacer. Un componente nuevo se agrega
   a `estilos.css` usando variables, nunca hex.
@@ -105,6 +111,8 @@ mecanismos propios; usar los que aquí se documentan y agregar aquí los nuevos 
 - **Tipografía:** Inter desde `static/fonts/` vía `static/css/fuentes.css` (PWA y portada).
 - Confirmaciones con `confirmar()` y avisos con `avisar()` de `frontend/src/ui.ts`; nunca
   `window.confirm`/`alert`.
+- **Arrastrar y soltar** solo con la directiva `v-arrastrable` de `frontend/src/arrastre.ts`
+  (SortableJS; en táctil hay que mantener presionado). No usar otra librería ni el arrastre nativo.
 
 ### Jerarquía de botones (mapeo acción → clase)
 
@@ -132,17 +140,16 @@ mecanismos propios; usar los que aquí se documentan y agregar aquí los nuevos 
    (`.campo .error`); lo general va en `.error-general`. No duplicar en Vue las reglas del
    servidor (solo lo mínimo, como «Escribe un título.»).
 
-### Badges (estatus, prioridad, fecha)
+### Badges (lista, prioridad, fecha, checklist)
 
 Patrón único: **punto** con el color base, **texto** con la variante `-text` y **fondo** `-soft`.
 
 | Significado | Variables |
 |---|---|
-| Pendiente | `--tf-status-pending*` (gris) |
-| En curso | `--tf-status-progress*` (petróleo; texto `#155E75`) |
-| Finalizada | `--tf-status-done*` (verde) |
+| Nombre de una lista (`.chip.nombre-lista`) | `--tf-primary-soft` / `--tf-primary`: neutro, las listas no tienen color |
 | Prioridad baja · media · alta · urgente | `--tf-priority-{low,medium,high,urgent}*` (gris claro · gris · ámbar · rojo) |
-| Vencida (fecha fin pasada, no finalizada) | `--tf-danger*` |
+| Checklist completa (`.chip.avance-checklist.completo`), marca de lista de cierre | `--tf-success*` (verde) |
+| Vencida (fecha límite pasada, fuera de una lista de cierre) | `--tf-danger*` |
 | Vence hoy / mañana | `--tf-warning*` |
 | Tipo de tarjeta | color del usuario (`--tipo` en línea, mezclado con `color-mix()`) |
 
@@ -156,19 +163,22 @@ autocontenido por maqueta, con datos inventados y sin backend: se abre con doble
 
 | Archivo | Qué explora |
 |---|---|
-| `app-v3.html` | ***Por aprobar* (2026-10-02).** Listas libres por proyecto (estilo Trello) en lugar de los tres estatus: tablero con desplazamiento horizontal, agregar/renombrar/ordenar/eliminar listas, arrastrar y soltar (en teléfono, mantener presionada), cambio de lista con un toque en el detalle, historial de movimientos, permisos «Mover» y «Gestionar listas», «Mis tarjetas» sin el filtro de finalizadas. Colores de `tema.css` (navy + petróleo). |
+| `app-v3.html` | **Aprobada e implementada** (2026-10-05). Pizarras (antes «proyectos») con listas libres (estilo Trello) en lugar de los tres estatus: tablero con desplazamiento horizontal, agregar/renombrar/ordenar/eliminar listas, arrastrar y soltar (en teléfono, mantener presionada), cambio de lista con un toque en el detalle, historial de movimientos, permisos «Mover» y «Gestionar listas», listas de cierre, checklist con elementos convertibles en tarjetas enlazadas, descripción opcional. Colores de `tema.css` (navy + petróleo). |
 | `app-v2.html` | **Implementada** (con colores cambiados después: navy + petróleo, botón principal navy; ver docs/identidad-visual.md). Igual que v1 con la paleta navy + coral, el logo, la **prioridad** (badge, selector en el formulario, indicador lateral para urgente y orden por prioridad) y barra lateral navy en computadora. |
 | `instalacion-v2.html` | **Implementada** (sin la ilustración del teléfono y con los colores nuevos). Portada de instalación con la paleta navy + coral y el logo. |
 | `app-v1.html` | *(Reemplazada por v2; se conserva como referencia.)* PWA: mis proyectos (activos y archivados), tablero por estatus (pestañas en teléfono, tres columnas en computadora), detalle y edición de tarjeta, nueva tarjeta, miembros con permisos por persona, invitaciones, transferir/archivar/eliminar proyecto, «Mis tarjetas» y perfil. El escaparate cambia vista, usuario (Ana, dueña / Luis, miembro) y la fecha «de hoy». |
 | `instalacion-v1.html` | *(Reemplazada por v2.)* Portada `https://sistemas.reduaz.mx/taskflow/`: qué es, botón «Instalar» y pasos por plataforma (Android, iPhone, computadora), primer acceso por invitación y preguntas frecuentes. El escaparate cambia el dispositivo y si la app ya está instalada. |
 
 **Estado:** `app-v2.html` e `instalacion-v2.html` **aprobadas e implementadas** (2026-10-01) en
-`frontend/` y `apps/core/templates/core/portada.html`; su CSS de componentes pasó a
-`frontend/src/estilos.css`. La fuente de verdad ahora es la app y §5 de la propuesta. Una maqueta
+`frontend/` y `apps/core/templates/core/portada.html`; `app-v3.html` **aprobada e implementada**
+(2026-10-05). Su CSS de componentes pasó a `frontend/src/estilos.css`. La fuente de verdad ahora es la app y §5 de la propuesta. Una maqueta
 nueva se agrega a la tabla de arriba y sus decisiones se listan aquí como *pendientes* hasta
 aprobarse.
 
 ### Decisiones de las maquetas *(aprobadas e implementadas 2026-10-01)*
+
+Las de `app-v3.html` (abajo) reemplazan lo que contradicen: estatus, «el estatus se cambia desde
+el detalle», orden por prioridad, permiso «cambiar estatus» y «proyecto».
 
 - **Tres pestañas: Proyectos · Mis tarjetas · Perfil.** «Mis tarjetas» reúne lo asignado a uno en
   todos sus proyectos, sin finalizadas, con las vencidas arriba y ordenado por fecha de fin.
@@ -211,15 +221,21 @@ aprobarse.
 - **Instalación:** portada propia en `/` con botón que usa `beforeinstallprompt` (Android
   y computadora) y pasos de Safari en iPhone; la app vive en `/app/`. Igual que mi-campus.
 
-### Decisiones de `app-v3.html` *(pendientes de aprobar, 2026-10-02; diseño en §4.6 de la propuesta)*
+### Decisiones de `app-v3.html` *(aprobadas e implementadas 2026-10-05; diseño en §4.6 de la propuesta)*
 
-Al aprobarse, reemplazan lo que contradicen arriba (estatus, «el estatus se cambia desde el
-detalle», orden por prioridad, permiso «cambiar estatus») y la tabla de badges.
-
-- **Sin estatus:** cada proyecto tiene sus **listas** con nombre libre; un proyecto nuevo empieza
-  con «Pendiente», «En curso» y «Finalizada», editables. Las listas no tienen color.
-- **No existe «terminada»:** «Finalizada» es una lista más. «Vencida» = fecha pasada, siempre;
-  «Mis tarjetas» muestra todo lo asignado, con el nombre de la lista.
+- **Sin estatus:** cada pizarra tiene sus **listas** con nombre libre; una pizarra nueva empieza
+  con «Pendiente», «En curso» y «Finalizada» (de cierre), editables. Las listas no tienen color.
+- **Listas de cierre** *(2026-10-05)*: cualquier lista se puede marcar como «de cierre» (puede
+  haber varias); «Finalizada» nace así. Sus tarjetas cuentan como terminadas: no salen vencidas ni
+  en «Mis tarjetas». Se marca con una palomita junto al nombre de la lista.
+- **Descripción opcional** *(2026-10-05)*: una tarjeta se crea con el puro título.
+- **Checklist** *(2026-10-05)*: una por tarjeta; indicador «3/5» en el tablero (verde completa) y
+  barra de avance en el detalle. Palomear, agregar y quitar = permiso «Editar». Cada elemento se
+  puede **convertir en tarjeta** (permiso «Crear»): formulario prellenado, misma pizarra, y quedan
+  enlazadas («Viene de la checklist de …» / «En «En curso» · se marca al pasar a …»). Al
+  convertir se elige **«Marcar como terminado cuando pase a»** una de las listas de la pizarra
+  (preseleccionada la de cierre; o «Ninguna» para palomeo manual): el elemento se palomea solo
+  cuando su tarjeta está en esa lista. Se cambia después con el botón de bandera del elemento.
 - **Mover:** arrastrar y soltar en computadora y en teléfono (en teléfono, **mantener presionada**
   para levantarla; cerca del borde pasa sola a la lista de al lado). En el detalle, botones con las
   listas para cambiarla de lista con un toque (queda al final). Sin selector de posición: el orden
@@ -228,10 +244,12 @@ detalle», orden por prioridad, permiso «cambiar estatus») y la tabla de badge
   una lista no se registra.
 - **Listas:** solo se elimina una lista vacía. Permisos: «Cambiar estatus» pasa a «Mover» y se
   agrega «Gestionar listas» (apagado de inicio).
-- **«Proyecto» se llama «Espacio» en la interfaz** («Mis espacios», «Nuevo espacio»). En el código
-  sigue `Proyecto` (por confirmar).
-- **Mis espacios:** resumen de una línea por espacio (tarjetas · listas · tuyas, y vencidas), sin un
-  chip por lista.
+- **«Proyecto» se llama «Pizarra» en todo el sistema** (2026-10-05): interfaz («Mis pizarras»,
+  «Nueva pizarra»), correos, portada, modelos (`Pizarra`, `MiembroPizarra`), app
+  `apps/pizarras/`, API (`/api/v1/pizarras/…`) y rutas de la PWA (`#/pizarras/…`). Se descartaron
+  «Espacio» y «Tablero».
+- **Mis pizarras:** resumen de una línea por pizarra (tarjetas · listas · tuyas, y vencidas), sin
+  un chip por lista.
 - **Fechas de la tarjeta:** se muestra la fecha y hora de captura (`creado_en`, automática) y se
   agrega **«Fecha de inicio»** (`fecha_inicio`, obligatoria, hoy por omisión, editable) para
   registrar cuándo empezó o se pidió algo capturado después. «Fecha fin» se muestra como

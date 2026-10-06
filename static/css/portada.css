@@ -1,5 +1,5 @@
 /*
- * Portada de TaskFlow (/taskflow/): qué es y cómo instalar la app (§5 de la propuesta).
+ * Portada de TaskFlow (/): qué es y cómo instalar la app (§5 de la propuesta).
  * Pasada de docs/_mockups/instalacion-v2.html. Los colores vienen de tema.css: aquí solo se
  * renombran a los nombres cortos que usaba la maqueta.
  */
@@ -10,11 +10,9 @@
   --acento-texto:var(--tf-accent-text); --sobre-acento:var(--tf-on-accent);
   --fondo:var(--tf-bg); --superficie:var(--tf-surface); --texto:var(--tf-text); --tenue:var(--tf-text-muted); --linea:var(--tf-border);
   --sombra:var(--tf-shadow); --sombra-alta:var(--tf-shadow-float);
-  --pendiente:var(--tf-status-pending-text); --pendiente-suave:var(--tf-status-pending-soft);
-  --en-curso:var(--tf-status-progress-text); --en-curso-suave:var(--tf-status-progress-soft);
-  --finalizada:var(--tf-status-done-text); --finalizada-suave:var(--tf-status-done-soft);
+  --exito:var(--tf-success-text); --exito-suave:var(--tf-success-soft);
   --vencida:var(--tf-danger-text); --vencida-suave:var(--tf-danger-soft); --urgente:var(--tf-priority-urgent);
-  --av1:var(--tf-primary); --av2:var(--tf-primary-hover); --av3:var(--tf-status-pending-text);
+  --av1:var(--tf-primary); --av2:var(--tf-primary-hover); /* --av3: el de tema.css */
 }
 /* =========================================================
    Portada de TaskFlow (https://taskflow.rourendev.com/):
@@ -56,7 +54,7 @@ a{color:var(--primario)}
 .portada .intro{font-size:17px;color:var(--tenue);margin:0 0 26px;max-width:520px}
 .portada .acciones{display:flex;gap:10px;flex-wrap:wrap}
 .portada .detalle{font-size:13px;color:var(--tenue);margin-top:14px;display:flex;gap:6px;align-items:center}
-.etiqueta-estado{display:inline-flex;gap:6px;align-items:center;font-size:13px;font-weight:600;padding:4px 10px;border-radius:99px;background:var(--finalizada-suave);color:var(--finalizada)}
+.etiqueta-estado{display:inline-flex;gap:6px;align-items:center;font-size:13px;font-weight:600;padding:4px 10px;border-radius:99px;background:var(--exito-suave);color:var(--exito)}
 
 
 /* ---------- características ---------- */
@@ -118,7 +116,7 @@ body{-webkit-font-smoothing:antialiased}
 .portada h1 span{color:var(--primario);text-decoration:underline;text-decoration-color:var(--acento);text-decoration-thickness:.12em;text-underline-offset:.12em}
 .portada .marca-grande{color:var(--logo);width:88px;margin-bottom:18px}
 .portada .marca-grande svg{width:100%;height:auto}
-.etiqueta-estado{background:var(--finalizada-suave);color:var(--finalizada)}
+.etiqueta-estado{background:var(--exito-suave);color:var(--exito)}
 .caract{border:1px solid var(--linea);box-shadow:var(--sombra)}
 .caract .ic{background:var(--acento-suave);color:var(--acento-texto)}
 .plataforma{border-radius:12px}

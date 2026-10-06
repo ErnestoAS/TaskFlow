@@ -67,7 +67,7 @@ Problemas comunes:
 - Nuevas apps: `mkdir apps/<nombre>` y `docker compose exec web python manage.py startapp <nombre> apps/<nombre>`;
   ajustar `name`/`label` en `apps.py` y registrar en `LOCAL_APPS`.
 - Modelos con fechas de auditoría heredan de `apps.core.models.TimeStampedModel`.
-- Opciones fijas con `models.TextChoices` dentro del modelo (p. ej. `Tarjeta.Estatus`), reforzadas
+- Opciones fijas con `models.TextChoices` dentro del modelo (p. ej. `Tarjeta.Prioridad`), reforzadas
   con `CheckConstraint` cuando sea un valor crítico.
 - Pruebas con `pytest` en `apps/<app>/tests/test_*.py`; fixtures compartidas en `conftest.py`.
 - Commits en español.
@@ -76,11 +76,17 @@ Problemas comunes:
 
 - `apps/core`: `TimeStampedModel`, `/healthz/` y su middleware (responde antes de `ALLOWED_HOSTS`).
 - `apps/usuarios`: `Usuario` (`AUTH_USER_MODEL`), el correo es la credencial; sin `username`.
-- `apps/proyectos`: `Proyecto`, `MiembroProyecto` (rol y cinco permisos), `Invitacion`,
+- `apps/pizarras` (antes `apps/proyectos`): `Pizarra`, `MiembroPizarra` (rol y seis permisos),
+  `Invitacion`, `Lista` (con `es_cierre`),
   `TipoTarjeta`; `servicios.py` con todas las reglas (permisos, invitar, transferir, archivar…).
-- `apps/tarjetas`: `Tarjeta` (proyecto, título, descripción, estatus, `fecha_fin`, `asignados`,
-  `tipos`, `creada_por`) y `CambioEstatus` (historial); `servicios.py` con crear, editar,
-  `cambiar_estatus` (única vía para cambiar el estatus) y eliminar.
+- `apps/tarjetas`: `Tarjeta` (pizarra, lista, posición, título, descripción opcional,
+  prioridad, `fecha_inicio`, `fecha_fin`, `asignados`, `tipos`, `creada_por`), `Movimiento`
+  (historial) y `ElementoChecklist`; `servicios.py` con crear, editar, `mover_tarjeta` (única vía
+  para cambiar de lista o de posición), eliminar, la checklist y `convertir_elemento`.
+- `apps/core/management/commands/migrate.py`: reemplaza al `migrate` de Django; antes de migrar
+  pasa una base con la app `proyectos` a `pizarras` (renombre del 2026-10-05).
+- `frontend/src/arrastre.ts`: directiva `v-arrastrable` (SortableJS) para arrastrar tarjetas y
+  elementos de checklist.
 - `apps/api`: `/api/v1/` de la PWA (`urls.py`, `vistas.py` con vistas de función de DRF que solo
   llaman servicios, `representacion.py` con la salida JSON, `excepciones.py` con el formato de
   errores).
@@ -89,7 +95,7 @@ Problemas comunes:
 - `frontend/src/`: `api.ts` (cliente y raíz), `sesion.ts`, `ui.ts` (avisos y confirmaciones),
   `instalacion.ts`, `router.ts` (rutas con `#`), `vistas/` (pantallas), `componentes/`,
   `estilos.css` (componentes; colores de `static/css/tema.css`).
-- Pruebas: fixtures `crear_usuario`, `dueno`, `proyecto` y `agregar_miembro` en `conftest.py`.
+- Pruebas: fixtures `crear_usuario`, `dueno`, `pizarra`, `listas` (por nombre) y `agregar_miembro` en `conftest.py`.
 
 ## Documentación
 

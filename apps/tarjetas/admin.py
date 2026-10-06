@@ -1,40 +1,49 @@
 from django.contrib import admin
 
-from .models import CambioEstatus, Tarjeta
-from .servicios import registrar_cambio
+from .models import ElementoChecklist, Movimiento, Tarjeta
+from .servicios import registrar_movimiento
 
 
-class CambioEstatusInline(admin.TabularInline):
-    model = CambioEstatus
+class MovimientoInline(admin.TabularInline):
+    model = Movimiento
     extra = 0
     can_delete = False
-    fields = ["fecha", "usuario", "estatus_anterior", "estatus_nuevo"]
+    fields = ["fecha", "usuario", "lista_anterior", "lista_nueva", "nota"]
     readonly_fields = fields
 
     def has_add_permission(self, request, obj=None):
         return False
 
 
+class ElementoChecklistInline(admin.TabularInline):
+    model = ElementoChecklist
+    fk_name = "tarjeta"
+    extra = 0
+    fields = ["texto", "hecho", "posicion", "tarjeta_creada", "lista_terminado"]
+    raw_id_fields = ["tarjeta_creada"]
+
+
 @admin.register(Tarjeta)
 class TarjetaAdmin(admin.ModelAdmin):
     list_display = [
         "titulo",
-        "proyecto",
-        "estatus",
+        "pizarra",
+        "lista",
         "prioridad",
+        "fecha_inicio",
         "fecha_fin",
         "creada_por",
         "creado_en",
     ]
-    list_filter = ["estatus", "prioridad", "proyecto"]
-    search_fields = ["titulo", "descripcion", "proyecto__nombre"]
-    autocomplete_fields = ["proyecto", "asignados", "tipos", "creada_por"]
+    list_filter = ["prioridad", "lista__es_cierre", "pizarra"]
+    search_fields = ["titulo", "descripcion", "pizarra__nombre", "lista__nombre"]
+    autocomplete_fields = ["pizarra", "lista", "asignados", "tipos", "creada_por"]
     readonly_fields = ["creado_en", "actualizado_en"]
-    inlines = [CambioEstatusInline]
+    inlines = [ElementoChecklistInline, MovimientoInline]
 
     def save_model(self, request, obj, form, change):
-        # El admin también deja rastro en el historial (§4.5): ningún cambio de estatus sin fila.
-        anterior = form.initial.get("estatus", "") if change else ""
+        # El admin también deja rastro en el historial (§4.6): ningún cambio de lista sin fila.
+        anterior = Tarjeta.objects.get(pk=obj.pk).lista.nombre if change else ""
         super().save_model(request, obj, form, change)
-        if not change or "estatus" in form.changed_data:
-            registrar_cambio(obj, request.user, anterior, obj.estatus)
+        if not change or "lista" in form.changed_data:
+            registrar_movimiento(obj, request.user, anterior, obj.lista.nombre)

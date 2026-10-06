@@ -1,10 +1,5 @@
-import type { Estatus, Permiso, Prioridad, Tarjeta } from "./tipos";
+import type { Permiso, Prioridad, Tarjeta } from "./tipos";
 
-export const ESTATUS: [Estatus, string][] = [
-  ["pendiente", "Pendiente"],
-  ["en_curso", "En curso"],
-  ["finalizada", "Finalizada"],
-];
 export const PRIORIDADES: [Prioridad, string][] = [
   ["baja", "Baja"],
   ["media", "Media"],
@@ -14,14 +9,14 @@ export const PRIORIDADES: [Prioridad, string][] = [
 export const PERMISOS: [Permiso, string][] = [
   ["crear", "Crear"],
   ["editar", "Editar"],
-  ["cambiar_estatus", "Cambiar estatus"],
+  ["mover", "Mover"],
   ["eliminar", "Eliminar"],
+  ["gestionar_listas", "Gestionar listas"],
   ["gestionar_tipos", "Gestionar tipos"],
 ];
 /** Colores sugeridos para tipos (docs/identidad-visual.md). El usuario puede elegir otro. */
 export const MUESTRAS = ["#6366f1", "#8b5cf6", "#0ea5e9", "#64748b", "#ec4899", "#78716c"];
 
-export const nombreEstatus = (e: Estatus) => ESTATUS.find(([k]) => k === e)?.[1] ?? e;
 export const nombrePrioridad = (p: Prioridad) => PRIORIDADES.find(([k]) => k === p)?.[1] ?? p;
 export const plural = (n: number, uno: string, varios = `${uno}s`) => `${n} ${n === 1 ? uno : varios}`;
 
@@ -31,6 +26,12 @@ const MESES = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "o
 export function fechaLocal(iso: string): Date {
   const [a, m, d] = iso.split("-").map(Number);
   return new Date(a, m - 1, d);
+}
+
+/** Hoy como «AAAA-MM-DD» en la zona del teléfono (para el valor por omisión de los formularios). */
+export function hoyIso(): string {
+  const h = new Date();
+  return `${h.getFullYear()}-${String(h.getMonth() + 1).padStart(2, "0")}-${String(h.getDate()).padStart(2, "0")}`;
 }
 
 export function diasHasta(iso: string): number {
@@ -44,6 +45,11 @@ export const fechaCorta = (iso: string) => {
   return `${f.getDate()} ${MESES[f.getMonth()]}`;
 };
 
+export const fechaLarga = (iso: string) => {
+  const f = fechaLocal(iso);
+  return `${f.getDate()} ${MESES[f.getMonth()]} ${f.getFullYear()}`;
+};
+
 export function fechaHora(iso: string): string {
   const f = new Date(iso);
   const hh = String(f.getHours()).padStart(2, "0");
@@ -53,10 +59,11 @@ export function fechaHora(iso: string): string {
 
 export type EstadoFecha = { clase: "vencida" | "por-vencer" | "fecha"; texto: string } | null;
 
-export function estadoFecha(t: Pick<Tarjeta, "fecha_fin" | "estatus">): EstadoFecha {
+/** Una tarjeta en lista de cierre cuenta como terminada: nunca sale vencida (§4.6). */
+export function estadoFecha(t: Pick<Tarjeta, "fecha_fin" | "en_cierre">): EstadoFecha {
   if (!t.fecha_fin) return null;
   const dias = diasHasta(t.fecha_fin);
-  if (t.estatus !== "finalizada") {
+  if (!t.en_cierre) {
     if (dias < 0) return { clase: "vencida", texto: `Vencida · ${fechaCorta(t.fecha_fin)}` };
     if (dias === 0) return { clase: "por-vencer", texto: "Vence hoy" };
     if (dias === 1) return { clase: "por-vencer", texto: "Vence mañana" };
@@ -64,5 +71,5 @@ export function estadoFecha(t: Pick<Tarjeta, "fecha_fin" | "estatus">): EstadoFe
   return { clase: "fecha", texto: fechaCorta(t.fecha_fin) };
 }
 
-export const esVencida = (t: Pick<Tarjeta, "fecha_fin" | "estatus">) =>
-  !!t.fecha_fin && t.estatus !== "finalizada" && diasHasta(t.fecha_fin) < 0;
+export const esVencida = (t: Pick<Tarjeta, "fecha_fin" | "en_cierre">) =>
+  !!t.fecha_fin && !t.en_cierre && diasHasta(t.fecha_fin) < 0;

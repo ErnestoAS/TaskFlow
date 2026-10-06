@@ -2,13 +2,12 @@
 Cómo se ve cada objeto en la API (salida). La entrada la validan los servicios.
 
 Se usan funciones y no serializers de DRF porque la salida mezcla datos calculados (permisos del
-usuario, conteos, vencidas) y las reglas de entrada ya viven en `servicios.py`.
+usuario, conteos, vencidas, checklist hecha) y las reglas de entrada ya viven en `servicios.py`.
 """
 
 from django.utils import timezone
 
-from apps.proyectos.models import PERMISOS, Invitacion, MiembroProyecto
-from apps.tarjetas.models import Estatus
+from apps.pizarras.models import PERMISOS, Invitacion, MiembroPizarra
 
 
 def usuario(u):
@@ -20,7 +19,7 @@ def usuario(u):
     return {"id": u.pk, "nombre": nombre, "correo": u.email, "iniciales": iniciales}
 
 
-def permisos(m: MiembroProyecto | None) -> dict:
+def permisos(m: MiembroPizarra | None) -> dict:
     return {p: bool(m and m.puede(p)) for p in PERMISOS}
 
 
@@ -31,42 +30,57 @@ def tipo(t, n_tarjetas=None):
     return datos
 
 
-def conteos(tarjetas_qs) -> dict:
-    hoy = timezone.localdate()
-    datos = {e: 0 for e in Estatus.values}
-    for e in tarjetas_qs.values_list("estatus", flat=True):
-        datos[e] += 1
-    datos["vencidas"] = (
-        tarjetas_qs.exclude(estatus=Estatus.FINALIZADA).filter(fecha_fin__lt=hoy).count()
-    )
+def lista(lst, n_tarjetas=None):
+    datos = {
+        "id": lst.pk,
+        "nombre": lst.nombre,
+        "posicion": lst.posicion,
+        "es_cierre": lst.es_cierre,
+    }
+    if n_tarjetas is not None:
+        datos["n_tarjetas"] = n_tarjetas
     return datos
 
 
-def proyecto_resumen(p, yo):
+def conteos(p, yo) -> dict:
+    """Resumen de tamaño fijo para «Mis pizarras» (§4.6): no crece con el número de listas."""
+    tarjetas = p.tarjetas.all()
+    return {
+        "tarjetas": tarjetas.count(),
+        "listas": p.listas.count(),
+        "mias": tarjetas.filter(asignados=yo).count(),
+        "vencidas": tarjetas.exclude(lista__es_cierre=True)
+        .filter(fecha_fin__lt=timezone.localdate())
+        .count(),
+    }
+
+
+def pizarra_resumen(p, yo):
     miembros = list(p.miembros.select_related("usuario"))
     mia = next((m for m in miembros if m.usuario_id == yo.pk), None)
     dueno = next((m.usuario for m in miembros if m.es_dueno), None)
     return {
         "id": p.pk,
         "nombre": p.nombre,
-        "archivado": p.archivado,
+        "archivada": p.archivada,
         "rol": mia.rol if mia else None,
         "dueno": usuario(dueno),
         "miembros": [usuario(m.usuario) for m in miembros],
-        "conteos": conteos(p.tarjetas.all()),
-        "permisos": permisos(mia) if not p.archivado else {k: False for k in PERMISOS},
+        "conteos": conteos(p, yo),
+        "permisos": permisos(mia) if not p.archivada else {k: False for k in PERMISOS},
     }
 
 
-def proyecto_detalle(p, yo):
-    datos = proyecto_resumen(p, yo)
-    es_dueno = datos["rol"] == MiembroProyecto.Rol.DUENO
+def pizarra_detalle(p, yo):
+    datos = pizarra_resumen(p, yo)
+    es_dueno = datos["rol"] == MiembroPizarra.Rol.DUENO
     datos["miembros"] = [
         {"usuario": usuario(m.usuario), "rol": m.rol, "permisos": permisos(m)}
         for m in p.miembros.select_related("usuario").order_by(
             "rol", "usuario__nombre", "usuario__email"
         )
     ]
+    datos["listas"] = [lista(lst, lst.tarjetas.count()) for lst in p.listas.all()]
     datos["tipos"] = [tipo(t, t.tarjetas.count()) for t in p.tipos.all()]
     datos["invitaciones"] = (
         [
@@ -84,30 +98,75 @@ def proyecto_detalle(p, yo):
     return datos
 
 
-def cambio(c):
+def movimiento(m):
     return {
-        "fecha": c.fecha,
-        "usuario": usuario(c.usuario),
-        "de": c.estatus_anterior or None,
-        "a": c.estatus_nuevo,
+        "fecha": m.fecha,
+        "usuario": usuario(m.usuario),
+        "de": m.lista_anterior or None,
+        "a": m.lista_nueva or None,
+        "nota": m.nota or None,
     }
 
 
-def tarjeta(t, con_historial=False):
+def elemento(e):
+    hija = e.tarjeta_creada
+    return {
+        "id": e.pk,
+        "texto": e.texto,
+        "hecho": e.esta_hecho,
+        "automatico": e.automatico,
+        "tarjeta": (
+            {
+                "id": hija.pk,
+                "titulo": hija.titulo,
+                "lista": hija.lista_id,
+                "lista_nombre": hija.lista.nombre,
+            }
+            if hija
+            else None
+        ),
+        "lista_terminado": (
+            {"id": e.lista_terminado.pk, "nombre": e.lista_terminado.nombre}
+            if e.lista_terminado_id
+            else None
+        ),
+    }
+
+
+def _viene_de(t):
+    origen = getattr(t, "elemento_origen", None)
+    if origen is None:
+        return None
+    return {"id": origen.tarjeta_id, "titulo": origen.tarjeta.titulo, "elemento": origen.texto}
+
+
+def tarjeta(t, con_detalle=False):
+    elementos = list(t.checklist.all())
     datos = {
         "id": t.pk,
-        "proyecto": t.proyecto_id,
-        "proyecto_nombre": t.proyecto.nombre,
+        "pizarra": t.pizarra_id,
+        "pizarra_nombre": t.pizarra.nombre,
+        "lista": t.lista_id,
+        "lista_nombre": t.lista.nombre,
+        "en_cierre": t.lista.es_cierre,
+        "posicion": t.posicion,
         "titulo": t.titulo,
         "descripcion": t.descripcion,
-        "estatus": t.estatus,
         "prioridad": t.prioridad,
+        "fecha_inicio": t.fecha_inicio.isoformat(),
         "fecha_fin": t.fecha_fin.isoformat() if t.fecha_fin else None,
         "asignados": [usuario(u) for u in t.asignados.all()],
         "tipos": [tp.pk for tp in t.tipos.all()],
         "creada_por": usuario(t.creada_por),
         "creado_en": t.creado_en,
+        "checklist_conteo": (
+            {"hechos": sum(e.esta_hecho for e in elementos), "total": len(elementos)}
+            if elementos
+            else None
+        ),
+        "viene_de": _viene_de(t),
     }
-    if con_historial:
-        datos["historial"] = [cambio(c) for c in t.cambios_estatus.select_related("usuario")]
+    if con_detalle:
+        datos["checklist"] = [elemento(e) for e in elementos]
+        datos["historial"] = [movimiento(m) for m in t.movimientos.select_related("usuario")]
     return datos

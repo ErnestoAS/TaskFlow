@@ -3,10 +3,14 @@ import { createRouter, createWebHashHistory, type RouteRecordRaw } from "vue-rou
 import { sesion } from "./sesion";
 
 const rutas: RouteRecordRaw[] = [
-  { path: "/", redirect: { name: "proyectos" } },
-  { path: "/proyectos", name: "proyectos", component: () => import("./vistas/Proyectos.vue") },
-  { path: "/proyectos/:id", name: "tablero", component: () => import("./vistas/Tablero.vue"), props: (r) => ({ id: Number(r.params.id) }) },
-  { path: "/proyectos/:id/ajustes", name: "ajustes", component: () => import("./vistas/Ajustes.vue"), props: (r) => ({ id: Number(r.params.id) }) },
+  { path: "/", redirect: { name: "pizarras" } },
+  { path: "/pizarras", name: "pizarras", component: () => import("./vistas/Pizarras.vue") },
+  { path: "/pizarras/:id", name: "tablero", component: () => import("./vistas/Tablero.vue"), props: (r) => ({ id: Number(r.params.id) }) },
+  { path: "/pizarras/:id/ajustes", name: "ajustes", component: () => import("./vistas/Ajustes.vue"), props: (r) => ({ id: Number(r.params.id) }) },
+  // Enlaces guardados de antes del cambio de nombre (2026-10-05).
+  { path: "/proyectos", redirect: { name: "pizarras" } },
+  { path: "/proyectos/:id", redirect: (r) => ({ name: "tablero", params: { id: r.params.id } }) },
+  { path: "/proyectos/:id/ajustes", redirect: (r) => ({ name: "ajustes", params: { id: r.params.id } }) },
   { path: "/mis-tarjetas", name: "mis-tarjetas", component: () => import("./vistas/MisTarjetas.vue") },
   { path: "/perfil", name: "perfil", component: () => import("./vistas/Perfil.vue") },
   { path: "/entrar", name: "entrar", component: () => import("./vistas/Entrar.vue"), meta: { publica: true, soloAnonimo: true } },
@@ -16,7 +20,7 @@ const rutas: RouteRecordRaw[] = [
   { path: "/recuperar", name: "recuperar", component: () => import("./vistas/Recuperar.vue"), meta: { publica: true, soloAnonimo: true } },
   // Abierta con o sin sesión: quien no tiene cuenta la crea desde aquí (§4.5).
   { path: "/invitacion/:token", name: "invitacion", component: () => import("./vistas/Invitacion.vue"), props: true, meta: { publica: true } },
-  { path: "/:pathMatch(.*)*", redirect: { name: "proyectos" } },
+  { path: "/:pathMatch(.*)*", redirect: { name: "pizarras" } },
 ];
 
 // Rutas con # (createWebHashHistory): la app vive bajo un prefijo que cambia según el servidor
@@ -29,8 +33,8 @@ export const router = createRouter({
 
 router.beforeEach((destino) => {
   if (!destino.meta.publica && !sesion.usuario) {
-    return { name: "entrar", query: destino.fullPath !== "/proyectos" ? { siguiente: destino.fullPath } : {} };
+    return { name: "entrar", query: destino.fullPath !== "/pizarras" ? { siguiente: destino.fullPath } : {} };
   }
-  if (destino.meta.soloAnonimo && sesion.usuario) return { name: "proyectos" };
+  if (destino.meta.soloAnonimo && sesion.usuario) return { name: "pizarras" };
   return true;
 });

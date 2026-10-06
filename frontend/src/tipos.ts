@@ -1,8 +1,7 @@
 /** Lo que devuelve /api/v1/ (apps/api/representacion.py). */
 
-export type Estatus = "pendiente" | "en_curso" | "finalizada";
 export type Prioridad = "baja" | "media" | "alta" | "urgente";
-export type Permiso = "crear" | "editar" | "cambiar_estatus" | "eliminar" | "gestionar_tipos";
+export type Permiso = "crear" | "editar" | "mover" | "eliminar" | "gestionar_listas" | "gestionar_tipos";
 export type Permisos = Record<Permiso, boolean>;
 
 export interface Usuario {
@@ -24,17 +23,27 @@ export interface Tipo {
   n_tarjetas?: number;
 }
 
+/** Columna de una pizarra con nombre libre (§4.6). De cierre: lo que llega aquí está terminado. */
+export interface Lista {
+  id: number;
+  nombre: string;
+  posicion: number;
+  es_cierre: boolean;
+  n_tarjetas?: number;
+}
+
+/** Resumen de tamaño fijo de «Mis pizarras»: no crece con el número de listas. */
 export interface Conteos {
-  pendiente: number;
-  en_curso: number;
-  finalizada: number;
+  tarjetas: number;
+  listas: number;
+  mias: number;
   vencidas: number;
 }
 
-export interface ProyectoResumen {
+export interface PizarraResumen {
   id: number;
   nombre: string;
-  archivado: boolean;
+  archivada: boolean;
   rol: "dueno" | "miembro" | null;
   dueno: Usuario | null;
   miembros: Usuario[];
@@ -55,31 +64,53 @@ export interface Invitacion {
   veces_enviada: number;
 }
 
-export interface ProyectoDetalle extends Omit<ProyectoResumen, "miembros"> {
+export interface PizarraDetalle extends Omit<PizarraResumen, "miembros"> {
   miembros: Miembro[];
+  listas: Lista[];
   tipos: Tipo[];
   invitaciones: Invitacion[];
 }
 
-export interface Cambio {
+/** Una entrada del historial: creación (de = null), movimiento entre listas o una nota. */
+export interface Movimiento {
   fecha: string;
   usuario: Usuario | null;
-  de: Estatus | null;
-  a: Estatus;
+  de: string | null;
+  a: string | null;
+  nota: string | null;
+}
+
+export interface ElementoChecklist {
+  id: number;
+  texto: string;
+  hecho: boolean;
+  /** Convertido en tarjeta y con lista elegida: se palomea solo. */
+  automatico: boolean;
+  tarjeta: { id: number; titulo: string; lista: number; lista_nombre: string } | null;
+  lista_terminado: { id: number; nombre: string } | null;
 }
 
 export interface Tarjeta {
   id: number;
-  proyecto: number;
-  proyecto_nombre: string;
+  pizarra: number;
+  pizarra_nombre: string;
+  lista: number;
+  lista_nombre: string;
+  /** Está en una lista de cierre: no sale vencida ni en «Mis tarjetas». */
+  en_cierre: boolean;
+  posicion: number;
   titulo: string;
   descripcion: string;
-  estatus: Estatus;
   prioridad: Prioridad;
+  fecha_inicio: string;
   fecha_fin: string | null;
   asignados: Usuario[];
   tipos: number[];
   creada_por: Usuario | null;
   creado_en: string;
-  historial?: Cambio[];
+  checklist_conteo: { hechos: number; total: number } | null;
+  viene_de: { id: number; titulo: string; elemento: string } | null;
+  /** Solo en el detalle. */
+  checklist?: ElementoChecklist[];
+  historial?: Movimiento[];
 }

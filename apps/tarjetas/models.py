@@ -1,29 +1,25 @@
 """
-Tarjetas: la unidad de trabajo de TaskFlow (§4.4 y §4.5 de la propuesta).
+Tarjetas: la unidad de trabajo de TaskFlow (§4.4 y §4.6 de la propuesta).
 
-Cada tarjeta pertenece a un proyecto, tiene título, descripción, un estatus de tres valores, una
-fecha de fin opcional, cero o más asignados (miembros del proyecto) y cero o más tipos (del mismo
-proyecto). Cada cambio de estatus queda en `CambioEstatus`.
+Cada tarjeta pertenece a una pizarra y está en una de sus listas, en una posición (orden manual).
+Tiene título, descripción opcional, prioridad, fecha de inicio, fecha límite opcional, cero o más
+asignados (miembros de la pizarra), cero o más tipos (de la misma pizarra) y una checklist. Cada
+creación, movimiento entre listas y conversión de la checklist queda en `Movimiento`.
 
-Las reglas (permisos, que los asignados sean miembros, que los tipos sean del proyecto) viven en
-`servicios.py`: la base de datos no puede expresarlas.
+Las reglas (permisos, que los asignados sean miembros, que lista y tipos sean de la pizarra)
+viven en `servicios.py`: la base de datos no puede expresarlas.
 """
 
 from django.conf import settings
 from django.db import models
+from django.db.models import F, Q
 from django.utils import timezone
 
 from apps.core.models import TimeStampedModel
 
 
-class Estatus(models.TextChoices):
-    PENDIENTE = "pendiente", "Pendiente"
-    EN_CURSO = "en_curso", "En curso"
-    FINALIZADA = "finalizada", "Finalizada"
-
-
 class Prioridad(models.TextChoices):
-    """Fija para todos los proyectos (decidido 2026-10-01), a diferencia de los tipos."""
+    """Fija para todas las pizarras (decidido 2026-10-01), a diferencia de los tipos."""
 
     BAJA = "baja", "Baja"
     MEDIA = "media", "Media"
@@ -35,29 +31,38 @@ class Prioridad(models.TextChoices):
 ORDEN_PRIORIDAD = {"urgente": 0, "alta": 1, "media": 2, "baja": 3}
 
 
+def hoy():
+    """Fecha de hoy en la zona de TaskFlow (America/Mexico_City), no en UTC."""
+    return timezone.localdate()
+
+
 class Tarjeta(TimeStampedModel):
-    Estatus = Estatus  # Tarjeta.Estatus.PENDIENTE, como antes
     Prioridad = Prioridad
 
-    proyecto = models.ForeignKey(
-        "proyectos.Proyecto",
-        verbose_name="proyecto",
+    pizarra = models.ForeignKey(
+        "pizarras.Pizarra",
+        verbose_name="pizarra",
         on_delete=models.CASCADE,
         related_name="tarjetas",
     )
-    titulo = models.CharField("título", max_length=200)
-    descripcion = models.TextField("descripción")
-    estatus = models.CharField(
-        "estatus",
-        max_length=20,
-        choices=Estatus.choices,
-        default=Estatus.PENDIENTE,
-        db_index=True,
+    # RESTRICT: una lista con tarjetas no se borra sola (§4.6), pero sí junto con su pizarra
+    # (PROTECT lo impediría también ahí).
+    lista = models.ForeignKey(
+        "pizarras.Lista",
+        verbose_name="lista",
+        on_delete=models.RESTRICT,
+        related_name="tarjetas",
     )
+    posicion = models.PositiveIntegerField("posición", default=0)
+    titulo = models.CharField("título", max_length=200)
+    # Opcional (2026-10-05): muchas actividades se explican con el título.
+    descripcion = models.TextField("descripción", blank=True)
     prioridad = models.CharField(
         "prioridad", max_length=10, choices=Prioridad.choices, default=Prioridad.MEDIA
     )
-    fecha_fin = models.DateField("fecha fin", null=True, blank=True)
+    # Cuándo empezó o se encargó, que no siempre es cuándo se capturó (creado_en).
+    fecha_inicio = models.DateField("fecha de inicio", default=hoy)
+    fecha_fin = models.DateField("fecha límite", null=True, blank=True)
     asignados = models.ManyToManyField(
         settings.AUTH_USER_MODEL,
         verbose_name="asignados",
@@ -65,7 +70,7 @@ class Tarjeta(TimeStampedModel):
         blank=True,
     )
     tipos = models.ManyToManyField(
-        "proyectos.TipoTarjeta",
+        "pizarras.TipoTarjeta",
         verbose_name="tipos",
         related_name="tarjetas",
         blank=True,
@@ -82,56 +87,109 @@ class Tarjeta(TimeStampedModel):
     class Meta:
         verbose_name = "tarjeta"
         verbose_name_plural = "tarjetas"
-        ordering = ["-creado_en"]
+        ordering = ["posicion", "id"]
         constraints = [
             models.CheckConstraint(
-                condition=models.Q(estatus__in=["pendiente", "en_curso", "finalizada"]),
-                name="tarjeta_estatus_valido",
-            ),
-            models.CheckConstraint(
-                condition=models.Q(prioridad__in=["baja", "media", "alta", "urgente"]),
+                condition=Q(prioridad__in=["baja", "media", "alta", "urgente"]),
                 name="tarjeta_prioridad_valida",
             ),
+            models.CheckConstraint(
+                condition=Q(fecha_fin__isnull=True) | Q(fecha_fin__gte=F("fecha_inicio")),
+                name="tarjeta_fechas_en_orden",
+            ),
         ]
-        indexes = [models.Index(fields=["proyecto", "estatus"], name="tarjeta_proyecto_estatus")]
+        indexes = [models.Index(fields=["lista", "posicion"], name="tarjeta_lista_posicion")]
 
     def __str__(self):
         return self.titulo
 
 
-class CambioEstatus(models.Model):
+class Movimiento(models.Model):
     """
-    Historial de estatus (§4.5): quién, de qué estatus a cuál, fecha y hora. Solo se agregan
-    filas; las escribe `servicios.cambiar_estatus` (y la creación de tarjetas y el admin) en la
-    misma transacción que el cambio. `estatus_anterior` vacío = la creación de la tarjeta.
+    Historial de la tarjeta (§4.6): quién la creó o la movió de qué lista a cuál, fecha y hora.
+    Guarda el NOMBRE de las listas (no una FK) porque las listas se renombran y se eliminan, y el
+    historial debe seguir diciendo lo que pasó. `lista_anterior` vacía = la creación. `nota`
+    describe un evento que no es un movimiento (convertir un elemento de la checklist).
+
+    Solo se agregan filas; las escriben los servicios en la misma transacción que el cambio.
     """
 
     tarjeta = models.ForeignKey(
-        Tarjeta, verbose_name="tarjeta", on_delete=models.CASCADE, related_name="cambios_estatus"
+        Tarjeta, verbose_name="tarjeta", on_delete=models.CASCADE, related_name="movimientos"
     )
-    estatus_anterior = models.CharField(
-        "estatus anterior", max_length=20, choices=Estatus.choices, blank=True
-    )
-    estatus_nuevo = models.CharField("estatus nuevo", max_length=20, choices=Estatus.choices)
+    lista_anterior = models.CharField("lista anterior", max_length=50, blank=True)
+    lista_nueva = models.CharField("lista nueva", max_length=50, blank=True)
+    nota = models.CharField("nota", max_length=300, blank=True)
     usuario = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         verbose_name="usuario",
         null=True,
         blank=True,
         on_delete=models.SET_NULL,
-        related_name="cambios_estatus",
-        help_text="Vacío si la cuenta se borró: el cambio se conserva («Usuario eliminado»).",
+        related_name="movimientos",
+        help_text="Vacío si la cuenta se borró: el movimiento se conserva («Usuario eliminado»).",
     )
-    # default y no auto_now_add: la migración que siembra el historial de tarjetas existentes
-    # necesita poner la fecha de creación de cada una.
     fecha = models.DateTimeField("fecha", default=timezone.now)
 
     class Meta:
-        verbose_name = "cambio de estatus"
-        verbose_name_plural = "historial de estatus"
+        verbose_name = "movimiento"
+        verbose_name_plural = "historial"
         ordering = ["-fecha", "-id"]
-        indexes = [models.Index(fields=["tarjeta", "-fecha"], name="cambio_tarjeta_fecha")]
+        indexes = [models.Index(fields=["tarjeta", "-fecha"], name="movimiento_tarjeta_fecha")]
 
     def __str__(self):
-        de = self.get_estatus_anterior_display() or "creación"
-        return f"{self.tarjeta}: {de} → {self.get_estatus_nuevo_display()}"
+        if self.nota:
+            return f"{self.tarjeta}: {self.nota}"
+        de = self.lista_anterior or "creación"
+        return f"{self.tarjeta}: {de} → {self.lista_nueva}"
+
+
+class ElementoChecklist(TimeStampedModel):
+    """
+    Un renglón de la checklist de una tarjeta (§4.6). Se puede convertir en una tarjeta enlazada
+    (`tarjeta_creada`); entonces `lista_terminado` dice en qué lista se da por hecho: el elemento
+    está hecho cuando su tarjeta está en esa lista. Sin `lista_terminado`, se palomea a mano.
+    """
+
+    tarjeta = models.ForeignKey(
+        Tarjeta, verbose_name="tarjeta", on_delete=models.CASCADE, related_name="checklist"
+    )
+    texto = models.CharField("texto", max_length=200)
+    hecho = models.BooleanField("hecho", default=False)
+    posicion = models.PositiveIntegerField("posición", default=0)
+    # El enlace vive solo aquí; la tarjeta nueva lo lee con `elemento_origen` (relación inversa).
+    tarjeta_creada = models.OneToOneField(
+        Tarjeta,
+        verbose_name="tarjeta creada",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="elemento_origen",
+    )
+    lista_terminado = models.ForeignKey(
+        "pizarras.Lista",
+        verbose_name="se marca al pasar a",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="+",
+    )
+
+    class Meta:
+        verbose_name = "elemento de checklist"
+        verbose_name_plural = "checklist"
+        ordering = ["posicion", "id"]
+
+    def __str__(self):
+        return self.texto
+
+    @property
+    def automatico(self) -> bool:
+        """Se palomea solo: convertido en tarjeta y con lista elegida."""
+        return bool(self.tarjeta_creada_id and self.lista_terminado_id)
+
+    @property
+    def esta_hecho(self) -> bool:
+        if self.automatico:
+            return self.tarjeta_creada.lista_id == self.lista_terminado_id
+        return self.hecho

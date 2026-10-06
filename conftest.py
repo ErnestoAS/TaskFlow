@@ -35,20 +35,27 @@ def dueno(crear_usuario):
 
 
 @pytest.fixture
-def proyecto(dueno):
-    from apps.proyectos.servicios import crear_proyecto
+def pizarra(dueno):
+    """Pizarra de `dueno` con las listas iniciales: Pendiente, En curso y Finalizada (cierre)."""
+    from apps.pizarras.servicios import crear_pizarra
 
-    return crear_proyecto(dueno, "Semana de la Ciencia")
+    return crear_pizarra(dueno, "Semana de la Ciencia")
 
 
 @pytest.fixture
-def agregar_miembro(proyecto):
+def listas(pizarra):
+    """Las listas de `pizarra` por nombre: listas["Pendiente"], listas["Finalizada"]…"""
+    return {lista.nombre: lista for lista in pizarra.listas.all()}
+
+
+@pytest.fixture
+def agregar_miembro(pizarra):
     """Agrega un miembro con los permisos por omisión (los de quien acepta una invitación)."""
-    from apps.proyectos.models import MiembroProyecto
+    from apps.pizarras.models import MiembroPizarra
 
     def _agregar(usuario, p=None, **permisos):
-        return MiembroProyecto.objects.create(
-            proyecto=p or proyecto,
+        return MiembroPizarra.objects.create(
+            pizarra=p or pizarra,
             usuario=usuario,
             **{f"puede_{k}": v for k, v in permisos.items()},
         )

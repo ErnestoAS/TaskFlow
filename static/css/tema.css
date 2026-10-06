@@ -6,8 +6,8 @@
  * §Estándar de interfaz). Guía completa y razones de cada ajuste: docs/identidad-visual.md.
  *
  * Reglas rápidas:
- *  - Navy (--tf-primary): identidad, navegación, estructura.  Petróleo (--tf-accent): progreso
- *    («En curso»), seleccionado, indicadores. Para texto en petróleo, --tf-accent-text.
+ *  - Navy (--tf-primary): identidad, navegación, estructura.  Petróleo (--tf-accent): progreso,
+ *    seleccionado, indicadores. Para texto en petróleo, --tf-accent-text.
  *  - Sin coral ni naranja fuera de lo semántico (2026-10-01): el rojo y el ámbar quedan SOLO para
  *    peligro, vencido, urgente y advertencias, para que no parezca que algo está mal.
  *  - Botón principal y «+»: navy con texto blanco (--tf-btn, --tf-on-btn).
@@ -43,10 +43,9 @@
   --tf-border:#e2e8f0;
   --tf-sidebar-text:#cbd5e1;
 
-  /* Estatus: punto/indicador · texto · fondo suave */
-  --tf-status-pending:#64748b;  --tf-status-pending-text:#475569;  --tf-status-pending-soft:#f1f5f9;
-  --tf-status-progress:#0e7490; --tf-status-progress-text:#155e75; --tf-status-progress-soft:#ecfeff;
-  --tf-status-done:#16a34a;     --tf-status-done-text:#15803d;     --tf-status-done-soft:#ecfdf5;
+  /* Éxito: checklist completa y marca de lista de cierre (2026-10-05). Reemplaza a los colores
+     de estatus (--tf-status-*), que se fueron con los estatus: las listas no tienen color. */
+  --tf-success:#16a34a; --tf-success-text:#15803d; --tf-success-soft:#ecfdf5;
 
   /* Semánticos */
   --tf-danger:#dc2626;  --tf-danger-text:#b91c1c;  --tf-danger-soft:#fef2f2;

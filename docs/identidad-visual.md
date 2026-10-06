@@ -64,8 +64,8 @@ Otras decisiones:
   vería de un solo color.
 - **Prioridad** es un campo fijo de la tarjeta (baja, media, alta, urgente; por omisión media),
   decidido el 2026-10-01. Urgente se marca con un **indicador lateral rojo**; la tarjeta sigue
-  blanca. Dentro de cada columna se ordena por prioridad y luego por fecha de fin.
-- **Los tipos no son fijos:** cada proyecto crea los suyos (§4.5 de la propuesta). Los seis colores
+  blanca. Desde el 2026-10-05 el orden dentro de cada lista es manual (se arrastra).
+- **Los tipos no son fijos:** cada pizarra crea los suyos (§4.5 de la propuesta). Los seis colores
   de la guía (desarrollo, reunión, soporte, mantenimiento, diseño, administración) son los
   **colores sugeridos** del selector; el usuario puede elegir otro.
 - **Avatares** en escala navy/pizarra, sin colores extra.
@@ -82,9 +82,9 @@ Todas en `static/css/tema.css`. Resumen:
 | Grupo | Variables |
 | --- | --- |
 | Marca | `--tf-logo`, `--tf-primary`, `--tf-primary-hover`, `--tf-primary-soft`, `--tf-accent`, `--tf-accent-hover`, `--tf-accent-soft`, `--tf-accent-text`, `--tf-on-accent`, `--tf-accent-on-dark` (indicadores sobre la barra navy) |
-| Botón principal | `--tf-btn` `#172554`, `--tf-btn-hover` `#1E3A8A`, `--tf-on-btn` `#FFF` (también el «+» flotante) |
+| Botón principal | `--tf-btn` `#172554`, `--tf-btn-hover` `#1E3A8A`, `--tf-on-btn` `#FFF` |
 | Base | `--tf-bg` `#F5F7FA`, `--tf-surface` `#FFF`, `--tf-text` `#172033`, `--tf-text-muted` `#64748B`, `--tf-text-disabled`, `--tf-border` `#E2E8F0`, `--tf-sidebar-text` |
-| Estatus | `--tf-status-{pending,progress,done}` (punto), `…-text` (texto), `…-soft` (fondo) |
+| Éxito | `--tf-success` `#16A34A`, `--tf-success-text` `#15803D`, `--tf-success-soft` `#ECFDF5`: checklist completa y marca de lista de cierre (2026-10-05). Reemplaza a `--tf-status-*`, que se fueron con los estatus: las listas no tienen color (su chip es navy suave, `--tf-primary-soft`/`--tf-primary`). |
 | Semánticos | `--tf-{danger,warning,info}`, `…-text`, `…-soft` |
 | Prioridad | `--tf-priority-{low,medium,high,urgent}`, `…-text`, `…-soft` |
 | Forma | `--tf-radius-card` 12px, `--tf-radius-btn` 9px, `--tf-radius-modal` 16px, `--tf-shadow`, `--tf-shadow-float` |
@@ -94,14 +94,15 @@ tipografía 11–12 px peso 600, radio completo.
 
 ## 5. Componentes
 
-- **Fondo general** `--tf-bg`; **columnas** sin fondo de color: título en mayúsculas pequeñas, punto,
-  contador y una línea inferior del color del estatus; **tarjetas** blancas con borde de 1 px y
-  sombra casi imperceptible.
+- **Fondo general** `--tf-bg`; **listas** (columnas) en gris muy suave (`--tf-border` mezclado con
+  `--tf-bg`), con nombre, contador y «⋯»; las de cierre llevan una palomita verde. **Tarjetas**
+  blancas con borde de 1 px y sombra casi imperceptible; al arrastrarlas se levantan (inclinadas,
+  con sombra y borde petróleo) y dejan un hueco punteado.
 - **Cabecera** blanca con borde inferior. En computadora, **barra lateral navy** con el logo blanco;
   elemento activo con fondo cian claro al 18 % y barra cian claro (`--tf-accent-on-dark`) a la
   izquierda. En teléfono, navegación inferior blanca con barra petróleo sobre la pestaña activa.
-- **Botones:** principal navy con texto blanco (hover `#1E3A8A`), también el «+» flotante; el petróleo
-  queda para indicadores (pestaña activa, «En curso», interruptores); secundario blanco con borde;
+- **Botones:** principal navy con texto blanco (hover `#1E3A8A`); el petróleo queda para
+  indicadores (pestaña activa, barra de avance, interruptores); secundario blanco con borde;
   destructivo con borde y texto rojo. Radio 8–10 px.
 - **Enfoque** (teclado y campos): contorno petróleo.
 - **Sombras:** `0 1px 3px rgba(15,23,42,.06)` y, para flotantes, `0 8px 24px rgba(15,23,42,.10)`.

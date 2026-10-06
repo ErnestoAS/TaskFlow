@@ -1,20 +1,21 @@
 import pytest
+from django.utils import timezone
 
 from apps.tarjetas.models import Tarjeta
 
 
 @pytest.mark.django_db
-def test_tarjeta_nace_pendiente_y_admite_varios_asignados(
-    proyecto, dueno, crear_usuario, agregar_miembro
+def test_tarjeta_por_omision_y_varios_asignados(
+    pizarra, listas, dueno, crear_usuario, agregar_miembro
 ):
     luis = crear_usuario()
     agregar_miembro(luis)
     tarjeta = Tarjeta.objects.create(
-        proyecto=proyecto, titulo="Revisar informe", descripcion="Primera"
+        pizarra=pizarra, lista=listas["Pendiente"], titulo="Revisar informe"
     )
     tarjeta.asignados.add(dueno, luis)
 
-    assert tarjeta.estatus == Tarjeta.Estatus.PENDIENTE
-    assert tarjeta.fecha_fin is None
+    assert tarjeta.descripcion == "" and tarjeta.prioridad == "media"
+    assert tarjeta.fecha_inicio == timezone.localdate() and tarjeta.fecha_fin is None
     assert set(tarjeta.asignados.all()) == {dueno, luis}
     assert list(luis.tarjetas_asignadas.all()) == [tarjeta]

@@ -3,8 +3,8 @@ API privada de la PWA: /api/v1/ (§6 de la propuesta).
 
 Reglas:
 - Sesión de Django en el mismo origen + CSRF (cookie `taskflow_csrftoken`, cabecera X-CSRFToken).
-- Los datos salen siempre de `request.user`: un proyecto o tarjeta ajeno responde 404, no 403, para
-  no revelar que existe.
+- Los datos salen siempre de `request.user`: una pizarra, lista, tarjeta o elemento ajeno responde
+  404, no 403, para no revelar que existe.
 - Cada acción llama a un servicio (`apps/*/servicios.py`); aquí no hay reglas de negocio.
 """
 
@@ -36,10 +36,10 @@ from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.throttling import AnonRateThrottle
 
-from apps.proyectos import servicios as sp
-from apps.proyectos.models import PERMISOS, Invitacion, Proyecto, TipoTarjeta
+from apps.pizarras import servicios as sp
+from apps.pizarras.models import PERMISOS, Invitacion, Lista, Pizarra, TipoTarjeta
 from apps.tarjetas import servicios as st
-from apps.tarjetas.models import ORDEN_PRIORIDAD, Estatus, Tarjeta
+from apps.tarjetas.models import ORDEN_PRIORIDAD, ElementoChecklist, Tarjeta
 from apps.usuarios import servicios as su
 from apps.usuarios.models import CodigoCorreo
 
@@ -65,35 +65,63 @@ class LimiteAcceso(AnonRateThrottle):
 # ---------------------------------------------------------------------------------------------
 
 
-def _proyecto(request, pk) -> Proyecto:
-    return get_object_or_404(Proyecto.objects.de_usuario(request.user).distinct(), pk=pk)
+def _pizarra(request, pk) -> Pizarra:
+    return get_object_or_404(Pizarra.objects.de_usuario(request.user).distinct(), pk=pk)
 
 
 def _tarjetas():
-    return Tarjeta.objects.select_related("proyecto", "creada_por").prefetch_related(
-        "asignados", "tipos"
+    return Tarjeta.objects.select_related(
+        "pizarra", "lista", "creada_por", "elemento_origen__tarjeta"
+    ).prefetch_related(
+        "asignados",
+        "tipos",
+        "checklist__tarjeta_creada__lista",
+        "checklist__lista_terminado",
     )
 
 
 def _tarjeta(request, pk) -> Tarjeta:
-    visibles = _tarjetas().filter(proyecto__miembros__usuario=request.user).distinct()
+    visibles = _tarjetas().filter(pizarra__miembros__usuario=request.user).distinct()
     return get_object_or_404(visibles, pk=pk)
 
 
-def _fecha(valor):
+def _lista(request, pk) -> Lista:
+    visibles = Lista.objects.select_related("pizarra").filter(
+        pizarra__miembros__usuario=request.user
+    )
+    return get_object_or_404(visibles.distinct(), pk=pk)
+
+
+def _elemento(request, pk) -> ElementoChecklist:
+    visibles = ElementoChecklist.objects.select_related("tarjeta__pizarra").filter(
+        tarjeta__pizarra__miembros__usuario=request.user
+    )
+    return get_object_or_404(visibles.distinct(), pk=pk)
+
+
+def _fecha(valor, campo="fecha_fin"):
     if valor in (None, ""):
         return None
     try:
         return date.fromisoformat(str(valor))
     except ValueError as e:
-        raise ValidationError({"fecha_fin": "Fecha inválida (AAAA-MM-DD)."}) from e
+        raise ValidationError({campo: "Fecha inválida (AAAA-MM-DD)."}) from e
 
 
-def _ordenar(tarjetas):
-    return sorted(
-        tarjetas,
-        key=lambda t: (ORDEN_PRIORIDAD[t.prioridad], t.fecha_fin or date.max, -t.pk),
-    )
+def _datos_tarjeta(d) -> dict:
+    """Campos de alta de tarjeta presentes en la petición, ya convertidos."""
+    datos = {k: d[k] for k in ("titulo", "descripcion", "prioridad", "lista") if k in d}
+    datos["asignados"] = d.get("asignados") or []
+    datos["tipos"] = d.get("tipos") or []
+    datos["fecha_inicio"] = _fecha(d.get("fecha_inicio"), "fecha_inicio")
+    datos["fecha_fin"] = _fecha(d.get("fecha_fin"))
+    if not datos.get("prioridad"):
+        datos.pop("prioridad", None)
+    return datos
+
+
+def _detalle(request, pk):
+    return Response(rep.tarjeta(_tarjeta(request, pk), con_detalle=True))
 
 
 def _nombre(request, actual=None) -> dict:
@@ -293,15 +321,15 @@ def cambiar_password(request):
 
 @api_view(["GET"])
 def mis_tarjetas(request):
-    """Asignadas a mí, sin finalizar, en proyectos activos de los que soy miembro (§5)."""
+    """Asignadas a mí, fuera de las listas de cierre, en pizarras activas de las que soy miembro."""
     ts = (
         _tarjetas()
         .filter(
             asignados=request.user,
-            proyecto__miembros__usuario=request.user,
-            proyecto__archivado_en__isnull=True,
+            pizarra__miembros__usuario=request.user,
+            pizarra__archivada_en__isnull=True,
         )
-        .exclude(estatus=Estatus.FINALIZADA)
+        .exclude(lista__es_cierre=True)
         .distinct()
     )
     ordenadas = sorted(ts, key=lambda t: (t.fecha_fin or date.max, ORDEN_PRIORIDAD[t.prioridad]))
@@ -309,33 +337,33 @@ def mis_tarjetas(request):
 
 
 # ---------------------------------------------------------------------------------------------
-# Proyectos
+# Pizarras
 # ---------------------------------------------------------------------------------------------
 
 
 @api_view(["GET", "POST"])
-def proyectos(request):
+def pizarras(request):
     if request.method == "POST":
-        p = sp.crear_proyecto(request.user, request.data.get("nombre"))
-        return Response(rep.proyecto_detalle(p, request.user), status=status.HTTP_201_CREATED)
-    qs = Proyecto.objects.de_usuario(request.user).distinct().order_by("archivado_en", "nombre")
-    return Response([rep.proyecto_resumen(p, request.user) for p in qs])
+        p = sp.crear_pizarra(request.user, request.data.get("nombre"))
+        return Response(rep.pizarra_detalle(p, request.user), status=status.HTTP_201_CREATED)
+    qs = Pizarra.objects.de_usuario(request.user).distinct().order_by("archivada_en", "nombre")
+    return Response([rep.pizarra_resumen(p, request.user) for p in qs])
 
 
 @api_view(["GET", "PATCH", "DELETE"])
-def proyecto(request, pk):
-    p = _proyecto(request, pk)
+def pizarra(request, pk):
+    p = _pizarra(request, pk)
     if request.method == "PATCH":
-        sp.renombrar_proyecto(p, request.user, request.data.get("nombre"))
+        sp.renombrar_pizarra(p, request.user, request.data.get("nombre"))
     elif request.method == "DELETE":
-        sp.eliminar_proyecto(p, request.user)
+        sp.eliminar_pizarra(p, request.user)
         return Response(status=status.HTTP_204_NO_CONTENT)
-    return Response(rep.proyecto_detalle(p, request.user))
+    return Response(rep.pizarra_detalle(p, request.user))
 
 
 @api_view(["POST"])
-def proyecto_accion(request, pk, accion):
-    p = _proyecto(request, pk)
+def pizarra_accion(request, pk, accion):
+    p = _pizarra(request, pk)
     if accion == "archivar":
         sp.archivar(p, request.user)
     elif accion == "restaurar":
@@ -348,19 +376,19 @@ def proyecto_accion(request, pk, accion):
         sp.transferir(p, request.user, nuevo)
     else:
         return Response({"detalle": "Acción desconocida."}, status=status.HTTP_404_NOT_FOUND)
-    return Response(rep.proyecto_detalle(p, request.user))
+    return Response(rep.pizarra_detalle(p, request.user))
 
 
 @api_view(["PATCH", "DELETE"])
 def miembro(request, pk, usuario_id):
-    p = _proyecto(request, pk)
+    p = _pizarra(request, pk)
     u = get_object_or_404(Usuario, pk=usuario_id)
     if request.method == "DELETE":
         sp.quitar_miembro(p, request.user, u)
     else:
         cambios = {k: bool(v) for k, v in request.data.items() if k in PERMISOS}
         sp.cambiar_permisos(p, request.user, u, **cambios)
-    return Response(rep.proyecto_detalle(p, request.user))
+    return Response(rep.pizarra_detalle(p, request.user))
 
 
 # ---------------------------------------------------------------------------------------------
@@ -370,27 +398,27 @@ def miembro(request, pk, usuario_id):
 
 @api_view(["POST"])
 def invitar(request, pk):
-    p = _proyecto(request, pk)
+    p = _pizarra(request, pk)
     sp.invitar(p, request.user, request.data.get("correo"))
-    return Response(rep.proyecto_detalle(p, request.user), status=status.HTTP_201_CREATED)
+    return Response(rep.pizarra_detalle(p, request.user), status=status.HTTP_201_CREATED)
 
 
 @api_view(["POST"])
 def invitacion_accion(request, pk, invitacion_id, accion):
-    p = _proyecto(request, pk)
-    inv = get_object_or_404(Invitacion, pk=invitacion_id, proyecto=p)
+    p = _pizarra(request, pk)
+    inv = get_object_or_404(Invitacion, pk=invitacion_id, pizarra=p)
     if accion == "reenviar":
         sp.reenviar_invitacion(inv, request.user)
     elif accion == "cancelar":
         sp.cancelar_invitacion(inv, request.user)
     else:
         return Response({"detalle": "Acción desconocida."}, status=status.HTTP_404_NOT_FOUND)
-    return Response(rep.proyecto_detalle(p, request.user))
+    return Response(rep.pizarra_detalle(p, request.user))
 
 
 def _invitacion_por_token(token) -> Invitacion:
     return get_object_or_404(
-        Invitacion.objects.select_related("proyecto", "invitada_por"), token=token
+        Invitacion.objects.select_related("pizarra", "invitada_por"), token=token
     )
 
 
@@ -401,7 +429,7 @@ def invitacion_publica(request, token):
     inv = _invitacion_por_token(token)
     return Response(
         {
-            "proyecto": inv.proyecto.nombre,
+            "pizarra": inv.pizarra.nombre,
             "correo": inv.correo,
             "invitada_por": rep.usuario(inv.invitada_por)["nombre"] if inv.invitada_por else None,
             "estado": inv.estado,
@@ -413,7 +441,7 @@ def invitacion_publica(request, token):
 @api_view(["POST"])
 def aceptar_invitacion(request, token):
     m = sp.aceptar_invitacion(token, request.user)
-    return Response({"proyecto": m.proyecto_id})
+    return Response({"pizarra": m.pizarra_id})
 
 
 @api_view(["POST"])
@@ -436,8 +464,38 @@ def registro_por_invitacion(request, token):
         m = sp.aceptar_invitacion(token, u)
     login(request, u, backend="django.contrib.auth.backends.ModelBackend")
     return Response(
-        {"proyecto": m.proyecto_id, "usuario": rep.usuario(u)}, status=status.HTTP_201_CREATED
+        {"pizarra": m.pizarra_id, "usuario": rep.usuario(u)}, status=status.HTTP_201_CREATED
     )
+
+
+# ---------------------------------------------------------------------------------------------
+# Listas (§4.6). Cada acción devuelve la pizarra completa: el tablero se vuelve a pintar con ella.
+# ---------------------------------------------------------------------------------------------
+
+
+@api_view(["POST"])
+def listas(request, pk):
+    p = _pizarra(request, pk)
+    sp.crear_lista(p, request.user, request.data.get("nombre"))
+    return Response(rep.pizarra_detalle(p, request.user), status=status.HTTP_201_CREATED)
+
+
+@api_view(["POST"])
+def listas_orden(request, pk):
+    p = _pizarra(request, pk)
+    sp.ordenar_listas(p, request.user, request.data.get("ids"))
+    return Response(rep.pizarra_detalle(p, request.user))
+
+
+@api_view(["PATCH", "DELETE"])
+def lista(request, pk):
+    lst = _lista(request, pk)
+    if request.method == "DELETE":
+        sp.eliminar_lista(lst, request.user)
+    else:
+        campos = {k: request.data[k] for k in ("nombre", "es_cierre") if k in request.data}
+        sp.editar_lista(lst, request.user, **campos)
+    return Response(rep.pizarra_detalle(lst.pizarra, request.user))
 
 
 # ---------------------------------------------------------------------------------------------
@@ -447,7 +505,7 @@ def registro_por_invitacion(request, token):
 
 @api_view(["POST"])
 def tipos(request, pk):
-    p = _proyecto(request, pk)
+    p = _pizarra(request, pk)
     t = sp.crear_tipo(
         p,
         request.user,
@@ -460,8 +518,8 @@ def tipos(request, pk):
 
 @api_view(["PATCH", "DELETE"])
 def tipo(request, pk, tipo_id):
-    p = _proyecto(request, pk)
-    t = get_object_or_404(TipoTarjeta, pk=tipo_id, proyecto=p)
+    p = _pizarra(request, pk)
+    t = get_object_or_404(TipoTarjeta, pk=tipo_id, pizarra=p)
     if request.method == "DELETE":
         sp.eliminar_tipo(t, request.user)
         return Response(status=status.HTTP_204_NO_CONTENT)
@@ -477,23 +535,14 @@ def tipo(request, pk, tipo_id):
 
 @api_view(["GET", "POST"])
 def tarjetas(request, pk):
-    p = _proyecto(request, pk)
+    p = _pizarra(request, pk)
     if request.method == "POST":
-        d = request.data
-        t = st.crear_tarjeta(
-            p,
-            request.user,
-            titulo=d.get("titulo"),
-            descripcion=d.get("descripcion"),
-            prioridad=d.get("prioridad") or "media",
-            fecha_fin=_fecha(d.get("fecha_fin")),
-            asignados=d.get("asignados") or [],
-            tipos=d.get("tipos") or [],
-        )
+        t = st.crear_tarjeta(p, request.user, **_datos_tarjeta(request.data))
         return Response(
-            rep.tarjeta(_tarjeta(request, t.pk), con_historial=True), status=status.HTTP_201_CREATED
+            rep.tarjeta(_tarjeta(request, t.pk), con_detalle=True), status=status.HTTP_201_CREATED
         )
-    return Response([rep.tarjeta(t) for t in _ordenar(_tarjetas().filter(proyecto=p))])
+    ts = _tarjetas().filter(pizarra=p).order_by("lista__posicion", "posicion", "id")
+    return Response([rep.tarjeta(t) for t in ts])
 
 
 @api_view(["GET", "PATCH", "DELETE"])
@@ -504,15 +553,64 @@ def tarjeta(request, pk):
         return Response(status=status.HTTP_204_NO_CONTENT)
     if request.method == "PATCH":
         campos = {k: request.data[k] for k in st.CAMPOS_EDITABLES if k in request.data}
-        if "fecha_fin" in campos:
-            campos["fecha_fin"] = _fecha(campos["fecha_fin"])
+        for campo in ("fecha_inicio", "fecha_fin"):
+            if campo in campos:
+                campos[campo] = _fecha(campos[campo], campo)
         st.editar_tarjeta(t, request.user, **campos)
-        t = _tarjeta(request, pk)
-    return Response(rep.tarjeta(t, con_historial=True))
+    return _detalle(request, pk)
 
 
 @api_view(["POST"])
-def tarjeta_estatus(request, pk):
+def tarjeta_mover(request, pk):
+    """Arrastrar o «Mover a»: `{lista, posicion}`; sin posición, al final de la lista."""
     t = _tarjeta(request, pk)
-    st.cambiar_estatus(t, request.user, request.data.get("estatus"))
-    return Response(rep.tarjeta(_tarjeta(request, pk), con_historial=True))
+    st.mover_tarjeta(t, request.user, request.data.get("lista"), request.data.get("posicion"))
+    return _detalle(request, pk)
+
+
+# ---------------------------------------------------------------------------------------------
+# Checklist (§4.6). Cada acción devuelve la tarjeta completa a la que pertenece el elemento.
+# ---------------------------------------------------------------------------------------------
+
+
+@api_view(["POST"])
+def checklist(request, pk):
+    t = _tarjeta(request, pk)
+    st.agregar_elemento(t, request.user, request.data.get("texto"))
+    return Response(rep.tarjeta(_tarjeta(request, pk), con_detalle=True), status=201)
+
+
+@api_view(["POST"])
+def checklist_orden(request, pk):
+    t = _tarjeta(request, pk)
+    st.ordenar_checklist(t, request.user, request.data.get("ids"))
+    return _detalle(request, pk)
+
+
+@api_view(["PATCH", "DELETE"])
+def elemento(request, pk):
+    e = _elemento(request, pk)
+    if request.method == "DELETE":
+        st.quitar_elemento(e, request.user)
+    else:
+        campos = {
+            k: request.data[k] for k in ("texto", "hecho", "lista_terminado") if k in request.data
+        }
+        st.editar_elemento(e, request.user, **campos)
+    return _detalle(request, e.tarjeta_id)
+
+
+@api_view(["POST"])
+def elemento_convertir(request, pk):
+    """Crea la tarjeta enlazada. Devuelve la tarjeta original y la nueva."""
+    e = _elemento(request, pk)
+    d = request.data
+    extra = {"lista_terminado": d.get("lista_terminado")} if "lista_terminado" in d else {}
+    nueva = st.convertir_elemento(e, request.user, **_datos_tarjeta(d), **extra)
+    return Response(
+        {
+            "tarjeta": rep.tarjeta(_tarjeta(request, e.tarjeta_id), con_detalle=True),
+            "nueva": rep.tarjeta(_tarjeta(request, nueva.pk), con_detalle=True),
+        },
+        status=status.HTTP_201_CREATED,
+    )

@@ -8,7 +8,7 @@ import AvisoInstalacion from "../componentes/AvisoInstalacion.vue";
 import Cabecera from "../componentes/Cabecera.vue";
 import Hoja from "../componentes/Hoja.vue";
 import { instalacion } from "../instalacion";
-import { olvidarProyectos } from "../proyectos";
+import { olvidarPizarras } from "../pizarras";
 import { salir, sesion } from "../sesion";
 import type { Usuario } from "../tipos";
 import { avisar } from "../ui";
@@ -54,7 +54,7 @@ async function guardar() {
 
 async function cerrarSesion() {
   await salir();
-  olvidarProyectos();
+  olvidarPizarras();
   await router.replace({ name: "entrar" });
 }
 </script>

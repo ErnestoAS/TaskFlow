@@ -8,7 +8,7 @@ import { MUESTRAS } from "../utilidades";
 import Chips from "./Chips.vue";
 import Hoja from "./Hoja.vue";
 
-const props = defineProps<{ proyectoId: number; tipo: Tipo | null; sugerido: string }>();
+const props = defineProps<{ pizarraId: number; tipo: Tipo | null; sugerido: string }>();
 const emit = defineEmits<{ cerrar: []; guardado: [] }>();
 
 const form = reactive({
@@ -28,8 +28,8 @@ async function guardar() {
   ocupado.value = true;
   const datos = { ...form, nombre: form.nombre.trim() };
   try {
-    if (props.tipo) await api(`proyectos/${props.proyectoId}/tipos/${props.tipo.id}/`, "PATCH", datos);
-    else await api(`proyectos/${props.proyectoId}/tipos/`, "POST", datos);
+    if (props.tipo) await api(`pizarras/${props.pizarraId}/tipos/${props.tipo.id}/`, "PATCH", datos);
+    else await api(`pizarras/${props.pizarraId}/tipos/`, "POST", datos);
     avisar(props.tipo ? "Se guardó el tipo." : "Se creó el tipo.");
     emit("guardado");
   } catch (e) {

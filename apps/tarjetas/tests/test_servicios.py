@@ -1,146 +1,345 @@
+import datetime
+
 import pytest
 from django.core.exceptions import ValidationError
+from django.db import IntegrityError, transaction
+from django.utils import timezone
 
-from apps.proyectos import servicios as proyectos
-from apps.proyectos.servicios import PermisoDenegado
+from apps.pizarras import servicios as pizarras
+from apps.pizarras.servicios import PermisoDenegado
 from apps.tarjetas import servicios
-from apps.tarjetas.models import CambioEstatus, Tarjeta
+from apps.tarjetas.models import Movimiento, Tarjeta
 
 pytestmark = pytest.mark.django_db
 
 
-def test_crear_tarjeta_registra_la_creacion(proyecto, dueno):
-    t = servicios.crear_tarjeta(
-        proyecto, dueno, titulo=" Reservar auditorio ", descripcion="Para el evento"
+def _orden(lista):
+    return list(lista.tarjetas.order_by("posicion").values_list("titulo", flat=True))
+
+
+def _historial(t):
+    return list(
+        t.movimientos.order_by("fecha", "id").values_list("lista_anterior", "lista_nueva", "nota")
     )
-    assert t.titulo == "Reservar auditorio" and t.estatus == "pendiente"
-    assert list(t.asignados.all()) == [] and list(t.tipos.all()) == []  # ambos opcionales
-    (cambio,) = t.cambios_estatus.all()
-    assert (cambio.estatus_anterior, cambio.estatus_nuevo, cambio.usuario) == (
+
+
+# --- crear y editar ----------------------------------------------------------------------------
+
+
+def test_crear_tarjeta_con_el_puro_titulo(pizarra, dueno, listas):
+    t = servicios.crear_tarjeta(pizarra, dueno, titulo=" Reservar auditorio ")
+    assert (t.titulo, t.descripcion, t.lista, t.posicion) == (
+        "Reservar auditorio",
         "",
-        "pendiente",
-        dueno,
+        listas["Pendiente"],  # la primera lista
+        0,
     )
+    assert t.fecha_inicio == timezone.localdate() and t.fecha_fin is None
+    assert list(t.asignados.all()) == [] and list(t.tipos.all()) == []
+    assert _historial(t) == [("", "Pendiente", "")]
+    assert t.movimientos.get().usuario == dueno
 
 
-def test_titulo_y_descripcion_son_obligatorios(proyecto, dueno):
+def test_la_tarjeta_nueva_va_al_final_de_su_lista(pizarra, dueno, listas):
+    servicios.crear_tarjeta(pizarra, dueno, titulo="a", lista=listas["En curso"])
+    b = servicios.crear_tarjeta(pizarra, dueno, titulo="b", lista=listas["En curso"])
+    assert b.posicion == 1 and _orden(listas["En curso"]) == ["a", "b"]
+
+
+def test_el_titulo_es_obligatorio(pizarra, dueno):
     with pytest.raises(ValidationError) as e:
-        servicios.crear_tarjeta(proyecto, dueno, titulo=" ", descripcion="")
-    assert set(e.value.message_dict) == {"titulo", "descripcion"}
+        servicios.crear_tarjeta(pizarra, dueno, titulo=" ")
+    assert set(e.value.message_dict) == {"titulo"}
 
 
-def test_solo_se_asigna_a_miembros_y_tipos_del_proyecto(proyecto, dueno, crear_usuario):
+def test_la_lista_debe_ser_de_la_pizarra(pizarra, dueno):
+    otra = pizarras.crear_pizarra(dueno, "Otra")
+    with pytest.raises(ValidationError):
+        servicios.crear_tarjeta(pizarra, dueno, titulo="a", lista=otra.listas.first())
+
+
+def test_fecha_de_inicio_editable_y_limite_no_anterior(pizarra, dueno):
+    lunes = datetime.date(2026, 10, 5)
+    t = servicios.crear_tarjeta(
+        pizarra, dueno, titulo="a", fecha_inicio=lunes, fecha_fin=datetime.date(2026, 10, 9)
+    )
+    assert t.fecha_inicio == lunes
+    with pytest.raises(ValidationError) as e:
+        servicios.editar_tarjeta(t, dueno, fecha_fin=datetime.date(2026, 10, 1))
+    assert set(e.value.message_dict) == {"fecha_fin"}
     with pytest.raises(ValidationError):
         servicios.crear_tarjeta(
-            proyecto, dueno, titulo="a", descripcion="b", asignados=[crear_usuario()]
+            pizarra, dueno, titulo="b", fecha_inicio=lunes, fecha_fin=datetime.date(2026, 10, 4)
         )
-    otro = proyectos.crear_proyecto(dueno, "Otro")
-    tipo_ajeno = proyectos.crear_tipo(otro, dueno, nombre="Ajeno", color="#000000")
+
+
+def test_la_bd_tambien_exige_fechas_en_orden(pizarra, dueno, listas):
+    with pytest.raises(IntegrityError), transaction.atomic():
+        Tarjeta.objects.create(
+            pizarra=pizarra,
+            lista=listas["Pendiente"],
+            titulo="a",
+            fecha_inicio=datetime.date(2026, 10, 5),
+            fecha_fin=datetime.date(2026, 10, 1),
+        )
+
+
+def test_solo_se_asigna_a_miembros_y_tipos_de_la_pizarra(pizarra, dueno, crear_usuario):
     with pytest.raises(ValidationError):
-        servicios.crear_tarjeta(proyecto, dueno, titulo="a", descripcion="b", tipos=[tipo_ajeno])
+        servicios.crear_tarjeta(pizarra, dueno, titulo="a", asignados=[crear_usuario()])
+    otra = pizarras.crear_pizarra(dueno, "Otra")
+    tipo_ajeno = pizarras.crear_tipo(otra, dueno, nombre="Ajeno", color="#000000")
+    with pytest.raises(ValidationError):
+        servicios.crear_tarjeta(pizarra, dueno, titulo="a", tipos=[tipo_ajeno])
 
 
-def test_varios_tipos_y_asignados(proyecto, dueno, crear_usuario, agregar_miembro):
+def test_varios_tipos_y_asignados(pizarra, dueno, crear_usuario, agregar_miembro):
     luis = crear_usuario()
     agregar_miembro(luis)
-    t1 = proyectos.crear_tipo(proyecto, dueno, nombre="Logística", color="#f08c00")
-    t2 = proyectos.crear_tipo(proyecto, dueno, nombre="Urgente", color="#c92a2a")
-    t = servicios.crear_tarjeta(
-        proyecto, dueno, titulo="a", descripcion="b", asignados=[dueno, luis], tipos=[t1, t2]
-    )
+    t1 = pizarras.crear_tipo(pizarra, dueno, nombre="Logística", color="#f08c00")
+    t2 = pizarras.crear_tipo(pizarra, dueno, nombre="Urgente", color="#c92a2a")
+    t = servicios.crear_tarjeta(pizarra, dueno, titulo="a", asignados=[dueno, luis], tipos=[t1, t2])
     assert set(t.asignados.all()) == {dueno, luis} and set(t.tipos.all()) == {t1, t2}
 
 
-def test_cada_permiso_se_respeta(proyecto, dueno, crear_usuario, agregar_miembro):
+def test_editar_no_mueve(pizarra, dueno, listas):
+    t = servicios.crear_tarjeta(pizarra, dueno, titulo="a")
+    with pytest.raises(ValidationError):
+        servicios.editar_tarjeta(t, dueno, lista=listas["Finalizada"])
+
+
+def test_prioridad_por_omision_y_editable(pizarra, dueno):
+    t = servicios.crear_tarjeta(pizarra, dueno, titulo="a")
+    assert t.prioridad == "media"
+    servicios.editar_tarjeta(t, dueno, prioridad="urgente", descripcion="  Con detalle ")
+    t.refresh_from_db()
+    assert (t.prioridad, t.descripcion) == ("urgente", "Con detalle")
+    with pytest.raises(ValidationError):
+        servicios.editar_tarjeta(t, dueno, prioridad="altisima")
+
+
+# --- mover -------------------------------------------------------------------------------------
+
+
+def test_mover_a_otra_lista_en_una_posicion(pizarra, dueno, listas):
+    pend, curso = listas["Pendiente"], listas["En curso"]
+    a = servicios.crear_tarjeta(pizarra, dueno, titulo="a")
+    servicios.crear_tarjeta(pizarra, dueno, titulo="b")
+    servicios.crear_tarjeta(pizarra, dueno, titulo="x", lista=curso)
+    servicios.crear_tarjeta(pizarra, dueno, titulo="y", lista=curso)
+    servicios.mover_tarjeta(a, dueno, curso, 1)
+    assert _orden(pend) == ["b"] and _orden(curso) == ["x", "a", "y"]
+    assert list(pend.tarjetas.values_list("posicion", flat=True)) == [0]  # sin huecos
+    assert _historial(a)[-1] == ("Pendiente", "En curso", "")
+
+
+def test_mover_sin_posicion_va_al_final_y_reordenar_no_deja_historial(pizarra, dueno, listas):
+    a = servicios.crear_tarjeta(pizarra, dueno, titulo="a")
+    servicios.crear_tarjeta(pizarra, dueno, titulo="b")
+    servicios.crear_tarjeta(pizarra, dueno, titulo="c")
+    servicios.mover_tarjeta(a, dueno, listas["Pendiente"])
+    assert _orden(listas["Pendiente"]) == ["b", "c", "a"]
+    servicios.mover_tarjeta(a, dueno, listas["Pendiente"], 0)
+    assert _orden(listas["Pendiente"]) == ["a", "b", "c"]
+    assert len(_historial(a)) == 1  # solo la creación
+
+
+def test_mover_solo_a_listas_de_la_pizarra(pizarra, dueno):
+    a = servicios.crear_tarjeta(pizarra, dueno, titulo="a")
+    otra = pizarras.crear_pizarra(dueno, "Otra")
+    with pytest.raises(ValidationError):
+        servicios.mover_tarjeta(a, dueno, otra.listas.first())
+
+
+def test_el_historial_guarda_el_nombre_de_entonces(pizarra, dueno, listas):
+    a = servicios.crear_tarjeta(pizarra, dueno, titulo="a")
+    servicios.mover_tarjeta(a, dueno, listas["En curso"])
+    pizarras.editar_lista(listas["En curso"], dueno, nombre="Haciéndose")
+    servicios.mover_tarjeta(a, dueno, listas["Finalizada"])
+    assert _historial(a) == [
+        ("", "Pendiente", ""),
+        ("Pendiente", "En curso", ""),
+        ("Haciéndose", "Finalizada", ""),
+    ]
+
+
+def test_cada_permiso_se_respeta(pizarra, dueno, crear_usuario, agregar_miembro, listas):
     luis = crear_usuario()
-    agregar_miembro(luis, crear=False, editar=False, cambiar_estatus=False, eliminar=False)
-    t = servicios.crear_tarjeta(proyecto, dueno, titulo="a", descripcion="b")
+    agregar_miembro(luis, crear=False, editar=False, mover=False, eliminar=False)
+    t = servicios.crear_tarjeta(pizarra, dueno, titulo="a")
     with pytest.raises(PermisoDenegado):
-        servicios.crear_tarjeta(proyecto, luis, titulo="a", descripcion="b")
+        servicios.crear_tarjeta(pizarra, luis, titulo="a")
     with pytest.raises(PermisoDenegado):
         servicios.editar_tarjeta(t, luis, titulo="c")
     with pytest.raises(PermisoDenegado):
-        servicios.cambiar_estatus(t, luis, "en_curso")
+        servicios.mover_tarjeta(t, luis, listas["En curso"])
     with pytest.raises(PermisoDenegado):
         servicios.eliminar_tarjeta(t, luis)
-    proyectos.cambiar_permisos(
-        proyecto, dueno, luis, crear=True, editar=True, cambiar_estatus=True, eliminar=True
+    pizarras.cambiar_permisos(
+        pizarra, dueno, luis, crear=True, editar=True, mover=True, eliminar=True
     )
-    servicios.crear_tarjeta(proyecto, luis, titulo="a", descripcion="b")
+    servicios.crear_tarjeta(pizarra, luis, titulo="a")
     servicios.editar_tarjeta(t, luis, titulo="c")
-    servicios.cambiar_estatus(t, luis, "en_curso")
+    servicios.mover_tarjeta(t, luis, listas["En curso"])
     servicios.eliminar_tarjeta(t, luis)
     assert not Tarjeta.objects.filter(pk=t.pk).exists()
 
 
-def test_un_no_miembro_no_toca_tarjetas(proyecto, dueno, crear_usuario):
-    t = servicios.crear_tarjeta(proyecto, dueno, titulo="a", descripcion="b")
-    ajeno = crear_usuario()
+def test_un_no_miembro_no_toca_tarjetas(pizarra, dueno, crear_usuario, listas):
+    t = servicios.crear_tarjeta(pizarra, dueno, titulo="a")
     with pytest.raises(PermisoDenegado):
-        servicios.cambiar_estatus(t, ajeno, "finalizada")
+        servicios.mover_tarjeta(t, crear_usuario(), listas["Finalizada"])
 
 
-def test_el_historial_registra_idas_y_vueltas(proyecto, dueno, crear_usuario, agregar_miembro):
+def test_pizarra_archivada_no_admite_cambios(pizarra, dueno, listas):
+    t = servicios.crear_tarjeta(pizarra, dueno, titulo="a")
+    pizarras.archivar(pizarra, dueno)
+    with pytest.raises(PermisoDenegado):
+        servicios.mover_tarjeta(t, dueno, listas["En curso"])
+    with pytest.raises(PermisoDenegado):
+        servicios.crear_tarjeta(pizarra, dueno, titulo="a")
+
+
+def test_borrar_la_cuenta_conserva_el_historial(pizarra, dueno, crear_usuario, agregar_miembro):
     luis = crear_usuario()
     agregar_miembro(luis)
-    t = servicios.crear_tarjeta(proyecto, dueno, titulo="a", descripcion="b")
-    servicios.cambiar_estatus(t, luis, "en_curso")
-    servicios.cambiar_estatus(t, dueno, "finalizada")
-    servicios.cambiar_estatus(t, luis, "en_curso")  # se reabre: permitido (§4.5)
-    servicios.cambiar_estatus(t, luis, "en_curso")  # sin cambio: no deja fila
-    pasos = list(
-        t.cambios_estatus.order_by("fecha", "id").values_list(
-            "estatus_anterior", "estatus_nuevo", "usuario"
-        )
-    )
-    assert pasos == [
-        ("", "pendiente", dueno.pk),
-        ("pendiente", "en_curso", luis.pk),
-        ("en_curso", "finalizada", dueno.pk),
-        ("finalizada", "en_curso", luis.pk),
-    ]
-    t.refresh_from_db()
-    assert t.estatus == "en_curso"
-
-
-def test_estatus_invalido(proyecto, dueno):
-    t = servicios.crear_tarjeta(proyecto, dueno, titulo="a", descripcion="b")
-    with pytest.raises(ValidationError):
-        servicios.cambiar_estatus(t, dueno, "archivada")
-
-
-def test_proyecto_archivado_no_admite_cambios(proyecto, dueno):
-    t = servicios.crear_tarjeta(proyecto, dueno, titulo="a", descripcion="b")
-    proyectos.archivar(proyecto, dueno)
-    with pytest.raises(PermisoDenegado):
-        servicios.cambiar_estatus(t, dueno, "en_curso")
-    with pytest.raises(PermisoDenegado):
-        servicios.crear_tarjeta(proyecto, dueno, titulo="a", descripcion="b")
-
-
-def test_borrar_la_cuenta_conserva_el_historial(proyecto, dueno, crear_usuario, agregar_miembro):
-    luis = crear_usuario()
-    agregar_miembro(luis)
-    t = servicios.crear_tarjeta(proyecto, dueno, titulo="a", descripcion="b")
-    servicios.cambiar_estatus(t, luis, "en_curso")
+    t = servicios.crear_tarjeta(pizarra, dueno, titulo="a")
+    servicios.mover_tarjeta(t, luis, pizarra.listas.get(nombre="En curso"))
     luis.delete()
-    cambio = CambioEstatus.objects.get(tarjeta=t, estatus_nuevo="en_curso")
-    assert cambio.usuario is None
+    assert Movimiento.objects.get(tarjeta=t, lista_nueva="En curso").usuario is None
 
 
-def test_editar_no_toca_el_estatus(proyecto, dueno):
-    t = servicios.crear_tarjeta(proyecto, dueno, titulo="a", descripcion="b")
+def test_eliminar_tarjeta_renumera_su_lista(pizarra, dueno, listas):
+    a = servicios.crear_tarjeta(pizarra, dueno, titulo="a")
+    servicios.crear_tarjeta(pizarra, dueno, titulo="b")
+    servicios.eliminar_tarjeta(a, dueno)
+    assert list(listas["Pendiente"].tarjetas.values_list("posicion", flat=True)) == [0]
+
+
+# --- checklist ---------------------------------------------------------------------------------
+
+
+@pytest.fixture
+def padre(pizarra, dueno):
+    t = servicios.crear_tarjeta(pizarra, dueno, titulo="Programa del evento")
+    for texto in ("Confirmar ponentes", "Asignar salas", "Imprimir"):
+        servicios.agregar_elemento(t, dueno, texto)
+    return t
+
+
+def test_agregar_palomear_ordenar_y_quitar(padre, dueno):
+    a, b, c = padre.checklist.all()
+    assert [e.posicion for e in (a, b, c)] == [0, 1, 2]
+    servicios.editar_elemento(a, dueno, hecho=True, texto=" Confirmar a los ponentes ")
+    a.refresh_from_db()
+    assert a.esta_hecho and a.texto == "Confirmar a los ponentes"
+    servicios.ordenar_checklist(padre, dueno, [c.pk, a.pk, b.pk])
+    assert list(padre.checklist.values_list("texto", flat=True)) == [
+        "Imprimir",
+        "Confirmar a los ponentes",
+        "Asignar salas",
+    ]
+    servicios.quitar_elemento(b, dueno)
+    assert padre.checklist.count() == 2
     with pytest.raises(ValidationError):
-        servicios.editar_tarjeta(t, dueno, estatus="finalizada")
+        servicios.agregar_elemento(padre, dueno, "  ")
 
 
-def test_prioridad_por_omision_y_editable(proyecto, dueno):
-    t = servicios.crear_tarjeta(proyecto, dueno, titulo="a", descripcion="b")
-    assert t.prioridad == "media"
-    servicios.editar_tarjeta(t, dueno, prioridad="urgente")
-    t.refresh_from_db()
-    assert t.prioridad == "urgente"
+def test_la_checklist_requiere_editar_y_convertir_requiere_crear(
+    padre, dueno, crear_usuario, agregar_miembro, pizarra
+):
+    luis = crear_usuario()
+    agregar_miembro(luis, editar=False, crear=False)
+    e = padre.checklist.first()
+    with pytest.raises(PermisoDenegado):
+        servicios.agregar_elemento(padre, luis, "Otro")
+    with pytest.raises(PermisoDenegado):
+        servicios.editar_elemento(e, luis, hecho=True)
+    with pytest.raises(PermisoDenegado):
+        servicios.convertir_elemento(e, luis)
+    pizarras.cambiar_permisos(pizarra, dueno, luis, crear=True)
+    servicios.convertir_elemento(e, luis)
+
+
+def test_convertir_crea_tarjeta_enlazada(padre, dueno, listas):
+    e = padre.checklist.get(texto="Asignar salas")
+    nueva = servicios.convertir_elemento(e, dueno, prioridad="alta")
+    e.refresh_from_db()
+    assert (nueva.titulo, nueva.lista, nueva.pizarra, nueva.prioridad) == (
+        "Asignar salas",
+        padre.lista,
+        padre.pizarra,
+        "alta",
+    )
+    assert e.tarjeta_creada == nueva and nueva.elemento_origen == e
+    # Sin indicar, se marca al llegar a la lista de cierre.
+    assert e.lista_terminado == listas["Finalizada"] and e.automatico
+    assert ("", "", "convirtió «Asignar salas» de la checklist en tarjeta") in _historial(padre)
+    assert ("", "", "la creó desde la checklist de «Programa del evento»") in _historial(nueva)
     with pytest.raises(ValidationError):
-        servicios.editar_tarjeta(t, dueno, prioridad="altisima")
+        servicios.convertir_elemento(e, dueno)  # ya convertido
+
+
+def test_el_elemento_se_palomea_al_llegar_a_su_lista(padre, dueno, listas):
+    e = padre.checklist.get(texto="Asignar salas")
+    nueva = servicios.convertir_elemento(e, dueno, lista_terminado=listas["En curso"])
+    e.refresh_from_db()
+    assert not e.esta_hecho
+    servicios.mover_tarjeta(nueva, dueno, listas["En curso"])
+    e.refresh_from_db()
+    assert e.esta_hecho
+    servicios.mover_tarjeta(nueva, dueno, listas["Finalizada"])  # pasa de largo: ya no está ahí
+    e.refresh_from_db()
+    assert not e.esta_hecho
     with pytest.raises(ValidationError):
-        servicios.crear_tarjeta(proyecto, dueno, titulo="a", descripcion="b", prioridad="nula")
+        servicios.editar_elemento(e, dueno, hecho=True)  # automático: no se palomea a mano
+
+
+def test_convertir_con_palomeo_manual_y_cambiarlo_despues(padre, dueno, listas):
+    e = padre.checklist.get(texto="Imprimir")
+    nueva = servicios.convertir_elemento(e, dueno, lista_terminado=None)
+    e.refresh_from_db()
+    assert e.lista_terminado is None and not e.automatico
+    servicios.editar_elemento(e, dueno, hecho=True)
+    servicios.editar_elemento(e, dueno, lista_terminado=listas["Pendiente"].pk)
+    e.refresh_from_db()
+    assert e.automatico and e.esta_hecho  # la tarjeta ya está en «Pendiente»
+    servicios.mover_tarjeta(nueva, dueno, listas["En curso"])
+    servicios.editar_elemento(e, dueno, lista_terminado=None)  # a manual: conserva el estado
+    e.refresh_from_db()
+    assert not e.automatico and not e.esta_hecho
+
+
+def test_lista_terminado_solo_de_la_pizarra_y_solo_si_convertido(padre, dueno):
+    e1, e2 = list(padre.checklist.all())[:2]
+    otra = pizarras.crear_pizarra(dueno, "Otra")
+    with pytest.raises(ValidationError):
+        servicios.convertir_elemento(e1, dueno, lista_terminado=otra.listas.first())
+    with pytest.raises(ValidationError):
+        servicios.editar_elemento(e2, dueno, lista_terminado=padre.lista)
+
+
+def test_eliminar_la_tarjeta_creada_devuelve_el_elemento_a_texto(padre, dueno, listas):
+    e = padre.checklist.get(texto="Asignar salas")
+    nueva = servicios.convertir_elemento(e, dueno, lista_terminado=listas["Pendiente"])
+    servicios.eliminar_tarjeta(nueva, dueno)
+    e.refresh_from_db()
+    assert e.tarjeta_creada is None and e.lista_terminado is None
+    assert e.hecho  # conserva que estaba hecho (la tarjeta estaba en su lista)
+
+
+def test_eliminar_la_original_deja_la_nueva_sin_origen(padre, dueno):
+    e = padre.checklist.get(texto="Asignar salas")
+    nueva = servicios.convertir_elemento(e, dueno)
+    servicios.eliminar_tarjeta(padre, dueno)
+    nueva = Tarjeta.objects.get(pk=nueva.pk)
+    assert not hasattr(nueva, "elemento_origen")
+
+
+def test_eliminar_la_lista_elegida_pasa_el_elemento_a_manual(padre, dueno):
+    ideas = pizarras.crear_lista(padre.pizarra, dueno, "Ideas")
+    e = padre.checklist.get(texto="Asignar salas")
+    servicios.convertir_elemento(e, dueno, lista_terminado=ideas)
+    pizarras.eliminar_lista(ideas, dueno)
+    e.refresh_from_db()
+    assert e.lista_terminado is None and not e.automatico

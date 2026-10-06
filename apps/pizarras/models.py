@@ -1,8 +1,9 @@
 """
-Proyectos, sus miembros, invitaciones y tipos de tarjeta (§4.5 de la propuesta).
+Pizarras, sus miembros, invitaciones, listas y tipos de tarjeta (§4.5 y §4.6 de la propuesta).
 
-Las reglas de negocio (quién puede qué) viven en `servicios.py`, no aquí: los modelos solo
-guardan datos y las restricciones que la base de datos sí puede garantizar.
+Una pizarra (antes «proyecto», renombrado el 2026-10-05) agrupa listas con nombre libre, y las
+listas, tarjetas. Las reglas de negocio (quién puede qué) viven en `servicios.py`, no aquí: los
+modelos solo guardan datos y las restricciones que la base de datos sí puede garantizar.
 """
 
 import secrets
@@ -16,70 +17,73 @@ from django.utils import timezone
 
 from apps.core.models import TimeStampedModel
 
-# Los cinco permisos que el dueño concede a cada miembro. El nombre es el sufijo del campo
-# `puede_<permiso>` de MiembroProyecto; el dueño siempre los tiene todos.
-PERMISOS = ("crear", "editar", "cambiar_estatus", "eliminar", "gestionar_tipos")
+# Los seis permisos que el dueño concede a cada miembro. El nombre es el sufijo del campo
+# `puede_<permiso>` de MiembroPizarra; el dueño siempre los tiene todos.
+PERMISOS = ("crear", "editar", "mover", "eliminar", "gestionar_listas", "gestionar_tipos")
+
+# Listas con las que nace una pizarra (§4.6): (nombre, es_cierre).
+LISTAS_INICIALES = (("Pendiente", False), ("En curso", False), ("Finalizada", True))
 
 validar_color = RegexValidator(
     r"^#[0-9a-f]{6}$", "El color debe tener el formato #rrggbb (p. ej. #3b5bdb)."
 )
 
 
-class ProyectoQuerySet(models.QuerySet):
+class PizarraQuerySet(models.QuerySet):
     def de_usuario(self, usuario):
-        """Proyectos de los que `usuario` es miembro (incluye los que es dueño)."""
+        """Pizarras de las que `usuario` es miembro (incluye las que es dueño)."""
         return self.filter(miembros__usuario=usuario)
 
-    def activos(self):
-        return self.filter(archivado_en__isnull=True)
+    def activas(self):
+        return self.filter(archivada_en__isnull=True)
 
-    def archivados(self):
-        return self.filter(archivado_en__isnull=False)
+    def archivadas(self):
+        return self.filter(archivada_en__isnull=False)
 
 
-class Proyecto(TimeStampedModel):
+class Pizarra(TimeStampedModel):
     nombre = models.CharField("nombre", max_length=150)
     creado_por = models.ForeignKey(
         settings.AUTH_USER_MODEL,
-        verbose_name="creado por",
+        verbose_name="creada por",
         on_delete=models.PROTECT,
-        related_name="proyectos_creados",
-        help_text="Quién lo creó. El dueño actual está en sus miembros (puede haber cambiado).",
+        related_name="pizarras_creadas",
+        help_text="Quién la creó. El dueño actual está en sus miembros (puede haber cambiado).",
     )
-    archivado_en = models.DateTimeField(
-        "archivado en",
+    archivada_en = models.DateTimeField(
+        "archivada en",
         null=True,
         blank=True,
-        help_text="Vacío = activo. Archivado = solo lectura para todos sus miembros.",
+        help_text="Vacío = activa. Archivada = solo lectura para todos sus miembros.",
     )
 
-    objects = ProyectoQuerySet.as_manager()
+    objects = PizarraQuerySet.as_manager()
 
     class Meta:
-        verbose_name = "proyecto"
-        verbose_name_plural = "proyectos"
+        verbose_name = "pizarra"
+        verbose_name_plural = "pizarras"
         ordering = ["nombre"]
 
     def __str__(self):
         return self.nombre
 
     @property
-    def archivado(self) -> bool:
-        return self.archivado_en is not None
+    def archivada(self) -> bool:
+        return self.archivada_en is not None
 
     @property
     def dueno(self):
-        membresia = self.miembros.filter(rol=MiembroProyecto.Rol.DUENO).select_related("usuario")
+        membresia = self.miembros.filter(rol=MiembroPizarra.Rol.DUENO).select_related("usuario")
         return membresia.first().usuario if membresia.exists() else None
 
 
-class MiembroProyecto(models.Model):
+class MiembroPizarra(models.Model):
     class Rol(models.TextChoices):
         DUENO = "dueno", "Dueño"
         MIEMBRO = "miembro", "Miembro"
 
-    proyecto = models.ForeignKey(
-        Proyecto, verbose_name="proyecto", on_delete=models.CASCADE, related_name="miembros"
+    pizarra = models.ForeignKey(
+        Pizarra, verbose_name="pizarra", on_delete=models.CASCADE, related_name="miembros"
     )
     usuario = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -88,12 +92,13 @@ class MiembroProyecto(models.Model):
         related_name="membresias",
     )
     rol = models.CharField("rol", max_length=10, choices=Rol.choices, default=Rol.MIEMBRO)
-    # Permisos sobre las tarjetas. Para el dueño se ignoran: puede todo. Los valores por omisión
-    # son los que recibe quien acepta una invitación (decidido 2026-10-01).
+    # Permisos sobre las tarjetas y la estructura de la pizarra. Para el dueño se ignoran: puede
+    # todo. Los valores por omisión son los que recibe quien acepta una invitación.
     puede_crear = models.BooleanField("puede crear tarjetas", default=True)
     puede_editar = models.BooleanField("puede editar tarjetas", default=True)
-    puede_cambiar_estatus = models.BooleanField("puede cambiar estatus", default=True)
+    puede_mover = models.BooleanField("puede mover tarjetas", default=True)
     puede_eliminar = models.BooleanField("puede eliminar tarjetas", default=False)
+    puede_gestionar_listas = models.BooleanField("puede gestionar listas", default=False)
     puede_gestionar_tipos = models.BooleanField("puede gestionar tipos", default=False)
     unido_en = models.DateTimeField("unido en", auto_now_add=True)
 
@@ -102,11 +107,11 @@ class MiembroProyecto(models.Model):
         verbose_name_plural = "miembros"
         ordering = ["rol", "usuario__email"]  # el dueño primero ("dueno" < "miembro")
         constraints = [
-            models.UniqueConstraint(fields=["proyecto", "usuario"], name="miembro_unico"),
-            # Un solo dueño por proyecto. Transferir = bajar al dueño actual y luego subir al
+            models.UniqueConstraint(fields=["pizarra", "usuario"], name="miembro_unico"),
+            # Un solo dueño por pizarra. Transferir = bajar al dueño actual y luego subir al
             # nuevo, en ese orden y en una transacción (servicios.transferir).
             models.UniqueConstraint(
-                fields=["proyecto"], condition=Q(rol="dueno"), name="proyecto_un_solo_dueno"
+                fields=["pizarra"], condition=Q(rol="dueno"), name="pizarra_un_solo_dueno"
             ),
             models.CheckConstraint(
                 condition=Q(rol__in=["dueno", "miembro"]), name="miembro_rol_valido"
@@ -114,7 +119,7 @@ class MiembroProyecto(models.Model):
         ]
 
     def __str__(self):
-        return f"{self.usuario} en {self.proyecto} ({self.get_rol_display()})"
+        return f"{self.usuario} en {self.pizarra} ({self.get_rol_display()})"
 
     @property
     def es_dueno(self) -> bool:
@@ -136,8 +141,8 @@ class Invitacion(models.Model):
         ACEPTADA = "aceptada", "Aceptada"
         CANCELADA = "cancelada", "Cancelada"
 
-    proyecto = models.ForeignKey(
-        Proyecto, verbose_name="proyecto", on_delete=models.CASCADE, related_name="invitaciones"
+    pizarra = models.ForeignKey(
+        Pizarra, verbose_name="pizarra", on_delete=models.CASCADE, related_name="invitaciones"
     )
     correo = models.EmailField("correo")
     invitada_por = models.ForeignKey(
@@ -172,10 +177,10 @@ class Invitacion(models.Model):
         verbose_name_plural = "invitaciones"
         ordering = ["-creada_en"]
         constraints = [
-            # Una sola invitación pendiente por proyecto y correo. Sin vencimiento (decidido
+            # Una sola invitación pendiente por pizarra y correo. Sin vencimiento (decidido
             # 2026-10-01): queda pendiente hasta que se acepta o el dueño la cancela.
             models.UniqueConstraint(
-                "proyecto",
+                "pizarra",
                 Lower("correo"),
                 condition=Q(estado="pendiente"),
                 name="invitacion_pendiente_unica",
@@ -183,16 +188,52 @@ class Invitacion(models.Model):
         ]
 
     def __str__(self):
-        return f"{self.correo} a {self.proyecto} ({self.get_estado_display()})"
+        return f"{self.correo} a {self.pizarra} ({self.get_estado_display()})"
 
     def save(self, *args, **kwargs):
         self.correo = (self.correo or "").strip().lower()
         super().save(*args, **kwargs)
 
 
+class Lista(TimeStampedModel):
+    """
+    Columna de una pizarra con nombre libre (§4.6), en lugar de los tres estatus fijos.
+    `es_cierre`: lo que llega aquí cuenta como terminado (no sale vencido ni en «Mis tarjetas»).
+    """
+
+    pizarra = models.ForeignKey(
+        Pizarra, verbose_name="pizarra", on_delete=models.CASCADE, related_name="listas"
+    )
+    nombre = models.CharField("nombre", max_length=50)
+    posicion = models.PositiveIntegerField("posición", default=0)
+    es_cierre = models.BooleanField(
+        "lista de cierre",
+        default=False,
+        help_text="Lo que llega aquí cuenta como terminado: no sale vencido ni en «Mis tarjetas».",
+    )
+
+    class Meta:
+        verbose_name = "lista"
+        verbose_name_plural = "listas"
+        ordering = ["posicion", "id"]
+        constraints = [
+            # En «Mover a» dos listas con el mismo nombre serían indistinguibles.
+            models.UniqueConstraint(
+                "pizarra", Lower("nombre"), name="lista_nombre_unico_en_pizarra"
+            ),
+        ]
+
+    def __str__(self):
+        return self.nombre
+
+    def save(self, *args, **kwargs):
+        self.nombre = (self.nombre or "").strip()
+        super().save(*args, **kwargs)
+
+
 class TipoTarjeta(TimeStampedModel):
-    proyecto = models.ForeignKey(
-        Proyecto, verbose_name="proyecto", on_delete=models.CASCADE, related_name="tipos"
+    pizarra = models.ForeignKey(
+        Pizarra, verbose_name="pizarra", on_delete=models.CASCADE, related_name="tipos"
     )
     nombre = models.CharField("nombre", max_length=50)
     descripcion = models.TextField("descripción", blank=True)
@@ -205,7 +246,7 @@ class TipoTarjeta(TimeStampedModel):
         ordering = ["nombre"]
         constraints = [
             models.UniqueConstraint(
-                "proyecto", Lower("nombre"), name="tipo_nombre_unico_en_proyecto"
+                "pizarra", Lower("nombre"), name="tipo_nombre_unico_en_pizarra"
             ),
             models.CheckConstraint(
                 condition=Q(color__regex=r"^#[0-9a-f]{6}$"), name="tipo_color_valido"

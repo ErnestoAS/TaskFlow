@@ -3,7 +3,7 @@
   - con sesión de esa cuenta: botón Aceptar;
   - con sesión de otra cuenta: se le pide salir y entrar con la correcta;
   - sin sesión y con cuenta existente: a Entrar, y de vuelta aquí;
-  - sin sesión ni cuenta: crea la cuenta aquí con el correo invitado y entra directo al proyecto.
+  - sin sesión ni cuenta: crea la cuenta aquí con el correo invitado y entra directo a la pizarra.
 -->
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from "vue";
@@ -11,13 +11,13 @@ import { useRouter } from "vue-router";
 
 import { api, ErrorApi, mensajeDeError } from "../api";
 import Logo from "../componentes/Logo.vue";
-import { recargarProyectos } from "../proyectos";
+import { recargarPizarras } from "../pizarras";
 import { salir, sesion } from "../sesion";
 import type { Usuario } from "../tipos";
 import { avisar } from "../ui";
 
 interface InfoInvitacion {
-  proyecto: string;
+  pizarra: string;
   correo: string;
   invitada_por: string | null;
   estado: "pendiente" | "aceptada" | "cancelada";
@@ -46,9 +46,9 @@ onMounted(async () => {
   }
 });
 
-async function irAlProyecto(id: number) {
-  await recargarProyectos().catch(() => undefined);
-  avisar(`Te uniste a «${info.value?.proyecto}».`);
+async function irALaPizarra(id: number) {
+  await recargarPizarras().catch(() => undefined);
+  avisar(`Te uniste a «${info.value?.pizarra}».`);
   await router.replace({ name: "tablero", params: { id } });
 }
 
@@ -56,8 +56,8 @@ async function aceptar() {
   errorGeneral.value = "";
   ocupado.value = true;
   try {
-    const r = await api<{ proyecto: number }>(`invitaciones/${props.token}/aceptar/`, "POST");
-    await irAlProyecto(r.proyecto);
+    const r = await api<{ pizarra: number }>(`invitaciones/${props.token}/aceptar/`, "POST");
+    await irALaPizarra(r.pizarra);
   } catch (e) {
     errorGeneral.value = mensajeDeError(e);
   } finally {
@@ -70,9 +70,9 @@ async function registrarse() {
   errorGeneral.value = "";
   ocupado.value = true;
   try {
-    const r = await api<{ proyecto: number; usuario: Usuario }>(`invitaciones/${props.token}/registro/`, "POST", form);
+    const r = await api<{ pizarra: number; usuario: Usuario }>(`invitaciones/${props.token}/registro/`, "POST", form);
     sesion.usuario = r.usuario;
-    await irAlProyecto(r.proyecto);
+    await irALaPizarra(r.pizarra);
   } catch (e) {
     if (e instanceof ErrorApi && Object.keys(e.campos).length) errores.value = e.campos;
     else errorGeneral.value = mensajeDeError(e);
@@ -100,16 +100,16 @@ async function cambiarDeCuenta() {
       <div v-else-if="!info" class="cargando" style="min-height: 120px">Cargando…</div>
 
       <template v-else>
-        <h1>Invitación a «{{ info.proyecto }}»</h1>
+        <h1>Invitación a «{{ info.pizarra }}»</h1>
         <p class="intro">
           <template v-if="info.invitada_por">{{ info.invitada_por }} te invitó</template
-          ><template v-else>Te invitaron</template> a colaborar en este proyecto de TaskFlow.
+          ><template v-else>Te invitaron</template> a colaborar en esta pizarra de TaskFlow.
         </p>
         <div v-if="errorGeneral" class="error-general" role="alert">{{ errorGeneral }}</div>
 
         <template v-if="info.estado !== 'pendiente'">
           <p class="intro">Esta invitación ya se usó o fue cancelada.</p>
-          <RouterLink :to="{ name: 'proyectos' }" class="btn btn-secundario btn-bloque">Ir a TaskFlow</RouterLink>
+          <RouterLink :to="{ name: 'pizarras' }" class="btn btn-secundario btn-bloque">Ir a TaskFlow</RouterLink>
         </template>
 
         <template v-else-if="sesion.usuario && esMiCorreo">

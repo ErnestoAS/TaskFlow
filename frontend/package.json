@@ -3,7 +3,7 @@
   "private": true,
   "version": "1.0.0",
   "type": "module",
-  "description": "PWA de TaskFlow: tablero de tarjetas por proyecto (§5 de la propuesta).",
+  "description": "PWA de TaskFlow: pizarras con listas y tarjetas (§5 de la propuesta).",
   "scripts": {
     "dev": "vite --host 0.0.0.0",
     "build": "vue-tsc --noEmit && vite build",
@@ -11,10 +11,12 @@
     "typecheck": "vue-tsc --noEmit"
   },
   "dependencies": {
+    "sortablejs": "^1.15.7",
     "vue": "^3.5.43",
     "vue-router": "^5.3.1"
   },
   "devDependencies": {
+    "@types/sortablejs": "^1.15.9",
     "@vitejs/plugin-vue": "^6.0.9",
     "typescript": "~5.9.3",
     "vite": "^8.3.0",

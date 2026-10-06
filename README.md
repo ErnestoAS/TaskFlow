@@ -1,8 +1,9 @@
 # TaskFlow
 
-Gestor de tarjetas para organizar actividades. Cada tarjeta tiene título, descripción, fecha de
-fin opcional, uno o más asignados y uno de tres estatus: **Pendiente**, **En curso** o
-**Finalizada**.
+Gestor de tarjetas para organizar actividades. Las tarjetas viven en **pizarras**, ordenadas en
+**listas** con nombre libre que se arrastran como en un tablero kanban. Cada tarjeta tiene título,
+descripción opcional, fecha de inicio y fecha límite, prioridad, tipos, asignados y una checklist
+cuyos elementos se pueden convertir en tarjetas enlazadas.
 
 ## Stack
 
@@ -15,8 +16,8 @@ PWA con Vue 3 + Vite + TypeScript
 config/              settings (base, dev, test, production), urls, wsgi/asgi
 apps/core/           TimeStampedModel, /healthz/, portada de instalación (/) y entrega de la PWA (/app/)
 apps/usuarios/       cuenta de acceso (Usuario) con el correo como credencial
-apps/proyectos/      Proyecto, MiembroProyecto (permisos), Invitacion, TipoTarjeta + servicios.py
-apps/tarjetas/       Tarjeta y CambioEstatus (historial) + servicios.py
+apps/pizarras/       Pizarra, MiembroPizarra (permisos), Invitacion, Lista, TipoTarjeta + servicios.py
+apps/tarjetas/       Tarjeta, Movimiento (historial) y ElementoChecklist + servicios.py
 apps/api/            API de la PWA (/api/v1/)
 frontend/            PWA (Vue + Vite); se compila a pwa/app/ (no se versiona)
 docker/              entrypoint, script de despliegue (desplegar.sh) y snippet de nginx
