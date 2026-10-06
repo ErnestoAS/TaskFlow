@@ -23,12 +23,11 @@ export interface Tipo {
   n_tarjetas?: number;
 }
 
-/** Columna de una pizarra con nombre libre (§4.6). De cierre: lo que llega aquí está terminado. */
+/** Columna de una pizarra con nombre libre (§4.6). Ninguna significa «terminado» por sí misma. */
 export interface Lista {
   id: number;
   nombre: string;
   posicion: number;
-  es_cierre: boolean;
   n_tarjetas?: number;
 }
 
@@ -84,10 +83,9 @@ export interface ElementoChecklist {
   id: number;
   texto: string;
   hecho: boolean;
-  /** Convertido en tarjeta y con lista elegida: se palomea solo. */
+  /** Convertido en tarjeta y su tarjeta tiene lista de terminado: se palomea solo. */
   automatico: boolean;
   tarjeta: { id: number; titulo: string; lista: number; lista_nombre: string } | null;
-  lista_terminado: { id: number; nombre: string } | null;
 }
 
 export interface Tarjeta {
@@ -96,8 +94,8 @@ export interface Tarjeta {
   pizarra_nombre: string;
   lista: number;
   lista_nombre: string;
-  /** Está en una lista de cierre: no sale vencida ni en «Mis tarjetas». */
-  en_cierre: boolean;
+  /** «Lo que llega a esta lista cuenta como terminado» para las tarjetas de su checklist. */
+  lista_terminado: number | null;
   posicion: number;
   titulo: string;
   descripcion: string;

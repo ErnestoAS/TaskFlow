@@ -35,7 +35,6 @@ def lista(lst, n_tarjetas=None):
         "id": lst.pk,
         "nombre": lst.nombre,
         "posicion": lst.posicion,
-        "es_cierre": lst.es_cierre,
     }
     if n_tarjetas is not None:
         datos["n_tarjetas"] = n_tarjetas
@@ -49,9 +48,7 @@ def conteos(p, yo) -> dict:
         "tarjetas": tarjetas.count(),
         "listas": p.listas.count(),
         "mias": tarjetas.filter(asignados=yo).count(),
-        "vencidas": tarjetas.exclude(lista__es_cierre=True)
-        .filter(fecha_fin__lt=timezone.localdate())
-        .count(),
+        "vencidas": tarjetas.filter(fecha_fin__lt=timezone.localdate()).count(),
     }
 
 
@@ -125,11 +122,6 @@ def elemento(e):
             if hija
             else None
         ),
-        "lista_terminado": (
-            {"id": e.lista_terminado.pk, "nombre": e.lista_terminado.nombre}
-            if e.lista_terminado_id
-            else None
-        ),
     }
 
 
@@ -148,7 +140,7 @@ def tarjeta(t, con_detalle=False):
         "pizarra_nombre": t.pizarra.nombre,
         "lista": t.lista_id,
         "lista_nombre": t.lista.nombre,
-        "en_cierre": t.lista.es_cierre,
+        "lista_terminado": t.lista_terminado_id,
         "posicion": t.posicion,
         "titulo": t.titulo,
         "descripcion": t.descripcion,

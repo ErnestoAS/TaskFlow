@@ -10,7 +10,7 @@ const props = defineProps<{
   /** Nombre de una lista: neutro, las listas no tienen color (§4.6). */
   lista?: string;
   prioridad?: Prioridad;
-  fecha?: Pick<Tarjeta, "fecha_fin" | "en_cierre">;
+  fecha?: Pick<Tarjeta, "fecha_fin">;
   tipo?: Tipo;
 }>();
 const fecha = computed(() => (props.fecha ? estadoFecha(props.fecha) : null));

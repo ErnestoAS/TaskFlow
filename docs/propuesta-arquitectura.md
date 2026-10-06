@@ -11,7 +11,10 @@
 > el sistema, **listas libres** por pizarra en lugar de los tres estatus, listas de cierre,
 > arrastrar y soltar, checklist con elementos convertibles en tarjetas enlazadas, descripción
 > opcional y fecha de inicio (§4.4–§4.6, maqueta `app-v3.html`).
-> **Fecha:** 2026-10-05
+> **Ajuste del 2026-10-06 (implementado, sin desplegar):** la pizarra nace **sin listas**, se
+> **quitan las listas de cierre** y «Lo que llega a [lista] cuenta como terminado» pasa a ser
+> **una sola lista por tarjeta**, bajo su checklist (§4.4, §4.6, §11).
+> **Fecha:** 2026-10-06
 > **Alcance:** describe el funcionamiento general y el esquema. Lo pendiente de decidir está en
 > [§10](#10-preguntas-abiertas); los ajustes hechos al implementar, en [§11](#11-notas-de-implementación).
 
@@ -77,7 +80,7 @@ erDiagram
     USUARIO ||--o{ MOVIMIENTO : "hizo el movimiento"
     TARJETA ||--o{ ELEMENTO_CHECKLIST : "checklist"
     ELEMENTO_CHECKLIST |o--o| TARJETA : "se convirtió en (tarjeta_creada)"
-    LISTA |o--o{ ELEMENTO_CHECKLIST : "lo marca al llegar (lista_terminado)"
+    LISTA |o--o{ TARJETA : "su checklist cuenta como terminado al llegar (lista_terminado)"
     USUARIO ||--o{ CODIGO_CORREO : "verificar o recuperar"
 ```
 
@@ -147,9 +150,10 @@ El correo sale con `transaction.on_commit` (plantillas en
 | `asignados` | M2M a `Usuario`, opcional | Solo miembros de la pizarra (servicio). |
 | `tipos` | M2M a `TipoTarjeta`, opcional | Solo tipos de la misma pizarra (servicio). |
 | `creada_por` | FK a `Usuario`, opcional | `SET_NULL`: borrar una cuenta no debe borrar las tarjetas que creó. |
+| `lista_terminado` *(2026-10-06)* | FK `Lista`, nula, `SET_NULL` | «**Lo que llega a [lista] cuenta como terminado**» para los elementos de **su** checklist que se convirtieron en tarjetas: cada uno está hecho cuando su tarjeta está en esa lista. Una por tarjeta (no por elemento ni por lista de la pizarra). Debe ser de la misma pizarra y **distinta de la lista donde está la tarjeta al elegirla** (servicio): sus tarjetas hijas nacen ahí y se darían por hechas al crearlas. Nula = palomeo manual (también si esa lista se elimina). Ver §4.6. |
 
-Orden por omisión: `posicion`. **Vencida** = fecha límite pasada y la tarjeta **fuera de una lista
-de cierre** (§4.6).
+Orden por omisión: `posicion`. **Vencida** = fecha límite pasada, **en cualquier lista** (sin listas
+de cierre desde 2026-10-06, §4.6).
 
 #### `Movimiento` — historial *(reemplaza a `CambioEstatus`, 2026-10-05)*
 
@@ -172,10 +176,9 @@ lista quede sin rastro. Reordenar dentro de la misma lista **no** se registra (s
 | --- | --- | --- |
 | `tarjeta` | FK, `CASCADE`, `related_name="checklist"` | Una checklist por tarjeta. |
 | `texto` | Texto (200) | |
-| `hecho` | Booleano | Solo cuenta si se palomea a mano (ver abajo). |
+| `hecho` | Booleano | Solo cuenta si se palomea a mano: si el elemento se convirtió en tarjeta y **su tarjeta** tiene `lista_terminado`, está hecho cuando `tarjeta_creada.lista == tarjeta.lista_terminado` y `hecho` se ignora. Al quitar esa lista (o eliminarse), cada elemento conserva en `hecho` el estado que tenía. |
 | `posicion` | Entero | Orden manual (se arrastra por la manija). |
 | `tarjeta_creada` | **`OneToOneField`** a `Tarjeta`, nula, `SET_NULL`, `related_name="elemento_origen"` | La tarjeta en que se convirtió. El enlace vive en un solo lado y la tarjeta nueva lo lee por la relación inversa: dos FK, una en cada lado, podrían quedar desincronizadas. `OneToOne` porque un elemento se convierte en una sola tarjeta y una tarjeta viene de un solo elemento. Debe ser de la misma pizarra (servicio). |
-| `lista_terminado` | FK `Lista`, nula, `SET_NULL` | «Se marca al pasar a»: con ella y `tarjeta_creada`, el elemento está hecho cuando `tarjeta_creada.lista == lista_terminado` y `hecho` se ignora. Nula = palomeo manual (también si esa lista se elimina). |
 
 ### 4.5 Pizarras y miembros *(Etapa 2 — decidido e implementado el 2026-10-01 como «proyectos»; renombrado y ampliado el 2026-10-05)*
 
@@ -206,10 +209,10 @@ Reglas decididas (Ernesto, 2026-10-01; con los nombres y permisos de 2026-10-05)
 
 | Modelo | Campos | Notas |
 | --- | --- | --- |
-| `Pizarra` | `nombre`, `creado_por` (FK `Usuario`, `PROTECT`), `archivada_en` (fecha, nula), fechas | Quien la crea queda como miembro con rol `dueno`, y la pizarra nace con las listas «Pendiente», «En curso» y «Finalizada» (esta, de cierre). Archivada = solo lectura para todos; nulo = activa. Fecha y no booleano para saber desde cuándo. |
+| `Pizarra` | `nombre`, `creado_por` (FK `Usuario`, `PROTECT`), `archivada_en` (fecha, nula), fechas | Quien la crea queda como miembro con rol `dueno`, y la pizarra nace **sin listas** *(2026-10-06; antes traía «Pendiente», «En curso» y «Finalizada»)*: cada quien agrega las suyas. Archivada = solo lectura para todos; nulo = activa. Fecha y no booleano para saber desde cuándo. |
 | `MiembroPizarra` | `pizarra` (FK, `CASCADE`), `usuario` (FK, `CASCADE`), `rol` (`dueno` · `miembro`), `puede_crear` (por omisión `True`), `puede_editar` (`True`), `puede_mover` (`True`), `puede_eliminar` (`False`), `puede_gestionar_listas` (`False`), `puede_gestionar_tipos` (`False`), `unido_en` | `UniqueConstraint(pizarra, usuario)` y **un solo dueño por pizarra** (`pizarra_un_solo_dueno`, condicional). Los permisos son columnas y no un sistema genérico porque son seis, fijos, y el dueño los marca por persona; para el dueño se ignoran. «Gestionar listas» va aparte de «Gestionar tipos» porque reorganizar el tablero afecta a todos más que agregar una etiqueta. Transferir = cambiar los dos roles en una transacción. |
 | `Invitacion` | `pizarra` (FK), `correo`, `invitada_por` (FK `Usuario`), `token` (único), `estado` (`pendiente` · `aceptada` · `cancelada`), `creada_en`, `enviada_en` (último envío), `veces_enviada`, `respondida_en`, `aceptada_por` | **Sin vencimiento** (decidido). **Reenviar** manda otra vez el mismo enlace y actualiza `enviada_en`; `veces_enviada` pone un tope. Una pendiente por pizarra y correo (`UniqueConstraint` condicional). Se invita por correo porque la persona puede no tener cuenta todavía. |
-| `Lista` *(2026-10-05)* | `pizarra` (FK, `CASCADE`), `nombre` (50), `posicion` (entero), `es_cierre` (booleano, `False`), fechas | `UniqueConstraint(pizarra, Lower(nombre))`: en «Mover a» dos listas con el mismo nombre serían indistinguibles. Orden por `posicion`. Sin color: se distinguen por su nombre, y la paleta reserva los colores para alertas y tipos. `es_cierre` = lo que llega aquí cuenta como terminado (§4.6). Solo se elimina vacía (`Tarjeta.lista` es `RESTRICT`). |
+| `Lista` *(2026-10-05)* | `pizarra` (FK, `CASCADE`), `nombre` (50), `posicion` (entero), fechas | `UniqueConstraint(pizarra, Lower(nombre))`: en «Mover a» dos listas con el mismo nombre serían indistinguibles. Orden por `posicion`. Sin color: se distinguen por su nombre, y la paleta reserva los colores para alertas y tipos. **Sin `es_cierre`** *(quitado 2026-10-06)*: ninguna lista significa «terminado» por sí misma; eso lo elige cada tarjeta para su checklist (`Tarjeta.lista_terminado`, §4.6). Solo se elimina vacía (`Tarjeta.lista` es `RESTRICT`). |
 | `TipoTarjeta` | `pizarra` (FK, `CASCADE`), `nombre` (50), `descripcion` (opcional), `color` (7, `#rrggbb`), fechas | `UniqueConstraint(pizarra, Lower(nombre))`. `color` validado con `RegexValidator(^#[0-9a-f]{6}$)` y `CheckConstraint`, guardado en minúsculas: es el único color que viene del usuario. Eliminar un tipo lo quita de las tarjetas (el M2M se borra solo) sin borrarlas. |
 
 Migraciones: `tarjetas.0003`–`0005` (2026-10-01) pasaron las tarjetas que ya existían a un
@@ -242,14 +245,16 @@ mueven entre ellas y se ordenan a mano dentro de cada una. Maqueta aprobada:
 
 Decisiones (Ernesto, 2026-10-02):
 
-- **«Terminada» = estar en una lista de cierre** *(cambiado 2026-10-05)*. No hay estatus ni
-  casilla «completada»: cualquier lista se puede marcar como **lista de cierre** («Lo que llega
-  aquí cuenta como terminado»), y puede haber varias («Finalizada», «Cancelada»). Una tarjeta en
-  una lista de cierre **no sale vencida** y **no aparece en «Mis tarjetas»**. (No decide la
-  checklist: eso se elige por elemento al convertirlo, ver abajo.) Una pizarra nueva trae
-  «Finalizada» marcada; una sin listas de cierre funciona sin el concepto. Antes (2026-10-02) no existía «terminada» y
-  «Vencida» era cualquier fecha pasada; se cambió al agregar la checklist enlazada, que necesita
-  saber cuándo una tarjeta terminó (§9, §10.11).
+- **Sin listas de cierre** *(Ernesto, 2026-10-06; reemplaza lo de 2026-10-05)*. Ninguna lista
+  significa «terminado» por sí misma: no hay estatus, casilla «completada» ni marca en la lista.
+  Una tarjeta con fecha límite pasada **sale vencida en cualquier lista**, y **«Mis tarjetas»
+  muestra todas las asignadas**. «Terminado» solo existe para la checklist enlazada, y lo elige
+  cada tarjeta debajo de su checklist (ver abajo). *Historia:* el 2026-10-02 no existía
+  «terminada»; el 2026-10-05 se agregaron las **listas de cierre** (casilla «Lo que llega aquí
+  cuenta como terminado» en cada lista, que sacaba sus tarjetas de vencidas y de «Mis tarjetas»);
+  el 2026-10-06 Ernesto pidió quitarlas: el check aparecía en todas las listas aunque solo
+  importa en las tarjetas con checklist convertida, y qué cuenta como terminado depende de lo que
+  se esté siguiendo, no de la lista (§9, §11).
 - **Descripción opcional** *(Ernesto, 2026-10-05)*: una tarjeta se crea con el puro título. Muchas
   actividades se explican solas («Asignar salas»), y exigir una descripción solo provocaba textos
   de relleno. `Tarjeta.descripcion` pasó a `blank=True` (antes era obligatoria); la tarjeta
@@ -266,19 +271,24 @@ Decisiones (Ernesto, 2026-10-02):
     nueva con la lista donde está («Tarjeta en «En curso»»), y la nueva muestra «Viene de la
     checklist de …». Solo dentro de la misma pizarra (entre pizarras habría que resolver quién ve
     qué). Queda en el historial de ambas.
-  - **«Marcar como terminado cuando pase a…»** *(Ernesto, 2026-10-05)*: al convertir, el
-    formulario muestra las listas de la pizarra y se elige **una**; viene preseleccionada la primera
-    lista de cierre (o la última, si no hay). El elemento se palomea solo cuando su tarjeta está en
-    esa lista y se despalomea si sale. La opción «Ninguna: lo palomeo a mano» lo deja manual. En
-    la checklist se lee «En «En curso» · se marca al pasar a «Finalizada»». Se eligió por
-    elemento y no con la lista de cierre global porque cada paso puede «terminar» en un punto
-    distinto (p. ej. «Revisión con dirección» basta para dar por hecho un borrador). **Se puede
-    cambiar después** (Ernesto, 2026-10-05) con el botón de bandera del elemento (permiso
-    «Editar»): se despliega bajo el elemento un selector con las listas, señalada en cuál está la
-    tarjeta ahora. Se aplica al guardar; al pasar a «Ninguna», el elemento conserva el estado que tenía.
+  - **«Lo que llega a [lista] cuenta como terminado»** *(Ernesto, 2026-10-06; reemplaza la
+    lista por elemento del 2026-10-05)*: **debajo de la checklist de la tarjeta original**, y
+    **solo si algún elemento ya se convirtió en tarjeta**, una línea con un combo de las listas
+    de la pizarra **menos la lista donde está esta tarjeta** (sus hijas nacen ahí y se darían por
+    hechas al crearlas), más «ninguna (a mano)». Es **una para toda la checklist**
+    (`Tarjeta.lista_terminado`): cada elemento convertido se palomea solo cuando su tarjeta está
+    en esa lista y se despalomea si sale; con «ninguna», se palomean a mano. Se guarda al elegir
+    (permiso «Editar»); al pasar a «ninguna», cada elemento conserva el estado que tenía. Al
+    convertir ya no se pregunta nada, y el elemento solo dice en qué lista está su tarjeta («En
+    «En curso»»). *Antes (2026-10-05):* se elegía por elemento al convertir («Marcar como terminado
+    cuando pase a…», preseleccionada la lista de cierre) y se cambiaba con un botón de bandera;
+    Ernesto lo simplificó a una sola lista porque en la práctica todos los pasos de una checklist
+    terminan en el mismo punto, y una decisión por elemento era una pregunta más en cada
+    conversión.
   - **Al eliminar:** si se elimina la tarjeta nueva, el elemento vuelve a ser texto y conserva si
     estaba hecho; si se elimina la original, la nueva se queda sin el «Viene de». Si se elimina la
-    lista elegida, el elemento pasa a palomeo manual.
+    lista elegida (solo se puede vacía), la checklist pasa a palomeo manual y sus elementos
+    convertidos quedan sin palomear (ninguna tarjeta estaba en ella).
   - **Permisos:** palomear, agregar, editar y quitar elementos = «Editar»; convertir = «Crear». Sin
     permiso nuevo.
   - Los elementos **no llevan fechas ni asignados**: si una parte los necesita, es la señal para
@@ -308,33 +318,37 @@ Decisiones (Ernesto, 2026-10-02):
 
 Cómo quedó (2026-10-05):
 
-- **Pizarra nueva:** empieza con las listas «Pendiente», «En curso» y «Finalizada» (esta última
-  de cierre), editables; un tablero vacío no le dice a nadie por dónde empezar, y esos nombres son
-  los que ya conocen.
+- **Pizarra nueva:** empieza **sin listas** *(Ernesto, 2026-10-06)*; el tablero muestra un aviso
+  («Esta pizarra aún no tiene listas. Agrega la primera…») y «Agregar lista». Antes (2026-10-05)
+  nacía con «Pendiente», «En curso» y «Finalizada» porque un tablero vacío no dice por dónde
+  empezar; Ernesto prefirió que lo escoja el usuario, porque cada pizarra organiza su trabajo
+  distinto y borrar listas impuestas es trabajo de más. Se descartaron una casilla «Crear listas
+  sugeridas» y escribir los nombres al crear la pizarra (§9).
 - **Migración de datos** (`tarjetas.0008`): cada pizarra recibe esas tres listas y cada tarjeta va
   a la de su estatus, en el orden del tablero de antes (prioridad, fecha de fin, más nuevas
   primero); `fecha_inicio` = el día de creación en hora de México (o la fecha de fin, si era
   anterior); el historial pasa de `CambioEstatus` a `Movimiento` con los nombres de los estatus.
   No se pierde nada y las finalizadas siguen sin salir vencidas. Es reversible (§11).
-- **Servicios** (`apps/pizarras/servicios.py`): `crear_lista`, `editar_lista` (nombre y
-  `es_cierre`), `ordenar_listas`, `eliminar_lista` (rechaza si tiene tarjetas). En
+- **Servicios** (`apps/pizarras/servicios.py`): `crear_lista`, `editar_lista` (nombre),
+  `ordenar_listas`, `eliminar_lista` (rechaza si tiene tarjetas). En
   `apps/tarjetas/servicios.py`: `mover_tarjeta(tarjeta, lista, posicion)`, que reemplaza a
-  `cambiar_estatus` y es la única vía para cambiar `Tarjeta.lista`; checklist: `agregar_elemento`,
-  `editar_elemento` (texto, `hecho` solo si es manual, `lista_terminado` solo si ya es tarjeta),
-  `ordenar_checklist`, `quitar_elemento` y `convertir_elemento(elemento, lista_terminado=…, datos
-  de la tarjeta)`, que crea la tarjeta y el enlace en una transacción y escribe en el historial de
-  las dos.
+  `cambiar_estatus` y es la única vía para cambiar `Tarjeta.lista`; `editar_tarjeta` también
+  recibe `lista_terminado` (2026-10-06); checklist: `agregar_elemento`, `editar_elemento` (texto
+  y `hecho` solo si es manual), `ordenar_checklist`, `quitar_elemento` y
+  `convertir_elemento(elemento, datos de la tarjeta)`, que crea la tarjeta y el enlace en una
+  transacción y escribe en el historial de las dos.
 - **API:** ver §6.
 - **PWA (§5):** el tablero es una fila de listas con desplazamiento horizontal. En teléfono, una
   lista por pantalla, con **pestañas subrayadas** arriba para saltar entre listas y un solo botón
   **«Filtrar»** que abre una hoja con «Solo mías» y el tipo (el 2026-10-02 Ernesto pidió quitar
   las dos filas de chips, que ocupaban media pantalla). En computadora, columnas de 284 px con los
   filtros a la vista. «Agregar tarjeta» al pie de cada lista y «Agregar lista» al final; opciones
-  de la lista (renombrar, lista de cierre, mover a la izquierda o derecha, eliminar si está vacía)
+  de la lista (renombrar, mover a la izquierda o derecha, eliminar si está vacía)
   en su «⋯». El orden del tablero es **manual**; la prioridad sigue como badge y como indicador
   lateral de urgente. Se quitaron la barra de avance y los conteos por estatus, los badges de
   estatus, el botón flotante «+» y las variables `--tf-status-*` (entran `.chip.nombre-lista`,
-  neutro en navy suave, y `--tf-success*` para la checklist completa y la marca de cierre).
+  neutro en navy suave, y `--tf-success*` para la checklist completa y el ícono de «Lo que llega
+  a … cuenta como terminado»; la marca de lista de cierre se quitó el 2026-10-06).
 - **Arrastre: SortableJS directo** (`frontend/src/arrastre.ts`, directiva `v-arrastrable`), no
   `vue-draggable-plus` como se había pensado: su `v-model` reordena el arreglo que se le da, y el
   tablero pinta listas filtradas y calculadas, así que habría que traducir índices igual. Con
@@ -368,12 +382,17 @@ Código en `frontend/`. Rutas con `#` (decisión en §9):
 | `#/recuperar` | Recuperar contraseña | Paso 1: correo. Paso 2: código y contraseña nueva; al guardar, entra. El paso 2 aparece siempre, exista o no la cuenta (§7). |
 | `#/invitacion/<token>` | Aceptar invitación | Pública. Ver §7. |
 | `#/pizarras` | Mis pizarras | Activas con un resumen de una línea (tarjetas · listas · tuyas), miembros y vencidas; archivadas aparte. Aviso de instalación. (`#/proyectos…` redirige aquí.) |
-| `#/pizarras/<id>` | Tablero | Listas en fila (§4.6). Teléfono: pestañas por lista y «Filtrar»; arrastrar manteniendo presionada. Computadora (≥ 900 px): columnas, «Solo mías» y tipos a la vista; arrastrar con el mouse. «Agregar tarjeta» en cada lista, «Agregar lista» al final, «⋯» por lista. Banner de solo lectura si está archivada. |
+| `#/pizarras/<id>` | Tablero | Listas en fila (§4.6). Teléfono: pestañas por lista y «Filtrar»; arrastrar manteniendo presionada. Computadora (≥ 900 px): columnas, «Solo mías» y tipos a la vista; arrastrar con el mouse. «Agregar tarjeta» en cada lista, «Agregar lista» al final, «⋯» por lista. Sin listas (pizarra nueva), un aviso que invita a agregar la primera. Banner de solo lectura si está archivada. |
 | `#/pizarras/<id>/ajustes` | Miembros y ajustes | Invitar, reenviar/cancelar, seis permisos por miembro, «Hacer dueño», quitar, tipos, renombrar, archivar/restaurar, eliminar, salir. |
-| `#/mis-tarjetas` | Mis tarjetas | Asignadas a mí, fuera de listas de cierre, de mis pizarras activas, con pizarra y lista; vencidas primero, luego por fecha límite. |
+| `#/mis-tarjetas` | Mis tarjetas | Asignadas a mí en mis pizarras activas, en cualquier lista (sin listas de cierre desde 2026-10-06), con pizarra y lista; vencidas primero, luego por fecha límite. |
 | `#/perfil` | Perfil | Nombre y apellidos, contraseña, instalar, cerrar sesión. |
 
-- **Detalle de tarjeta** en hoja inferior (teléfono) o panel lateral (computadora): «Viene de»
+- **Detalle de tarjeta** en hoja inferior (teléfono) o panel lateral (computadora): arriba,
+  bajo el título, «Editar» y «Eliminar» *(movidos 2026-10-06: al final quedaban debajo del
+  historial, que crece con cada movimiento, y había que desplazarse cada vez más para alcanzarlos;
+  se descartó unir detalle y edición en una sola vista porque el detalle ya tiene acciones
+  directas —mover de lista, palomear la checklist— y un formulario siempre abierto invita a
+  cambios accidentales)*; luego «Viene de»
   (si nació de una checklist), lista (cambiarla con un toque; queda al final), prioridad, tipos,
   descripción, fecha de inicio y fecha límite, checklist, asignados, historial (quién, de qué lista
   a cuál, fecha y hora) y «Creada por … el …». Lo que el usuario no tiene permitido no aparece o
@@ -408,21 +427,21 @@ a un servicio de `apps/*/servicios.py`; la API no tiene reglas propias. Salida a
 | `POST auth/verificar/` · `auth/verificar/reenviar/` | Confirmar con `{correo, codigo}` (abre la sesión y devuelve el usuario) · reenviar con `{correo}`. |
 | `POST auth/recuperar/` · `auth/recuperar/confirmar/` | Pedir el código con `{correo}` (siempre `{ok: true}`) · `{correo, codigo, password}` cambia la contraseña, verifica el correo y abre la sesión. |
 | `GET, PATCH yo/` · `POST yo/password/` | Mi cuenta (`nombre_pila`, `primer_apellido`, `segundo_apellido`; contraseña). |
-| `GET yo/tarjetas/` | Mis tarjetas fuera de listas de cierre, en pizarras activas. |
-| `GET, POST pizarras/` | Mis pizarras (resumen con `conteos: {tarjetas, listas, mias, vencidas}` y mis permisos) · crear (nace con sus tres listas). |
+| `GET yo/tarjetas/` | Mis tarjetas asignadas, en cualquier lista, de pizarras activas. |
+| `GET, POST pizarras/` | Mis pizarras (resumen con `conteos: {tarjetas, listas, mias, vencidas}` y mis permisos) · crear (nace sin listas, 2026-10-06). |
 | `GET, PATCH, DELETE pizarras/<id>/` | Detalle (miembros, listas con `n_tarjetas`, tipos, invitaciones si soy dueño) · renombrar · eliminar. |
 | `POST pizarras/<id>/{archivar,restaurar,salir,transferir}/` | Acciones de la pizarra. |
 | `PATCH, DELETE pizarras/<id>/miembros/<usuario>/` | Permisos de un miembro (`crear`, `editar`, `mover`, `eliminar`, `gestionar_listas`, `gestionar_tipos`) · quitarlo. |
 | `POST pizarras/<id>/invitaciones/` · `…/<inv>/{reenviar,cancelar}/` | Invitaciones. |
 | `POST pizarras/<id>/listas/` · `POST …/listas/orden/` | Crear lista `{nombre}` (al final) · ordenar `{ids: […]}` (todas). Devuelven la pizarra. |
-| `PATCH, DELETE listas/<id>/` | `{nombre, es_cierre}` · eliminar (solo vacía). Devuelven la pizarra. |
+| `PATCH, DELETE listas/<id>/` | `{nombre}` · eliminar (solo vacía). Devuelven la pizarra. |
 | `POST pizarras/<id>/tipos/` · `PATCH, DELETE …/tipos/<tipo>/` | Tipos de tarjeta. |
 | `GET, POST pizarras/<id>/tarjetas/` | Tarjetas de la pizarra (por lista y posición) · crear (`lista`, `fecha_inicio`; descripción opcional). |
-| `GET, PATCH, DELETE tarjetas/<id>/` | Detalle con checklist, historial y `viene_de` · editar · eliminar. |
+| `GET, PATCH, DELETE tarjetas/<id>/` | Detalle con checklist, historial, `viene_de` y `lista_terminado` (id o `null`) · editar (también `lista_terminado`: id de otra lista de la pizarra o `null`) · eliminar. |
 | `POST tarjetas/<id>/mover/` | `{lista, posicion}` (sin posición, al final). Cambiar de lista queda en el historial. |
 | `POST tarjetas/<id>/checklist/` · `POST …/checklist/orden/` | Agregar elemento `{texto}` · ordenar `{ids}`. Devuelven la tarjeta. |
-| `PATCH, DELETE checklist/<id>/` | `{texto, hecho, lista_terminado}` · quitar. Devuelven la tarjeta. |
-| `POST checklist/<id>/convertir/` | Crea la tarjeta enlazada (campos de alta de tarjeta + `lista_terminado`, nula = palomeo manual; sin indicar, la primera lista de cierre). Devuelve `{tarjeta, nueva}`. |
+| `PATCH, DELETE checklist/<id>/` | `{texto, hecho}` · quitar. Devuelven la tarjeta. |
+| `POST checklist/<id>/convertir/` | Crea la tarjeta enlazada (campos de alta de tarjeta; cuándo se palomea lo dice `lista_terminado` de la tarjeta original). Devuelve `{tarjeta, nueva}`. |
 | `GET invitaciones/<token>/` | Pública: pizarra, correo, quién invitó, estado y si ya hay cuenta. |
 | `POST invitaciones/<token>/aceptar/` · `…/registro/` | Aceptar con sesión · crear cuenta con el correo invitado (ya verificada) y aceptar. Devuelven `{pizarra}`. |
 
@@ -478,6 +497,7 @@ límite `acceso`.
 | 3 | API `/api/v1/`, PWA (tablero, tarjetas, miembros, invitaciones, tipos, perfil) y portada de instalación (§5–§7) | ✅ 2026-10-01 · en producción 2026-10-02 |
 | 3.5 | Correo verificado con código, recuperar contraseña y apellidos separados (§4.3, §7) | ✅ 2026-10-02 · en producción 2026-10-02 |
 | 3.6 | «Proyecto» → «Pizarra» en todo el sistema; listas libres en lugar de estatus, listas de cierre, arrastrar y soltar, historial de movimientos, checklist con tarjetas enlazadas, descripción opcional y fecha de inicio (§4.4–§4.6) | ✅ 2026-10-05 · en producción `90939ed` |
+| 3.7 | Ajustes de uso: pizarra nueva sin listas, sin listas de cierre, «Lo que llega a … cuenta como terminado» una por tarjeta bajo su checklist, «Editar» y «Eliminar» arriba del detalle (§4.4–§4.6, §5) | ✅ 2026-10-06 · **sin desplegar** |
 | 4 | Por definir: avisos por correo de asignación o vencimiento, búsqueda, comentarios en tarjetas | — |
 
 ## 9. Decisiones de diseño
@@ -541,12 +561,27 @@ límite `acceso`.
   2026-10-05:* la «casilla es final» volvió como **lista de cierre** (§4.6), porque la checklist
   enlazada necesita saber cuándo terminó una tarjeta y porque así se resolvieron las vencidas en
   «Finalizada» (§10.11). A diferencia de lo descartado, es opcional y no reintroduce estatus.
+  *Quitada el 2026-10-06 (Ernesto):* el check en cada lista confundía (aparecía en todas, aunque
+  solo importa a las tarjetas con checklist convertida) y «terminado» depende de lo que sigue
+  cada tarjeta, no de la lista; ahora lo elige la tarjeta (`Tarjeta.lista_terminado`). Se aceptó
+  a cambio que las vencidas en «Finalizada» vuelvan a salir y que «Mis tarjetas» muestre todas
+  las asignadas (Ernesto eligió quitarla del todo; se descartó conservarla oculta, solo para
+  vencidas y «Mis tarjetas», porque una regla invisible sorprende).
+- **Pizarra nueva sin listas** (2026-10-06, Ernesto): cada quien arma las suyas; borrar o
+  renombrar listas impuestas era trabajo de más. Se descartaron una casilla «Crear listas
+  sugeridas» al crear la pizarra y escribir los nombres en el formulario de alta (más campos
+  para algo que el tablero ya resuelve con «Agregar lista»).
 - **Checklist enlazada: cada elemento convertido elige en qué lista se da por terminado**
   (2026-10-05, Ernesto): primero se propuso que lo decidiera la lista de cierre de la
   pizarra, pero Ernesto prefirió elegirlo al convertir, porque no todos los pasos terminan en el
   mismo punto. El palomeo manual queda como opción explícita («Ninguna») y no por omisión, porque
   el elemento y su tarjeta podían decir cosas distintas («hecho» con la tarjeta en «En curso»).
-  Se descartaron
+  *Cambiado el 2026-10-06 (Ernesto):* **una sola lista por tarjeta**, elegida debajo de su
+  checklist («Lo que llega a [lista] cuenta como terminado»), que aplica a todos sus elementos
+  convertidos; la lista de la propia tarjeta no se ofrece. Se descartó conservar una por
+  elemento (aunque fuera con el combo a la vista junto a cada uno): en la práctica todos los
+  pasos terminan en el mismo punto y era una pregunta más en cada conversión. Ahora el palomeo
+  manual es lo que hay mientras no se elija lista. Se descartaron
   también **subtareas como tarjetas hijas sin checklist** (cada paso chico sería una tarjeta en el
   tablero) y **varias checklists por tarjeta** (casi no se usan y complican la pantalla).
 - **Arrastrar y soltar en todos los dispositivos, más «Mover a» en el detalle** (2026-10-02,
@@ -598,7 +633,9 @@ límite `acceso`.
 
 11. ~~Sin «terminada» (§4.6), una tarjeta con fecha pasada en «Finalizada» seguía saliendo
     «Vencida» y en «Mis tarjetas».~~ **Resuelta (2026-10-05, Ernesto):** con **listas de cierre**
-    (§4.6). Se descartó archivar tarjetas.
+    (§4.6). Se descartó archivar tarjetas. **Reabierta y decidida de nuevo (2026-10-06,
+    Ernesto):** se quitaron las listas de cierre; se acepta que una tarjeta con fecha pasada salga
+    «Vencida» en cualquier lista y aparezca en «Mis tarjetas» (§9).
 12. ~~¿Las tarjetas se arrastran?~~ **Resuelta (2026-10-02, ampliada 2026-10-03):** sí, en
     computadora y en teléfono (mantener presionada), más cambio de lista con un toque en el
     detalle (§9). Antes (2026-10-01) se había decidido que no.
@@ -722,3 +759,28 @@ límite `acceso`.
     `.chip.avance-checklist`.
   - La caché sin conexión de la PWA (`vite.config.ts`) apuntaba a `/api/v1/proyectos`: ahora a
     `pizarras`.
+- (2026-10-06) **Cambio al esquema aprobado (implementado el mismo día, sin desplegar):
+  pizarra sin listas iniciales, sin listas de cierre y lista de terminado por tarjeta.**
+  Contradice lo aprobado el 2026-10-05 en §4.5 (`Lista.es_cierre`, listas iniciales) y §4.6
+  (lista de terminado por elemento). Motivo (Ernesto): las listas las debe escoger el usuario, y
+  el check «Lo que llega aquí cuenta como terminado» no debe estar en cada lista sino solo en las
+  tarjetas cuya checklist tiene elementos convertidos, debajo de la checklist y sin ofrecer la
+  lista donde está la propia tarjeta. Alternativas en §9. Al implementar:
+  - **Migraciones:** `tarjetas.0010` agrega `Tarjeta.lista_terminado` y le copia, por tarjeta, la
+    lista que más usaban sus elementos convertidos (si empatan, la del primero en la checklist);
+    `tarjetas.0011` quita `ElementoChecklist.lista_terminado` (aparte, por la misma restricción
+    de PostgreSQL que en `0007`–`0009`); `pizarras.0004` quita `Lista.es_cierre` y depende de
+    `tarjetas.0011` porque `tarjetas.0008` todavía lee `es_cierre` en una base nueva. Las tres
+    son reversibles (la vuelta copia a cada elemento convertido la lista de su tarjeta; las
+    marcas de cierre no se recuperan). Prueba en `apps/tarjetas/tests/test_migraciones.py`.
+  - Efecto en datos existentes: un elemento convertido que se palomeaba a mano, en una tarjeta
+    que hereda lista de terminado de otro elemento, pasa a palomearse solo. Las tarjetas en una
+    lista que era de cierre («Finalizada») vuelven a salir vencidas si su fecha pasó, y en «Mis
+    tarjetas».
+  - `eliminar_lista` deja sin palomear los elementos convertidos cuya tarjeta tenía esa lista
+    como de terminado (pasan a manual por `SET_NULL`; ninguna tarjeta estaba ahí, porque solo se
+    elimina vacía).
+  - El fixture `pizarra` de las pruebas crea sus tres listas a mano. Pruebas: 116. PWA probada
+    con Playwright a 390 px y 1280 px: pizarra nueva vacía con su aviso, agregar listas, convertir
+    un elemento, el combo sin la lista de la tarjeta, palomeo automático al mover la tarjeta hija
+    y la hoja de la lista sin «Lista de cierre».

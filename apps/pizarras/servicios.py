@@ -19,7 +19,6 @@ from django.template.loader import render_to_string
 from django.utils import timezone
 
 from .models import (
-    LISTAS_INICIALES,
     PERMISOS,
     Invitacion,
     Lista,
@@ -83,16 +82,12 @@ def exigir_permiso(pizarra: Pizarra, usuario, permiso: str) -> MiembroPizarra:
 
 @transaction.atomic
 def crear_pizarra(usuario, nombre: str) -> Pizarra:
-    """La crea con las listas iniciales (§4.6): un tablero vacío no dice por dónde empezar."""
+    """La crea sin listas (2026-10-06): cada quien arma las suyas desde el tablero."""
     nombre = (nombre or "").strip()
     if not nombre:
         raise ValidationError({"nombre": "Escribe un nombre."})
     pizarra = Pizarra.objects.create(nombre=nombre, creado_por=usuario)
     MiembroPizarra.objects.create(pizarra=pizarra, usuario=usuario, rol=MiembroPizarra.Rol.DUENO)
-    Lista.objects.bulk_create(
-        Lista(pizarra=pizarra, nombre=n, posicion=i, es_cierre=cierre)
-        for i, (n, cierre) in enumerate(LISTAS_INICIALES)
-    )
     return pizarra
 
 
@@ -337,15 +332,13 @@ def crear_lista(pizarra: Pizarra, por, nombre: str) -> Lista:
 
 
 def editar_lista(lista: Lista, por, **campos) -> Lista:
-    """Cambia `nombre` y/o `es_cierre`."""
+    """Cambia `nombre`."""
     exigir_permiso(lista.pizarra, por, "gestionar_listas")
-    desconocidos = set(campos) - {"nombre", "es_cierre"}
+    desconocidos = set(campos) - {"nombre"}
     if desconocidos:
         raise ValidationError(f"Campos no editables: {', '.join(sorted(desconocidos))}.")
     if "nombre" in campos:
         lista.nombre = _validar_nombre_lista(lista.pizarra, campos["nombre"], propia=lista)
-    if "es_cierre" in campos:
-        lista.es_cierre = bool(campos["es_cierre"])
     lista.save()
     return lista
 
@@ -375,6 +368,13 @@ def eliminar_lista(lista: Lista, por) -> None:
         raise ValidationError(
             f"La lista tiene {n} tarjeta{'s' if n != 1 else ''}: muévelas o elimínalas antes."
         )
+    from apps.tarjetas.models import ElementoChecklist
+
+    # Las checklists que se marcaban al llegar aquí pasan a palomeo manual (SET_NULL) con el
+    # estado que tenían: como la lista está vacía, ninguna tarjeta enlazada estaba en ella.
+    ElementoChecklist.objects.filter(
+        tarjeta__lista_terminado=lista, tarjeta_creada__isnull=False
+    ).update(hecho=False)
     lista.delete()
 
 

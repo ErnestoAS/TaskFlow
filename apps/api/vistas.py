@@ -76,7 +76,6 @@ def _tarjetas():
         "asignados",
         "tipos",
         "checklist__tarjeta_creada__lista",
-        "checklist__lista_terminado",
     )
 
 
@@ -321,7 +320,7 @@ def cambiar_password(request):
 
 @api_view(["GET"])
 def mis_tarjetas(request):
-    """Asignadas a mí, fuera de las listas de cierre, en pizarras activas de las que soy miembro."""
+    """Asignadas a mí en pizarras activas de las que soy miembro."""
     ts = (
         _tarjetas()
         .filter(
@@ -329,7 +328,6 @@ def mis_tarjetas(request):
             pizarra__miembros__usuario=request.user,
             pizarra__archivada_en__isnull=True,
         )
-        .exclude(lista__es_cierre=True)
         .distinct()
     )
     ordenadas = sorted(ts, key=lambda t: (t.fecha_fin or date.max, ORDEN_PRIORIDAD[t.prioridad]))
@@ -493,7 +491,7 @@ def lista(request, pk):
     if request.method == "DELETE":
         sp.eliminar_lista(lst, request.user)
     else:
-        campos = {k: request.data[k] for k in ("nombre", "es_cierre") if k in request.data}
+        campos = {k: request.data[k] for k in ("nombre",) if k in request.data}
         sp.editar_lista(lst, request.user, **campos)
     return Response(rep.pizarra_detalle(lst.pizarra, request.user))
 
@@ -593,9 +591,7 @@ def elemento(request, pk):
     if request.method == "DELETE":
         st.quitar_elemento(e, request.user)
     else:
-        campos = {
-            k: request.data[k] for k in ("texto", "hecho", "lista_terminado") if k in request.data
-        }
+        campos = {k: request.data[k] for k in ("texto", "hecho") if k in request.data}
         st.editar_elemento(e, request.user, **campos)
     return _detalle(request, e.tarjeta_id)
 
@@ -604,9 +600,7 @@ def elemento(request, pk):
 def elemento_convertir(request, pk):
     """Crea la tarjeta enlazada. Devuelve la tarjeta original y la nueva."""
     e = _elemento(request, pk)
-    d = request.data
-    extra = {"lista_terminado": d.get("lista_terminado")} if "lista_terminado" in d else {}
-    nueva = st.convertir_elemento(e, request.user, **_datos_tarjeta(d), **extra)
+    nueva = st.convertir_elemento(e, request.user, **_datos_tarjeta(request.data))
     return Response(
         {
             "tarjeta": rep.tarjeta(_tarjeta(request, e.tarjeta_id), con_detalle=True),

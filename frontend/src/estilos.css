@@ -108,7 +108,6 @@ svg{flex-shrink:0}
 .lista-cab h3{margin:0;font-size:14px;font-weight:700;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .lista-cab .num{color:var(--tf-text-muted);font-weight:600;font-size:12px;background:var(--tf-surface);border-radius:99px;padding:1px 8px}
 .lista-cab .btn-icono{width:30px;height:30px;color:var(--tf-text-muted)}
-.marca-cierre{color:var(--tf-success-text);display:inline-flex}
 .lista-tarjetas{display:flex;flex-direction:column;gap:8px;min-height:40px}
 .lista-tarjetas .vacio{padding:12px 8px;font-size:13px}
 .agregar-tarjeta{border:0;background:transparent;color:var(--tf-text-muted);font-weight:600;font-size:13.5px;text-align:left;padding:8px;border-radius:9px;display:flex;align-items:center;gap:6px}
@@ -211,9 +210,11 @@ svg{flex-shrink:0}
 .checklist li.hecho .enlace-tarjeta .texto{color:var(--tf-text-muted)}
 .enlace-tarjeta small{font-size:12px;color:var(--tf-text-muted);display:block}
 .enlace-tarjeta small svg{vertical-align:-2px;margin-right:2px}
-.checklist .termina{width:100%;padding:6px 0 4px 28px;display:flex;flex-direction:column;gap:6px;font-size:12px;color:var(--tf-text-muted)}
-.checklist .termina .linea{display:flex;gap:6px;flex-wrap:wrap}
-.checklist .termina select{flex:1;min-width:160px;border:1px solid var(--tf-border);border-radius:var(--tf-radius-btn);padding:7px 9px;background:var(--tf-surface);font-size:13.5px}
+/* «Lo que llega a [lista] cuenta como terminado», bajo la checklist (2026-10-06). */
+.lista-terminado{display:flex;align-items:center;flex-wrap:wrap;gap:6px;margin-top:10px;padding:10px 12px;border-radius:var(--tf-radius-btn);background:var(--tf-bg);font-size:13.5px;color:var(--tf-text)}
+.lista-terminado svg{color:var(--tf-success-text)}
+.campo .lista-terminado select{width:auto;flex:0 1 auto;border:1px solid var(--tf-border);border-radius:var(--tf-radius-btn);padding:6px 9px;background:var(--tf-surface);font-size:13.5px;max-width:100%}
+.campo .lista-terminado select:focus{outline:none;border-color:var(--tf-accent);box-shadow:0 0 0 3px var(--tf-accent-soft)}
 .agregar-item{display:flex;gap:8px}
 .agregar-item input{flex:1;min-width:0;border:1px solid var(--tf-border);border-radius:var(--tf-radius-btn);padding:8px 11px;background:var(--tf-surface);font-size:14px}
 .agregar-item input:focus{outline:none;border-color:var(--tf-accent);box-shadow:0 0 0 3px var(--tf-accent-soft)}
@@ -267,6 +268,8 @@ label.persona:hover{background:var(--tf-bg)}
 .historial .cuando{display:block;font-size:12px;color:var(--tf-text-muted)}
 .historial .chip{font-size:11px;padding:1px 8px}
 .meta{display:flex;flex-direction:column;gap:4px;font-size:12.5px;color:var(--tf-text-muted);border-top:1px solid var(--tf-border);padding-top:12px;margin-top:6px}
+.acciones-detalle{display:flex;gap:8px;margin:-4px 0 16px}
+.acciones-detalle .btn-peligro{margin-left:auto}
 .fila-botones{display:flex;gap:8px;margin-top:8px}
 .fila-botones .btn{flex:1}
 

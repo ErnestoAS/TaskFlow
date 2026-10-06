@@ -1,6 +1,6 @@
 <!--
-  Tarjetas asignadas a mí en mis pizarras activas, fuera de las listas de cierre (§4.6), con la
-  pizarra y la lista de cada una. Vencidas arriba; luego por fecha límite.
+  Tarjetas asignadas a mí en mis pizarras activas, en cualquier lista (§4.6), con la pizarra y la
+  lista de cada una. Vencidas arriba; luego por fecha límite.
 -->
 <script setup lang="ts">
 import { computed, onMounted, ref } from "vue";
@@ -80,13 +80,10 @@ const tiposDe = (t: Tarjeta) => pizarras.value[t.pizarra]?.tipos ?? [];
           @abrir="abierta = { id: t.id, pizarra: t.pizarra }"
         />
       </div>
-      <div v-if="!resto.length && !vencidas.length" class="vacio">No tienes tarjetas pendientes.</div>
+      <div v-if="!resto.length && !vencidas.length" class="vacio">No tienes tarjetas asignadas.</div>
       <div class="aviso" style="margin-top: 14px">
         <Icono nombre="info" />
-        <span
-          >Tarjetas asignadas a ti en tus pizarras activas, con la lista en la que están. No aparecen las que están en una
-          lista de cierre (como «Finalizada»).</span
-        >
+        <span>Tarjetas asignadas a ti en tus pizarras activas, con la lista en la que están.</span>
       </div>
     </template>
   </main>

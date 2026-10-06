@@ -77,10 +77,10 @@ Problemas comunes:
 - `apps/core`: `TimeStampedModel`, `/healthz/` y su middleware (responde antes de `ALLOWED_HOSTS`).
 - `apps/usuarios`: `Usuario` (`AUTH_USER_MODEL`), el correo es la credencial; sin `username`.
 - `apps/pizarras` (antes `apps/proyectos`): `Pizarra`, `MiembroPizarra` (rol y seis permisos),
-  `Invitacion`, `Lista` (con `es_cierre`),
+  `Invitacion`, `Lista`,
   `TipoTarjeta`; `servicios.py` con todas las reglas (permisos, invitar, transferir, archivar…).
 - `apps/tarjetas`: `Tarjeta` (pizarra, lista, posición, título, descripción opcional,
-  prioridad, `fecha_inicio`, `fecha_fin`, `asignados`, `tipos`, `creada_por`), `Movimiento`
+  prioridad, `fecha_inicio`, `fecha_fin`, `asignados`, `tipos`, `creada_por`, `lista_terminado`), `Movimiento`
   (historial) y `ElementoChecklist`; `servicios.py` con crear, editar, `mover_tarjeta` (única vía
   para cambiar de lista o de posición), eliminar, la checklist y `convertir_elemento`.
 - `apps/core/management/commands/migrate.py`: reemplaza al `migrate` de Django; antes de migrar

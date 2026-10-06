@@ -21,9 +21,6 @@ from apps.core.models import TimeStampedModel
 # `puede_<permiso>` de MiembroPizarra; el dueño siempre los tiene todos.
 PERMISOS = ("crear", "editar", "mover", "eliminar", "gestionar_listas", "gestionar_tipos")
 
-# Listas con las que nace una pizarra (§4.6): (nombre, es_cierre).
-LISTAS_INICIALES = (("Pendiente", False), ("En curso", False), ("Finalizada", True))
-
 validar_color = RegexValidator(
     r"^#[0-9a-f]{6}$", "El color debe tener el formato #rrggbb (p. ej. #3b5bdb)."
 )
@@ -197,8 +194,9 @@ class Invitacion(models.Model):
 
 class Lista(TimeStampedModel):
     """
-    Columna de una pizarra con nombre libre (§4.6), en lugar de los tres estatus fijos.
-    `es_cierre`: lo que llega aquí cuenta como terminado (no sale vencido ni en «Mis tarjetas»).
+    Columna de una pizarra con nombre libre (§4.6), en lugar de los tres estatus fijos. Ninguna
+    lista significa «terminado» por sí misma (2026-10-06): eso lo elige cada tarjeta para su
+    checklist (`Tarjeta.lista_terminado`).
     """
 
     pizarra = models.ForeignKey(
@@ -206,11 +204,6 @@ class Lista(TimeStampedModel):
     )
     nombre = models.CharField("nombre", max_length=50)
     posicion = models.PositiveIntegerField("posición", default=0)
-    es_cierre = models.BooleanField(
-        "lista de cierre",
-        default=False,
-        help_text="Lo que llega aquí cuenta como terminado: no sale vencido ni en «Mis tarjetas».",
-    )
 
     class Meta:
         verbose_name = "lista"

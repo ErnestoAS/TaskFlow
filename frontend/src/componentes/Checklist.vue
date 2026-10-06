@@ -1,8 +1,10 @@
 <!--
   Checklist del detalle de una tarjeta (§4.6). Palomear, agregar, ordenar (arrastrando la manija) y
   quitar: permiso «Editar». Convertir un elemento en tarjeta enlazada: permiso «Crear» (lo hace
-  PanelTarjeta con el formulario). Un elemento convertido muestra en qué lista está su tarjeta y
-  se palomea solo al llegar a la lista elegida; la bandera cambia esa lista.
+  PanelTarjeta con el formulario). Un elemento convertido muestra en qué lista está su tarjeta.
+  Si hay alguno, debajo va «Lo que llega a [lista] cuenta como terminado» (2026-10-06): una lista
+  para toda la checklist, distinta de la de esta tarjeta; con ella, los convertidos se palomean
+  solos. «Ninguna» = a mano.
 -->
 <script setup lang="ts">
 import { computed, ref } from "vue";
@@ -29,8 +31,12 @@ const completa = computed(() => elementos.value.length > 0 && hechos.value === e
 const nuevo = ref("");
 const error = ref("");
 const ocupado = ref(false);
-/** Elemento cuya «lista que lo marca» se está cambiando, y la lista elegida ("" = a mano). */
-const termina = ref<{ id: number; lista: number | "" } | null>(null);
+const hayConvertidos = computed(() => elementos.value.some((e) => e.tarjeta));
+/** Las listas que se pueden elegir: todas menos la de esta tarjeta (sus hijas nacen ahí), salvo
+ * que ya fuera la elegida (la tarjeta se movió a ella después). */
+const opcionesTerminado = computed(() =>
+  props.pizarra.listas.filter((l) => l.id !== props.tarjeta.lista || l.id === props.tarjeta.lista_terminado),
+);
 
 async function enviar(ruta: string, metodo: "POST" | "PATCH" | "DELETE", datos?: unknown) {
   ocupado.value = true;
@@ -38,7 +44,8 @@ async function enviar(ruta: string, metodo: "POST" | "PATCH" | "DELETE", datos?:
     emit("actualizada", await api<Tarjeta>(ruta, metodo, datos));
     return true;
   } catch (e) {
-    error.value = e instanceof ErrorApi ? (e.campos.texto ?? e.message) : mensajeDeError(e);
+    error.value =
+      e instanceof ErrorApi ? (e.campos.texto ?? e.campos.lista_terminado ?? e.message) : mensajeDeError(e);
     return false;
   } finally {
     ocupado.value = false;
@@ -62,17 +69,14 @@ function alSoltar({ id, antesDe }: Soltado) {
   enviar(`tarjetas/${props.tarjeta.id}/checklist/orden/`, "POST", { ids });
 }
 
-function abrirTermina(e: ElementoChecklist) {
-  termina.value = termina.value?.id === e.id ? null : { id: e.id, lista: e.lista_terminado?.id ?? "" };
-}
-
-async function guardarTermina() {
-  if (!termina.value) return;
-  const { id, lista } = termina.value;
-  if (await enviar(`checklist/${id}/`, "PATCH", { lista_terminado: lista || null })) {
-    termina.value = null;
-    avisar("Se guardó cuándo se marca el elemento.");
-  }
+async function cambiarTerminado(ev: Event) {
+  error.value = "";
+  const select = ev.target as HTMLSelectElement;
+  const lista = select.value ? Number(select.value) : null;
+  if (await enviar(`tarjetas/${props.tarjeta.id}/`, "PATCH", { lista_terminado: lista })) {
+    const nombre = props.pizarra.listas.find((l) => l.id === lista)?.nombre;
+    avisar(nombre ? `Se marcó «${nombre}» como la lista de terminado.` : "Se pasó la checklist a palomeo manual.");
+  } else select.value = String(props.tarjeta.lista_terminado ?? "");
 }
 </script>
 
@@ -102,19 +106,7 @@ async function guardarTermina() {
           />
           <button class="enlace-tarjeta" @click="emit('abrir', e.tarjeta.id)">
             <span class="texto">{{ e.texto }}</span>
-            <small
-              ><Icono nombre="enlace" /> En «{{ e.tarjeta.lista_nombre }}» ·
-              {{ e.lista_terminado ? `se marca al pasar a «${e.lista_terminado.nombre}»` : "se palomea a mano" }}</small
-            >
-          </button>
-          <button
-            v-if="puedeEditar"
-            class="btn-icono"
-            :aria-label="`Cambiar cuándo se marca «${e.texto}»`"
-            title="Cambiar cuándo se marca"
-            @click="abrirTermina(e)"
-          >
-            <Icono nombre="bandera" />
+            <small><Icono nombre="enlace" /> En «{{ e.tarjeta.lista_nombre }}»</small>
           </button>
         </template>
         <template v-else>
@@ -142,29 +134,30 @@ async function guardarTermina() {
         >
           <Icono nombre="cerrarChico" />
         </button>
-        <form v-if="termina?.id === e.id" class="termina" novalidate @submit.prevent="guardarTermina">
-          <label :for="`termina-${e.id}`">Marcar como terminado cuando pase a</label>
-          <div class="linea">
-            <select :id="`termina-${e.id}`" v-model="termina.lista">
-              <option v-for="l in pizarra.listas" :key="l.id" :value="l.id">
-                {{ l.nombre }}{{ l.id === e.tarjeta?.lista ? " (aquí está ahora)" : "" }}
-              </option>
-              <option value="">Ninguna: lo palomeo a mano</option>
-            </select>
-            <button type="button" class="btn btn-chico btn-secundario" @click="termina = null">Cancelar</button>
-            <button type="submit" class="btn btn-chico btn-primario" :disabled="ocupado">Guardar</button>
-          </div>
-        </form>
       </li>
     </ul>
+    <div v-if="hayConvertidos" class="lista-terminado">
+      <Icono nombre="palomitaCirculo" />
+      <label for="lista-terminado">Lo que llega a</label>
+      <select
+        id="lista-terminado"
+        :value="tarjeta.lista_terminado ?? ''"
+        :disabled="!puedeEditar || ocupado"
+        @change="cambiarTerminado"
+      >
+        <option value="">ninguna (a mano)</option>
+        <option v-for="l in opcionesTerminado" :key="l.id" :value="l.id">{{ l.nombre }}</option>
+      </select>
+      <span>cuenta como terminado</span>
+    </div>
     <form v-if="puedeEditar" class="agregar-item" novalidate @submit.prevent="agregar">
       <input v-model="nuevo" type="text" maxlength="200" placeholder="Agregar elemento" aria-label="Agregar elemento a la checklist" />
       <button type="submit" class="btn btn-chico btn-secundario" :disabled="ocupado || !nuevo.trim()">Agregar</button>
     </form>
     <div v-if="error" class="error">{{ error }}</div>
     <div v-if="elementos.length && puedeCrear" class="ayuda">
-      Con <Icono nombre="enlace" /> conviertes un elemento en tarjeta enlazada; al convertirlo eliges a qué lista debe
-      llegar para marcarse como terminado.
+      Con <Icono nombre="enlace" /> conviertes un elemento en tarjeta enlazada; se palomea solo cuando esa tarjeta llega
+      a la lista que elijas en «Lo que llega a … cuenta como terminado».
     </div>
     <div v-else-if="!elementos.length && !puedeEditar" class="ayuda">Sin checklist.</div>
   </div>

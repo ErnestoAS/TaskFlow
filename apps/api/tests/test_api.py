@@ -185,9 +185,9 @@ def test_crear_y_listar_pizarras(cliente):
     r = _post(cliente, "/pizarras/", {"nombre": "Feria 2027"})
     assert r.status_code == 201 and r.json()["rol"] == "dueno"
     assert r.json()["permisos"]["eliminar"] is True
-    assert [lst["nombre"] for lst in r.json()["listas"]] == ["Pendiente", "En curso", "Finalizada"]
+    assert r.json()["listas"] == []  # nace vacía: las listas las elige el usuario
     resumen = next(p for p in cliente.get(f"{API}/pizarras/").json() if p["nombre"] == "Feria 2027")
-    assert resumen["conteos"] == {"tarjetas": 0, "listas": 3, "mias": 0, "vencidas": 0}
+    assert resumen["conteos"] == {"tarjetas": 0, "listas": 0, "mias": 0, "vencidas": 0}
 
 
 def test_pizarra_ajena_es_404(pizarra, listas, client, crear_usuario):
@@ -242,30 +242,31 @@ def test_conteos_de_mis_pizarras(cliente, pizarra, dueno, listas):
     st.crear_tarjeta(pizarra, dueno, titulo="mía", asignados=[dueno])
     vieja = datetime.date(2020, 1, 1)
     st.crear_tarjeta(pizarra, dueno, titulo="vencida", fecha_inicio=vieja, fecha_fin=vieja)
+    # Sin listas de cierre (2026-10-06): con la fecha pasada sale vencida esté donde esté.
     st.crear_tarjeta(
         pizarra,
         dueno,
-        titulo="cerrada",
+        titulo="en Finalizada",
         lista=listas["Finalizada"],
         fecha_inicio=vieja,
         fecha_fin=vieja,
     )
     (p,) = cliente.get(f"{API}/pizarras/").json()
-    assert p["conteos"] == {"tarjetas": 3, "listas": 3, "mias": 1, "vencidas": 1}
+    assert p["conteos"] == {"tarjetas": 3, "listas": 3, "mias": 1, "vencidas": 2}
 
 
 # --- listas -------------------------------------------------------------------------------------
 
 
-def test_listas_crear_renombrar_cierre_ordenar_y_eliminar(cliente, pizarra, listas):
+def test_listas_crear_renombrar_ordenar_y_eliminar(cliente, pizarra, listas):
     r = _post(cliente, f"/pizarras/{pizarra.pk}/listas/", {"nombre": "Ideas"})
     assert r.status_code == 201
     ideas = next(lst for lst in r.json()["listas"] if lst["nombre"] == "Ideas")
     r = _post(cliente, f"/pizarras/{pizarra.pk}/listas/", {"nombre": "ideas"})
     assert r.status_code == 400 and "nombre" in r.json()
-    r = _patch(cliente, f"/listas/{ideas['id']}/", {"nombre": "Lluvia de ideas", "es_cierre": True})
+    r = _patch(cliente, f"/listas/{ideas['id']}/", {"nombre": "Lluvia de ideas"})
     cambiada = next(lst for lst in r.json()["listas"] if lst["id"] == ideas["id"])
-    assert cambiada["nombre"] == "Lluvia de ideas" and cambiada["es_cierre"] is True
+    assert cambiada == {**cambiada, "nombre": "Lluvia de ideas"} and "es_cierre" not in cambiada
     ids = [ideas["id"], *(lst.pk for lst in listas.values())]
     r = _post(cliente, f"/pizarras/{pizarra.pk}/listas/orden/", {"ids": ids})
     assert [lst["id"] for lst in r.json()["listas"]] == ids
@@ -365,7 +366,7 @@ def test_ciclo_de_una_tarjeta(cliente, pizarra, dueno, listas):
     )
     assert r.status_code == 201, r.json()
     t = r.json()
-    assert (t["descripcion"], t["lista_nombre"], t["en_cierre"]) == ("", "En curso", False)
+    assert (t["descripcion"], t["lista_nombre"], t["lista_terminado"]) == ("", "En curso", None)
     assert (t["fecha_inicio"], t["fecha_fin"], t["tipos"]) == (
         "2026-10-01",
         "2026-10-20",
@@ -375,7 +376,7 @@ def test_ciclo_de_una_tarjeta(cliente, pizarra, dueno, listas):
         {**t["historial"][0], "de": None, "a": "En curso", "nota": None},
     ]
     r = _post(cliente, f"/tarjetas/{t['id']}/mover/", {"lista": listas["Finalizada"].pk})
-    assert r.json()["lista_nombre"] == "Finalizada" and r.json()["en_cierre"] is True
+    assert r.json()["lista_nombre"] == "Finalizada"
     assert len(r.json()["historial"]) == 2
     r = _patch(cliente, f"/tarjetas/{t['id']}/", {"titulo": "Auditorio central", "fecha_fin": None})
     assert r.json()["titulo"] == "Auditorio central" and r.json()["fecha_fin"] is None
@@ -423,16 +424,18 @@ def test_tarjeta_ajena_es_404_y_sin_permiso_es_403(
 def test_mover_a_lista_de_otra_pizarra_es_400(cliente, pizarra, dueno):
     t = st.crear_tarjeta(pizarra, dueno, titulo="a")
     otra = sp.crear_pizarra(dueno, "Otra")
-    r = _post(cliente, f"/tarjetas/{t.pk}/mover/", {"lista": otra.listas.first().pk})
+    ajena = sp.crear_lista(otra, dueno, "Pendiente")
+    r = _post(cliente, f"/tarjetas/{t.pk}/mover/", {"lista": ajena.pk})
     assert r.status_code == 400 and "lista" in r.json()
 
 
-def test_mis_tarjetas_sin_las_de_listas_de_cierre(cliente, pizarra, dueno, listas):
+def test_mis_tarjetas_son_las_asignadas_en_cualquier_lista(cliente, pizarra, dueno, listas):
     st.crear_tarjeta(pizarra, dueno, titulo="mía", asignados=[dueno])
     st.crear_tarjeta(pizarra, dueno, titulo="de nadie")
-    hecha = st.crear_tarjeta(pizarra, dueno, titulo="hecha", asignados=[dueno])
-    st.mover_tarjeta(hecha, dueno, listas["Finalizada"])
-    assert [t["titulo"] for t in cliente.get(f"{API}/yo/tarjetas/").json()] == ["mía"]
+    otra = st.crear_tarjeta(pizarra, dueno, titulo="otra mía", asignados=[dueno])
+    st.mover_tarjeta(otra, dueno, listas["Finalizada"])  # ninguna lista la saca (2026-10-06)
+    titulos = {t["titulo"] for t in cliente.get(f"{API}/yo/tarjetas/").json()}
+    assert titulos == {"mía", "otra mía"}
 
 
 # --- checklist ----------------------------------------------------------------------------------
@@ -446,11 +449,7 @@ def test_checklist_y_conversion_enlazada(cliente, pizarra, dueno, listas):
     salas, imprimir = (e["id"] for e in cliente.get(f"{API}/tarjetas/{t.pk}/").json()["checklist"])
     r = _patch(cliente, f"/checklist/{imprimir}/", {"hecho": True})
     assert r.json()["checklist_conteo"] == {"hechos": 1, "total": 2}
-    r = _post(
-        cliente,
-        f"/checklist/{salas}/convertir/",
-        {"prioridad": "alta", "lista_terminado": listas["En curso"].pk},
-    )
+    r = _post(cliente, f"/checklist/{salas}/convertir/", {"prioridad": "alta"})
     assert r.status_code == 201
     padre, nueva = r.json()["tarjeta"], r.json()["nueva"]
     elemento = next(e for e in padre["checklist"] if e["id"] == salas)
@@ -460,15 +459,19 @@ def test_checklist_y_conversion_enlazada(cliente, pizarra, dueno, listas):
         "lista": listas["Pendiente"].pk,
         "lista_nombre": "Pendiente",
     }
-    assert elemento["lista_terminado"]["nombre"] == "En curso" and elemento["automatico"]
+    assert padre["lista_terminado"] is None and not elemento["automatico"]
     assert nueva["viene_de"] == {"id": t.pk, "titulo": "Programa", "elemento": "Asignar salas"}
-    # Se palomea solo cuando su tarjeta llega a «En curso».
+    # «Lo que llega a En curso cuenta como terminado», para toda la checklist; no la propia.
+    r = _patch(cliente, f"/tarjetas/{t.pk}/", {"lista_terminado": listas["Pendiente"].pk})
+    assert r.status_code == 400 and "lista_terminado" in r.json()
+    r = _patch(cliente, f"/tarjetas/{t.pk}/", {"lista_terminado": listas["En curso"].pk})
+    assert r.json()["lista_terminado"] == listas["En curso"].pk
     _post(cliente, f"/tarjetas/{nueva['id']}/mover/", {"lista": listas["En curso"].pk})
     padre = cliente.get(f"{API}/tarjetas/{t.pk}/").json()
     assert padre["checklist_conteo"] == {"hechos": 2, "total": 2}
     assert _patch(cliente, f"/checklist/{salas}/", {"hecho": False}).status_code == 400
     # A palomeo manual, conservando el estado.
-    r = _patch(cliente, f"/checklist/{salas}/", {"lista_terminado": None})
+    r = _patch(cliente, f"/tarjetas/{t.pk}/", {"lista_terminado": None})
     elemento = next(e for e in r.json()["checklist"] if e["id"] == salas)
     assert elemento["hecho"] is True and elemento["automatico"] is False
     r = _post(cliente, f"/tarjetas/{t.pk}/checklist/orden/", {"ids": [imprimir, salas]})
@@ -476,12 +479,13 @@ def test_checklist_y_conversion_enlazada(cliente, pizarra, dueno, listas):
     assert cliente.delete(f"{API}/checklist/{imprimir}/").status_code == 200
 
 
-def test_convertir_sin_lista_usa_la_de_cierre(cliente, pizarra, dueno, listas):
+def test_convertir_usa_la_lista_de_terminado_de_la_tarjeta(cliente, pizarra, dueno, listas):
     t = st.crear_tarjeta(pizarra, dueno, titulo="Programa")
+    st.editar_tarjeta(t, dueno, lista_terminado=listas["Finalizada"].pk)
     e = st.agregar_elemento(t, dueno, "Imprimir")
     r = _post(cliente, f"/checklist/{e.pk}/convertir/")
     elemento = r.json()["tarjeta"]["checklist"][0]
-    assert elemento["lista_terminado"] == {"id": listas["Finalizada"].pk, "nombre": "Finalizada"}
+    assert elemento["automatico"] and not elemento["hecho"]
     r = _post(cliente, f"/checklist/{e.pk}/convertir/")
     assert r.status_code == 400  # ya convertido
 

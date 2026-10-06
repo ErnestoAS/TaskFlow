@@ -1,6 +1,6 @@
 <!--
-  Opciones de una lista (§4.6): renombrar, marcar como lista de cierre, moverla a la izquierda o a la
-  derecha y eliminarla (solo vacía). Permiso «Gestionar listas». Cada cambio devuelve la pizarra.
+  Opciones de una lista (§4.6): renombrar, moverla a la izquierda o a la derecha y eliminarla (solo
+  vacía). Permiso «Gestionar listas». Cada cambio devuelve la pizarra.
 -->
 <script setup lang="ts">
 import { computed, ref } from "vue";
@@ -46,16 +46,6 @@ async function renombrar() {
   await enviar(`listas/${props.lista.id}/`, "PATCH", { nombre: nombre.value.trim() }, "Se renombró la lista.");
 }
 
-function alternarCierre() {
-  const cierre = !actual.value.es_cierre;
-  enviar(
-    `listas/${props.lista.id}/`,
-    "PATCH",
-    { es_cierre: cierre },
-    cierre ? `«${actual.value.nombre}» ahora es lista de cierre.` : `«${actual.value.nombre}» dejó de ser lista de cierre.`,
-  );
-}
-
 function mover(paso: -1 | 1) {
   const ids = props.pizarra.listas.map((l) => l.id);
   const [id] = ids.splice(indice.value, 1);
@@ -79,19 +69,6 @@ async function eliminar() {
         <button type="submit" class="btn btn-primario" :disabled="ocupado">Guardar</button>
       </div>
     </form>
-    <div class="campo">
-      <span class="etiqueta">Lista de cierre</span>
-      <div class="opciones-filtro">
-        <label
-          ><input type="checkbox" :checked="actual.es_cierre" :disabled="ocupado" @change="alternarCierre" />Lo que llega
-          aquí cuenta como terminado</label
-        >
-      </div>
-      <div class="ayuda">
-        Sus tarjetas ya no salen vencidas ni en «Mis tarjetas». Puede haber más de una (p. ej. «Finalizada» y
-        «Cancelada»).
-      </div>
-    </div>
     <div class="campo">
       <span class="etiqueta">Orden en la pizarra</span>
       <div class="fila-botones">

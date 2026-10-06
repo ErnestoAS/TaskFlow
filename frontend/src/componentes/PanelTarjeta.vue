@@ -3,8 +3,9 @@
   - ver: lista (cambiarla con un toque), prioridad, tipos, descripción, fechas, checklist,
     asignados e historial; «Viene de» si nació de la checklist de otra tarjeta;
   - editar: alta (con `tarjetaId` null, en `listaInicial`) o edición;
-  - convertir: alta de una tarjeta enlazada a un elemento de la checklist (§4.6), con
-    «Marcar como terminado cuando pase a».
+  - convertir: alta de una tarjeta enlazada a un elemento de la checklist (§4.6). Cuándo se
+    palomea solo lo dice la checklist de la tarjeta original («Lo que llega a … cuenta como
+    terminado»), no cada conversión.
   Lo que el usuario no puede hacer no se muestra o queda deshabilitado según los permisos que le
   dio el dueño (pizarra.permisos; todo en falso si la pizarra está archivada).
 -->
@@ -44,10 +45,6 @@ const puede = computed(() => p.value.permisos);
 const tiposDe = computed(() => p.value.tipos.filter((tp) => tarjeta.value?.tipos.includes(tp.id)));
 const historial = computed(() => tarjeta.value?.historial ?? []);
 const faltanPermisos = computed(() => !puede.value.mover || !puede.value.editar || !puede.value.eliminar);
-/** Al convertir, la lista que marca el elemento como hecho: la de cierre o, si no hay, la última. */
-const listaTerminadoSugerida = computed(
-  () => (p.value.listas.find((l) => l.es_cierre) ?? p.value.listas[p.value.listas.length - 1])?.id ?? "",
-);
 
 const form = reactive({
   titulo: "",
@@ -58,7 +55,6 @@ const form = reactive({
   fecha_fin: "",
   tipos: [] as number[],
   asignados: [] as number[],
-  lista_terminado: "" as number | "",
 });
 
 function llenarForm(t: Tarjeta | null) {
@@ -103,14 +99,12 @@ function convertir(e: ElementoChecklist) {
   form.titulo = e.texto;
   form.lista = t.lista;
   form.asignados = t.asignados.map((u) => u.id);
-  form.lista_terminado = listaTerminadoSugerida.value;
   elemento.value = e;
   modo.value = "convertir";
 }
 
 function datosForm() {
-  const { lista_terminado, ...datos } = form;
-  return { ...datos, titulo: form.titulo.trim(), fecha_fin: form.fecha_fin || null, lista_terminado };
+  return { ...form, titulo: form.titulo.trim(), fecha_fin: form.fecha_fin || null };
 }
 
 async function guardar() {
@@ -122,12 +116,11 @@ async function guardar() {
   }
   ocupado.value = true;
   try {
-    const { lista_terminado, lista, ...datos } = datosForm();
+    const { lista, ...datos } = datosForm();
     if (modo.value === "convertir" && elemento.value) {
       const r = await api<{ tarjeta: Tarjeta; nueva: Tarjeta }>(`checklist/${elemento.value.id}/convertir/`, "POST", {
         ...datos,
         lista,
-        lista_terminado: lista_terminado || null,
       });
       tarjeta.value = r.tarjeta;
       elemento.value = null;
@@ -208,6 +201,15 @@ const titulo = computed(() => {
 
     <!-- Detalle -->
     <template v-else-if="modo === 'ver' && tarjeta">
+      <!-- Arriba y no al final: el historial crece y las dejaría cada vez más lejos (2026-10-06). -->
+      <div v-if="puede.editar || puede.eliminar" class="acciones-detalle">
+        <button v-if="puede.editar" class="btn btn-chico btn-secundario" @click="editar">
+          <Icono nombre="lapiz" />Editar
+        </button>
+        <button v-if="puede.eliminar" class="btn btn-chico btn-peligro" @click="eliminar">
+          <Icono nombre="basura" />Eliminar
+        </button>
+      </div>
       <div v-if="tarjeta.viene_de" class="viene-de">
         <Icono nombre="enlace" />
         <span
@@ -289,10 +291,6 @@ const titulo = computed(() => {
         </ul>
         <div class="ayuda">Ordenarla dentro de la misma lista no se registra.</div>
       </div>
-      <div v-if="puede.editar || puede.eliminar" class="fila-botones">
-        <button v-if="puede.editar" class="btn btn-secundario" @click="editar">Editar</button>
-        <button v-if="puede.eliminar" class="btn btn-chico btn-peligro" @click="eliminar">Eliminar</button>
-      </div>
       <div class="meta">
         <span>Pizarra: {{ p.nombre }}</span>
         <span>Creada{{ tarjeta.creada_por ? ` por ${tarjeta.creada_por.nombre}` : "" }} el {{ fechaHora(tarjeta.creado_en) }}</span>
@@ -322,19 +320,6 @@ const titulo = computed(() => {
         </select>
         <div class="ayuda">Se agrega al final de la lista.</div>
         <div v-if="errores.lista" class="error">{{ errores.lista }}</div>
-      </div>
-      <div v-if="modo === 'convertir'" class="campo">
-        <label for="f-termina">Marcar como terminado cuando pase a</label>
-        <select id="f-termina" v-model="form.lista_terminado">
-          <option v-for="l in p.listas" :key="l.id" :value="l.id">{{ l.nombre }}</option>
-          <option value="">Ninguna: lo palomeo a mano</option>
-        </select>
-        <div class="ayuda">
-          Cuando esta tarjeta llegue a esa lista, «{{ elemento?.texto }}» se palomea solo en la checklist de «{{
-            tarjeta?.titulo
-          }}».
-        </div>
-        <div v-if="errores.lista_terminado" class="error">{{ errores.lista_terminado }}</div>
       </div>
       <div class="campo">
         <label for="f-desc">Descripción <span class="opcional">(opcional)</span></label>

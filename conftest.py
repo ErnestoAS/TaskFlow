@@ -36,10 +36,14 @@ def dueno(crear_usuario):
 
 @pytest.fixture
 def pizarra(dueno):
-    """Pizarra de `dueno` con las listas iniciales: Pendiente, En curso y Finalizada (cierre)."""
-    from apps.pizarras.servicios import crear_pizarra
+    """Pizarra de `dueno` con tres listas: Pendiente, En curso y Finalizada. Una pizarra nace
+    vacía (2026-10-06); estas las agrega la prueba, como lo haría el usuario."""
+    from apps.pizarras.servicios import crear_lista, crear_pizarra
 
-    return crear_pizarra(dueno, "Semana de la Ciencia")
+    p = crear_pizarra(dueno, "Semana de la Ciencia")
+    for nombre in ("Pendiente", "En curso", "Finalizada"):
+        crear_lista(p, dueno, nombre)
+    return p
 
 
 @pytest.fixture

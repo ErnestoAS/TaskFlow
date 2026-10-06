@@ -83,6 +83,18 @@ class Tarjeta(TimeStampedModel):
         on_delete=models.SET_NULL,
         related_name="tarjetas_creadas",
     )
+    # Para las tarjetas que nacieron de su checklist (2026-10-06): cuando una llega a esta lista,
+    # su elemento se palomea solo. Una por tarjeta, no por elemento ni por lista de la pizarra:
+    # «terminado» depende de lo que se esté siguiendo, no es una propiedad de la lista.
+    lista_terminado = models.ForeignKey(
+        "pizarras.Lista",
+        verbose_name="lo que llega a esta lista cuenta como terminado",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="+",
+        help_text="Vacía: los elementos de la checklist se palomean a mano.",
+    )
 
     class Meta:
         verbose_name = "tarjeta"
@@ -147,8 +159,8 @@ class Movimiento(models.Model):
 class ElementoChecklist(TimeStampedModel):
     """
     Un renglón de la checklist de una tarjeta (§4.6). Se puede convertir en una tarjeta enlazada
-    (`tarjeta_creada`); entonces `lista_terminado` dice en qué lista se da por hecho: el elemento
-    está hecho cuando su tarjeta está en esa lista. Sin `lista_terminado`, se palomea a mano.
+    (`tarjeta_creada`); entonces, si la tarjeta de la checklist tiene `lista_terminado`, el
+    elemento está hecho cuando su tarjeta está en esa lista. Si no, se palomea a mano.
     """
 
     tarjeta = models.ForeignKey(
@@ -166,14 +178,6 @@ class ElementoChecklist(TimeStampedModel):
         on_delete=models.SET_NULL,
         related_name="elemento_origen",
     )
-    lista_terminado = models.ForeignKey(
-        "pizarras.Lista",
-        verbose_name="se marca al pasar a",
-        null=True,
-        blank=True,
-        on_delete=models.SET_NULL,
-        related_name="+",
-    )
 
     class Meta:
         verbose_name = "elemento de checklist"
@@ -185,11 +189,11 @@ class ElementoChecklist(TimeStampedModel):
 
     @property
     def automatico(self) -> bool:
-        """Se palomea solo: convertido en tarjeta y con lista elegida."""
-        return bool(self.tarjeta_creada_id and self.lista_terminado_id)
+        """Se palomea solo: convertido en tarjeta y con lista elegida en su tarjeta."""
+        return bool(self.tarjeta_creada_id and self.tarjeta.lista_terminado_id)
 
     @property
     def esta_hecho(self) -> bool:
         if self.automatico:
-            return self.tarjeta_creada.lista_id == self.lista_terminado_id
+            return self.tarjeta_creada.lista_id == self.tarjeta.lista_terminado_id
         return self.hecho

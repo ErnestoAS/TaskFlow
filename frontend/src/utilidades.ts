@@ -59,17 +59,14 @@ export function fechaHora(iso: string): string {
 
 export type EstadoFecha = { clase: "vencida" | "por-vencer" | "fecha"; texto: string } | null;
 
-/** Una tarjeta en lista de cierre cuenta como terminada: nunca sale vencida (§4.6). */
-export function estadoFecha(t: Pick<Tarjeta, "fecha_fin" | "en_cierre">): EstadoFecha {
+/** Sin listas de cierre (2026-10-06): con fecha límite pasada sale vencida, esté en la lista que esté. */
+export function estadoFecha(t: Pick<Tarjeta, "fecha_fin">): EstadoFecha {
   if (!t.fecha_fin) return null;
   const dias = diasHasta(t.fecha_fin);
-  if (!t.en_cierre) {
-    if (dias < 0) return { clase: "vencida", texto: `Vencida · ${fechaCorta(t.fecha_fin)}` };
-    if (dias === 0) return { clase: "por-vencer", texto: "Vence hoy" };
-    if (dias === 1) return { clase: "por-vencer", texto: "Vence mañana" };
-  }
+  if (dias < 0) return { clase: "vencida", texto: `Vencida · ${fechaCorta(t.fecha_fin)}` };
+  if (dias === 0) return { clase: "por-vencer", texto: "Vence hoy" };
+  if (dias === 1) return { clase: "por-vencer", texto: "Vence mañana" };
   return { clase: "fecha", texto: fechaCorta(t.fecha_fin) };
 }
 
-export const esVencida = (t: Pick<Tarjeta, "fecha_fin" | "en_cierre">) =>
-  !!t.fecha_fin && !t.en_cierre && diasHasta(t.fecha_fin) < 0;
+export const esVencida = (t: Pick<Tarjeta, "fecha_fin">) => !!t.fecha_fin && diasHasta(t.fecha_fin) < 0;

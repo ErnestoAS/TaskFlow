@@ -1,10 +1,10 @@
 # TaskFlow
 
 Gestor de tarjetas para organizar actividades. Las tarjetas viven en **pizarras** (antes
-«proyectos»), en **listas** con nombre libre (algunas «de cierre»: lo que llega ahí cuenta como
-terminado). Cada tarjeta tiene título, descripción opcional, fecha de inicio, fecha límite opcional,
-cero o más asignados, prioridad, tipos y una checklist cuyos elementos se pueden convertir en
-tarjetas enlazadas.
+«proyectos»), en **listas** con nombre libre que arma cada pizarra (nace sin listas). Cada tarjeta
+tiene título, descripción opcional, fecha de inicio, fecha límite opcional, cero o más asignados,
+prioridad, tipos y una checklist cuyos elementos se pueden convertir en tarjetas enlazadas; la
+tarjeta elige en qué lista esas tarjetas cuentan como terminadas.
 
 - Stack: Python 3.13 · Django 5.2 LTS · DRF · PostgreSQL 18 · uv · Docker. PWA en `frontend/`:
   Vue 3 + Vite + TypeScript. Mismas convenciones que mi-campus.
@@ -28,10 +28,12 @@ tarjetas enlazadas.
 - **Estado actual:** Etapas 1–3 listas: backend (pizarras, miembros, permisos, invitaciones,
   tipos e historial; §4.5), API `/api/v1/` (§6), PWA en `/app/` y portada de instalación en `/`
   (§5), más correo verificado con código, recuperación de contraseña y apellidos separados (§4.3,
-  §7), y la **Etapa 3.6**: «proyecto» → «pizarra» en todo el sistema, listas libres, listas de cierre,
+  §7), y la **Etapa 3.6**: «proyecto» → «pizarra» en todo el sistema, listas libres, listas de cierre (quitadas después),
   arrastrar y soltar, checklist enlazada, descripción opcional y fecha de inicio (§4.4–§4.6).
-  **En producción: `90939ed` desde 2026-10-05** (todo lo anterior). Ver «Pasos propios» en
-  docs/operacion.md antes de desplegar.
+  **En producción: `90939ed` desde 2026-10-05** (todo lo anterior). **Sin desplegar (2026-10-06,
+  Etapa 3.7):** pizarra nueva sin listas, sin listas de cierre, «Lo que llega a … cuenta como
+  terminado» una por tarjeta bajo su checklist, y «Editar»/«Eliminar» arriba del detalle. Ver
+  «Pasos propios» en docs/operacion.md antes de desplegar.
 - **Las reglas de negocio viven en `apps/<app>/servicios.py`.** Toda acción (también la API)
   pasa por esas funciones; nunca cambiar `Tarjeta.lista` (ni su `posicion`) directamente, sino con
   `tarjetas.servicios.mover_tarjeta`, para que quede en el historial (`Movimiento`).
@@ -148,8 +150,8 @@ Patrón único: **punto** con el color base, **texto** con la variante `-text` y
 |---|---|
 | Nombre de una lista (`.chip.nombre-lista`) | `--tf-primary-soft` / `--tf-primary`: neutro, las listas no tienen color |
 | Prioridad baja · media · alta · urgente | `--tf-priority-{low,medium,high,urgent}*` (gris claro · gris · ámbar · rojo) |
-| Checklist completa (`.chip.avance-checklist.completo`), marca de lista de cierre | `--tf-success*` (verde) |
-| Vencida (fecha límite pasada, fuera de una lista de cierre) | `--tf-danger*` |
+| Checklist completa (`.chip.avance-checklist.completo`), ícono de «Lo que llega a … cuenta como terminado» (`.lista-terminado`) | `--tf-success*` (verde) |
+| Vencida (fecha límite pasada, en cualquier lista) | `--tf-danger*` |
 | Vence hoy / mañana | `--tf-warning*` |
 | Tipo de tarjeta | color del usuario (`--tipo` en línea, mezclado con `color-mix()`) |
 
@@ -163,7 +165,7 @@ autocontenido por maqueta, con datos inventados y sin backend: se abre con doble
 
 | Archivo | Qué explora |
 |---|---|
-| `app-v3.html` | **Aprobada e implementada** (2026-10-05). Pizarras (antes «proyectos») con listas libres (estilo Trello) en lugar de los tres estatus: tablero con desplazamiento horizontal, agregar/renombrar/ordenar/eliminar listas, arrastrar y soltar (en teléfono, mantener presionada), cambio de lista con un toque en el detalle, historial de movimientos, permisos «Mover» y «Gestionar listas», listas de cierre, checklist con elementos convertibles en tarjetas enlazadas, descripción opcional. Colores de `tema.css` (navy + petróleo). |
+| `app-v3.html` | **Aprobada e implementada** (2026-10-05). Pizarras (antes «proyectos») con listas libres (estilo Trello) en lugar de los tres estatus: tablero con desplazamiento horizontal, agregar/renombrar/ordenar/eliminar listas, arrastrar y soltar (en teléfono, mantener presionada), cambio de lista con un toque en el detalle, historial de movimientos, permisos «Mover» y «Gestionar listas», checklist con elementos convertibles en tarjetas enlazadas, descripción opcional. Colores de `tema.css` (navy + petróleo). Ajustes 2026-10-06: «Editar» y «Eliminar» arriba del detalle (§5); pizarra nueva sin listas, sin listas de cierre y «Lo que llega a … cuenta como terminado» bajo la checklist (§4.6). |
 | `app-v2.html` | **Implementada** (con colores cambiados después: navy + petróleo, botón principal navy; ver docs/identidad-visual.md). Igual que v1 con la paleta navy + coral, el logo, la **prioridad** (badge, selector en el formulario, indicador lateral para urgente y orden por prioridad) y barra lateral navy en computadora. |
 | `instalacion-v2.html` | **Implementada** (sin la ilustración del teléfono y con los colores nuevos). Portada de instalación con la paleta navy + coral y el logo. |
 | `app-v1.html` | *(Reemplazada por v2; se conserva como referencia.)* PWA: mis proyectos (activos y archivados), tablero por estatus (pestañas en teléfono, tres columnas en computadora), detalle y edición de tarjeta, nueva tarjeta, miembros con permisos por persona, invitaciones, transferir/archivar/eliminar proyecto, «Mis tarjetas» y perfil. El escaparate cambia vista, usuario (Ana, dueña / Luis, miembro) y la fecha «de hoy». |
@@ -224,18 +226,20 @@ el detalle», orden por prioridad, permiso «cambiar estatus» y «proyecto».
 ### Decisiones de `app-v3.html` *(aprobadas e implementadas 2026-10-05; diseño en §4.6 de la propuesta)*
 
 - **Sin estatus:** cada pizarra tiene sus **listas** con nombre libre; una pizarra nueva empieza
-  con «Pendiente», «En curso» y «Finalizada» (de cierre), editables. Las listas no tienen color.
-- **Listas de cierre** *(2026-10-05)*: cualquier lista se puede marcar como «de cierre» (puede
-  haber varias); «Finalizada» nace así. Sus tarjetas cuentan como terminadas: no salen vencidas ni
-  en «Mis tarjetas». Se marca con una palomita junto al nombre de la lista.
+  **sin listas** *(2026-10-06; antes nacía con «Pendiente», «En curso» y «Finalizada»)* y el
+  tablero invita a agregar la primera. Las listas no tienen color.
+- **Sin listas de cierre** *(quitadas 2026-10-06; existieron desde 2026-10-05)*: ninguna lista
+  significa «terminado»; una tarjeta con fecha pasada sale vencida en cualquier lista y «Mis
+  tarjetas» muestra todas las asignadas.
 - **Descripción opcional** *(2026-10-05)*: una tarjeta se crea con el puro título.
 - **Checklist** *(2026-10-05)*: una por tarjeta; indicador «3/5» en el tablero (verde completa) y
   barra de avance en el detalle. Palomear, agregar y quitar = permiso «Editar». Cada elemento se
   puede **convertir en tarjeta** (permiso «Crear»): formulario prellenado, misma pizarra, y quedan
-  enlazadas («Viene de la checklist de …» / «En «En curso» · se marca al pasar a …»). Al
-  convertir se elige **«Marcar como terminado cuando pase a»** una de las listas de la pizarra
-  (preseleccionada la de cierre; o «Ninguna» para palomeo manual): el elemento se palomea solo
-  cuando su tarjeta está en esa lista. Se cambia después con el botón de bandera del elemento.
+  enlazadas («Viene de la checklist de …» / «En «En curso»»). *(2026-10-06)* Debajo de la
+  checklist, solo si algún elemento ya es tarjeta: **«Lo que llega a [combo] cuenta como
+  terminado»**, una lista para toda la checklist (sin ofrecer la lista donde está la propia
+  tarjeta; «ninguna» = a mano). Los elementos convertidos se palomean solos cuando su tarjeta
+  está en esa lista. Ya no se pregunta al convertir ni hay botón de bandera por elemento.
 - **Mover:** arrastrar y soltar en computadora y en teléfono (en teléfono, **mantener presionada**
   para levantarla; cerca del borde pasa sola a la lista de al lado). En el detalle, botones con las
   listas para cambiarla de lista con un toque (queda al final). Sin selector de posición: el orden

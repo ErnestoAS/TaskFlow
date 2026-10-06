@@ -28,7 +28,7 @@
   --tf-danger:#dc2626;  --tf-danger-text:#b91c1c;  --tf-danger-soft:#fef2f2;
   --tf-warning:#d97706; --tf-warning-text:#b45309; --tf-warning-soft:#fffbeb;
 
-  /* Éxito (checklist completa, lista de cierre). Al implementar reemplaza a --tf-status-done*. */
+  /* Éxito (checklist completa, «Lo que llega a … cuenta como terminado»). Al implementar reemplaza a --tf-status-done*. */
   --tf-success:#16a34a; --tf-success-text:#15803d; --tf-success-soft:#ecfdf5;
 
   /* Prioridades */
@@ -285,12 +285,14 @@ svg{flex-shrink:0}
 .enlace-tarjeta .texto{color:var(--tf-accent-text);font-weight:600}
 .checklist li.hecho .enlace-tarjeta .texto{color:var(--tf-text-muted)}
 .enlace-tarjeta small{font-size:12px;color:var(--tf-text-muted);display:inline-flex;gap:3px;align-items:center}
+.lista-terminado{display:flex;align-items:center;flex-wrap:wrap;gap:6px;margin-top:10px;padding:10px 12px;border-radius:var(--tf-radius-btn);background:var(--tf-bg);font-size:13.5px;color:var(--tf-text)}
+.lista-terminado svg{color:var(--tf-success-text)}
+.campo .lista-terminado select{width:auto;flex:0 1 auto;border:1px solid var(--tf-border);border-radius:var(--tf-radius-btn);padding:6px 9px;background:var(--tf-surface);font-size:13.5px;max-width:100%}
 .agregar-item{display:flex;gap:8px}
 .agregar-item input{flex:1;min-width:0;border:1px solid var(--tf-border);border-radius:var(--tf-radius-btn);padding:8px 11px;background:var(--tf-surface);font-size:14px}
 .agregar-item input:focus{outline:none;border-color:var(--tf-accent);box-shadow:0 0 0 3px var(--tf-accent-soft)}
 .viene-de{display:flex;align-items:center;gap:8px;background:var(--tf-primary-soft);color:var(--tf-primary);border-radius:10px;padding:8px 11px;font-size:13px;margin-bottom:14px}
 .viene-de button{border:0;background:transparent;color:var(--tf-primary);font-weight:700;padding:0;text-decoration:underline;text-underline-offset:2px}
-.marca-cierre{color:var(--tf-success-text);display:inline-flex}
 .velo.sin-animacion,.velo.sin-animacion .hoja{animation:none}
 
 /* Dos campos lado a lado (fecha de inicio y fecha límite). */
@@ -331,6 +333,8 @@ label.persona:hover{background:var(--tf-bg)}
 .historial .cuando{display:block;font-size:12px;color:var(--tf-text-muted)}
 .historial .chip{font-size:11px;padding:1px 8px}
 .meta{display:flex;flex-direction:column;gap:4px;font-size:12.5px;color:var(--tf-text-muted);border-top:1px solid var(--tf-border);padding-top:12px;margin-top:6px}
+.acciones-detalle{display:flex;gap:8px;margin:-4px 0 16px}
+.acciones-detalle .btn-peligro{margin-left:auto}
 .fila-botones{display:flex;gap:8px;margin-top:8px}
 .fila-botones .btn{flex:1}
 
@@ -415,6 +419,8 @@ const I = {
   checklist:'<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="4"/><path d="m8 12 3 3 5-6"/></svg>',
   palomitaCirculo:'<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="m8 12 3 3 5-6"/></svg>',
   cerrarChico:'<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>',
+  lapiz:'<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4L19 9a2.8 2.8 0 0 0-4-4L4 16z"/><path d="m13.5 6.5 4 4"/></svg>',
+  basura:'<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12M9 7V4h6v3"/></svg>',
   bandera:'<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 21V4M5 4h11l-2 4 2 4H5"/></svg>',
   izq:'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>',
   der:'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>',
@@ -434,15 +440,15 @@ const usuarios = {
 const proyectos = [
   {id:1, nombre:'Semana de la Ciencia 2026', dueno:'ana', miembros:['ana','luis','maria'], archivado:false,
    permisos:{luis:{crear:true, editar:true, mover:true, eliminar:false, listas:true, tipos:true}, maria:{crear:true, editar:false, mover:true, eliminar:false, listas:false, tipos:false}},
-   listas:[{id:11, nombre:'Ideas'}, {id:12, nombre:'Pendiente'}, {id:13, nombre:'En curso'}, {id:14, nombre:'Revisión con dirección'}, {id:15, nombre:'Finalizada', cierre:true}],
+   listas:[{id:11, nombre:'Ideas'}, {id:12, nombre:'Pendiente'}, {id:13, nombre:'En curso'}, {id:14, nombre:'Revisión con dirección'}, {id:15, nombre:'Finalizada'}],
    tipos:[{id:1, nombre:'Logística', color:'#0ea5e9'}, {id:2, nombre:'Difusión', color:'#ec4899'}, {id:3, nombre:'Académico', color:'#6366f1'}]},
   {id:2, nombre:'Mantenimiento del laboratorio', dueno:'luis', miembros:['luis','ana','jorge'], archivado:false,
    permisos:{ana:{crear:true, editar:true, mover:true, eliminar:true, listas:true, tipos:true}, jorge:{crear:false, editar:false, mover:true, eliminar:false, listas:false, tipos:false}},
-   listas:[{id:21, nombre:'Por hacer'}, {id:22, nombre:'Esperando compra'}, {id:23, nombre:'Hecho', cierre:true}],
+   listas:[{id:21, nombre:'Por hacer'}, {id:22, nombre:'Esperando compra'}, {id:23, nombre:'Hecho'}],
    tipos:[{id:5, nombre:'Mantenimiento', color:'#64748b'}, {id:6, nombre:'Compras', color:'#78716c'}]},
   {id:4, nombre:'Congreso regional 2025', dueno:'ana', miembros:['ana','luis'], archivado:true,
    permisos:{luis:{crear:true, editar:true, mover:true, eliminar:false, listas:false, tipos:false}},
-   listas:[{id:41, nombre:'Pendiente'}, {id:42, nombre:'Finalizada', cierre:true}], tipos:[]},
+   listas:[{id:41, nombre:'Pendiente'}, {id:42, nombre:'Finalizada'}], tipos:[]},
 ];
 
 // `pos` = orden manual dentro de la lista (lo cambia arrastrar o «Mover a»).
@@ -451,9 +457,9 @@ const tarjetas = [
   {id:1, proyecto:1, lista:13, pos:0, titulo:'Reservar el auditorio', descripcion:'Confirmar con Servicios Generales el auditorio central para los tres días, con proyector y sonido.', prioridad:'urgente', fin:-2, ini:-19, asignados:['ana'], creada_por:'ana', tipos:[1]},
   {id:3, proyecto:1, lista:13, pos:1, titulo:'Diseñar el cartel', descripcion:'Versión impresa doble carta y versión para redes sociales.', prioridad:'alta', fin:1, asignados:['maria'], creada_por:'luis', tipos:[2]},
   {id:2, proyecto:1, lista:15, pos:0, titulo:'Convocatoria de ponentes', descripcion:'Redactar y publicar la convocatoria con formato de resumen y fecha límite.', prioridad:'alta', fin:-10, asignados:['luis','maria'], creada_por:'ana', tipos:[2, 3]},
-  {id:6, proyecto:1, lista:12, pos:0, titulo:'Programa del evento', descripcion:'Horarios, salas y ponentes confirmados.', prioridad:'alta', fin:5, asignados:['ana','maria','luis'], creada_por:'ana', tipos:[1, 3],
-   checklist:[{id:1, texto:'Confirmar ponentes', hecho:true, tarjeta:null}, {id:2, texto:'Asignar salas', hecho:false, tarjeta:16, terminaEn:15},
-              {id:3, texto:'Definir horarios', hecho:false, tarjeta:17, terminaEn:15}, {id:4, texto:'Imprimir el programa', hecho:false, tarjeta:null}]},
+  {id:6, proyecto:1, lista:12, pos:0, titulo:'Programa del evento', descripcion:'Horarios, salas y ponentes confirmados.', prioridad:'alta', fin:5, asignados:['ana','maria','luis'], creada_por:'ana', tipos:[1, 3], terminaEn:15,
+   checklist:[{id:1, texto:'Confirmar ponentes', hecho:true, tarjeta:null}, {id:2, texto:'Asignar salas', hecho:false, tarjeta:16},
+              {id:3, texto:'Definir horarios', hecho:false, tarjeta:17}, {id:4, texto:'Imprimir el programa', hecho:false, tarjeta:null}]},
   {id:16, proyecto:1, lista:13, pos:2, titulo:'Asignar salas', descripcion:'', prioridad:'media', fin:4, asignados:['maria'], creada_por:'ana', tipos:[1], origen:6},
   {id:17, proyecto:1, lista:15, pos:1, titulo:'Definir horarios', descripcion:'', prioridad:'media', fin:2, asignados:['ana'], creada_por:'ana', tipos:[], origen:6},
   {id:4, proyecto:1, lista:12, pos:1, titulo:'Lista de constancias', descripcion:'Asistentes que recibirán constancia al final del evento.', prioridad:'media', fin:12, asignados:['luis'], creada_por:'ana', tipos:[3]},
@@ -477,8 +483,6 @@ const estado = {
 };
 const PRIORIDADES = [['baja','Baja'],['media','Media'],['alta','Alta'],['urgente','Urgente']];
 const PERMISOS = [['crear','Crear'],['editar','Editar'],['mover','Mover'],['eliminar','Eliminar'],['listas','Gestionar listas'],['tipos','Gestionar tipos']];
-// «Finalizada» nace como lista de cierre: lo que llega ahí cuenta como terminado.
-const LISTAS_INICIALES = [['Pendiente', false], ['En curso', false], ['Finalizada', true]];
 
 /* ---------------------------------------------------------------------------
    Utilidades
@@ -499,26 +503,25 @@ const iso = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-$
 const fechaLarga = d => `${d.getDate()} ${MESES[d.getMonth()]} ${d.getFullYear()}`;
 const fechaHora = d => `${d.getDate()} ${MESES[d.getMonth()]} ${d.getFullYear()} · ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
 
-// Una tarjeta en una lista de cierre cuenta como terminada: ya no sale vencida ni en «Mis tarjetas».
-const enCierre = t => !!listaDe(proyectoDe(t.proyecto), t.lista).cierre;
+// Sin listas de cierre (2026-10-06): con fecha pasada sale vencida, esté en la lista que esté.
 function chipFecha(t){
   if (!t.fecha) return '';
   const dif = diasEntre(t.fecha);
-  if (enCierre(t)) return `<span class="chip fecha">${I.calendario} ${corta(t.fecha)}</span>`;
   if (dif < 0) return `<span class="chip vencida">${I.alerta} Vencida · ${corta(t.fecha)}</span>`;
   if (dif === 0) return `<span class="chip por-vencer">${I.calendario} Vence hoy</span>`;
   if (dif === 1) return `<span class="chip por-vencer">${I.calendario} Vence mañana</span>`;
   return `<span class="chip fecha">${I.calendario} ${corta(t.fecha)}</span>`;
 }
-const esVencida = t => t.fecha && !enCierre(t) && diasEntre(t.fecha) < 0;
+const esVencida = t => t.fecha && diasEntre(t.fecha) < 0;
 const tarjetaDe = id => tarjetas.find(x => x.id === id);
-// Un elemento convertido se palomea solo cuando su tarjeta llega a la lista que se eligió al
-// convertirlo («Marcar como terminado cuando pase a…»). Si esa lista se elimina, vuelve a ser manual.
-const itemAuto = it => it.tarjeta && it.terminaEn;
-const itemHecho = it => itemAuto(it) ? tarjetaDe(it.tarjeta).lista === it.terminaEn : it.hecho;
+// Un elemento convertido se palomea solo cuando su tarjeta llega a la lista que eligió la tarjeta
+// de la checklist («Lo que llega a … cuenta como terminado», `t.terminaEn`, una para toda la
+// checklist). Sin esa lista (o si se elimina), se palomea a mano.
+const itemAuto = (it, t) => !!(it.tarjeta && t.terminaEn);
+const itemHecho = (it, t) => itemAuto(it, t) ? tarjetaDe(it.tarjeta).lista === t.terminaEn : it.hecho;
 function chipChecklist(t){
   if (!t.checklist || !t.checklist.length) return '';
-  const n = t.checklist.filter(itemHecho).length, total = t.checklist.length;
+  const n = t.checklist.filter(it => itemHecho(it, t)).length, total = t.checklist.length;
   return `<span class="chip checklist${n === total ? ' completo' : ''}" title="Checklist">${I.checklist} ${n}/${total}</span>`;
 }
 const proyectoDe = id => proyectos.find(p => p.id === id);
@@ -658,10 +661,11 @@ function renderContenido(){
         <button class="interruptor" data-accion="solo-mias" aria-pressed="${estado.soloMias}"><span class="pista"></span>Solo mías</button></div>
       ${p.tipos.length ? `<div class="filtro-tipos solo-compu" role="group" aria-label="Filtrar por tipo"><button data-filtro-tipo="0" aria-pressed="${!estado.filtroTipo}">Todos los tipos</button>${p.tipos.map(tp =>
         `<button data-filtro-tipo="${tp.id}" style="--tipo:${tp.color}" aria-pressed="${estado.filtroTipo === tp.id}"><span class="punto"></span>${esc(tp.nombre)}</button>`).join('')}</div>` : ''}
+      ${p.listas.length ? '' : `<div class="aviso" style="margin-bottom:12px">${I.info}<span>${puede(p, 'listas') ? 'Esta pizarra aún no tiene listas. Agrega la primera (por ejemplo «Pendiente») para empezar a crear tarjetas.' : 'Esta pizarra aún no tiene listas. Pídele al dueño que agregue la primera.'}</span></div>`}
       <div class="tablero${!compu && puede(p, 'mover') ? ' tactil' : ''}" id="tablero">
         ${p.listas.map((l, i) => { const ts = filtra(deLista(l.id)); return `
         <section class="lista" data-lista="${l.id}" aria-label="${esc(l.nombre)}">
-          <div class="lista-cab">${l.cierre ? `<span class="marca-cierre" title="Lista de cierre: lo que llega aquí cuenta como terminado">${I.palomitaCirculo}</span>` : ''}<h3 title="${esc(l.nombre)}">${esc(l.nombre)}</h3><span class="num">${ts.length}</span>
+          <div class="lista-cab"><h3 title="${esc(l.nombre)}">${esc(l.nombre)}</h3><span class="num">${ts.length}</span>
             ${puede(p, 'listas') ? `<button class="btn-icono" data-menu-lista="${l.id}" aria-label="Opciones de la lista ${esc(l.nombre)}">${I.puntos}</button>` : ''}</div>
           <div class="lista-tarjetas">${ts.map(t => htmlTarjeta(t)).join('') || `<div class="vacio">${filtrando ? 'Nada con este filtro.' : 'Sin tarjetas.'}</div>`}</div>
           ${puede(p, 'crear') ? `<button class="agregar-tarjeta" data-nueva-en="${l.id}">${I.masChico} Agregar tarjeta</button>` : ''}
@@ -697,13 +701,13 @@ function renderContenido(){
   }
   if (estado.pantalla === 'mis'){
     const ids = misProyectos().filter(p => !p.archivado).map(p => p.id);
-    const ts = tarjetas.filter(t => ids.includes(t.proyecto) && t.asignados.includes(estado.yo) && !enCierre(t))
+    const ts = tarjetas.filter(t => ids.includes(t.proyecto) && t.asignados.includes(estado.yo))
       .sort((a, b) => (a.fecha ? a.fecha : Infinity) - (b.fecha ? b.fecha : Infinity));
     const venc = ts.filter(esVencida), resto = ts.filter(t => !esVencida(t));
     m.innerHTML = `${venc.length ? `<div class="seccion-titulo">Vencidas · ${venc.length}</div><div class="mis-tarjetas">${venc.map(t => htmlTarjeta(t, true)).join('')}</div>` : ''}
       <div class="seccion-titulo">Asignadas a mí · ${resto.length}</div>
       <div class="mis-tarjetas">${resto.map(t => htmlTarjeta(t, true)).join('') || '<div class="vacio">No tienes tarjetas asignadas.</div>'}</div>
-      <div class="aviso" style="margin-top:14px">${I.info}<span>Tarjetas asignadas a ti en tus pizarras activas, con la lista en la que están. No aparecen las que están en una lista de cierre (como «Finalizada»).</span></div>`;
+      <div class="aviso" style="margin-top:14px">${I.info}<span>Tarjetas asignadas a ti en tus pizarras activas, con la lista en la que están.</span></div>`;
     return;
   }
   if (estado.pantalla === 'perfil'){
@@ -729,6 +733,8 @@ function renderCapa(){
     const n = deLista(t.lista).length;
     const padre = t.origen ? tarjetaDe(t.origen) : null;
     cuerpo = `<div class="hoja-cab"><h2>${esc(t.titulo)}</h2><button class="btn-icono" data-accion="cerrar" aria-label="Cerrar">${I.cerrar}</button></div>
+      ${puede(p, 'editar') || puede(p, 'eliminar') ? `<div class="acciones-detalle">${puede(p, 'editar') ? `<button class="btn btn-chico btn-secundario" data-accion="editar">${I.lapiz}Editar</button>` : ''}
+        ${puede(p, 'eliminar') ? `<button class="btn btn-chico btn-peligro" data-accion="eliminar-tarjeta">${I.basura}Eliminar</button>` : ''}</div>` : ''}
       ${padre ? `<div class="viene-de">${I.enlace}<span>Viene de la checklist de <button data-tarjeta="${padre.id}">${esc(padre.titulo)}</button></span></div>` : ''}
       <div class="campo"><span class="etiqueta">Lista</span>
         ${puede(p, 'mover') ? `<div class="elegir-lista" role="radiogroup" aria-label="Mover a la lista">${p.listas.map(l => `
@@ -747,8 +753,6 @@ function renderCapa(){
       <div class="campo"><span class="etiqueta">Historial · ${t.historial.length}</span><ul class="historial">${[...t.historial].reverse().map(h => `
         <li>${esc(usuarios[h.quien] ? usuarios[h.quien].nombre : 'Usuario eliminado')}${h.quien === estado.yo ? ' (tú)' : ''} ${h.texto ? esc(h.texto) : h.de ? `la movió de ${chipLista(h.de)} a ${chipLista(h.a)}` : `la creó en ${chipLista(h.a)}`}<span class="cuando">${fechaHora(h.cuando)}</span></li>`).join('')}</ul>
         <div class="ayuda">Ordenarla dentro de la misma lista no se registra.</div></div>
-      <div class="fila-botones">${puede(p, 'editar') ? '<button class="btn btn-secundario" data-accion="editar">Editar</button>' : ''}
-        ${puede(p, 'eliminar') ? `<button class="btn btn-chico btn-peligro" data-accion="eliminar-tarjeta">Eliminar</button>` : ''}</div>
       <div class="meta"><span>Pizarra: ${esc(p.nombre)}</span><span>Creada por ${esc(usuarios[t.creada_por].nombre)} el ${fechaHora(t.creada)}</span></div>`;
   }
   if (c.tipo === 'nueva' || c.tipo === 'editar'){
@@ -761,9 +765,6 @@ function renderCapa(){
       <form id="form-tarjeta" novalidate>
         <div class="campo"><label for="f-titulo">Título</label><input id="f-titulo" type="text" maxlength="200" value="${t ? esc(t.titulo) : esc(c.titulo || '')}" placeholder="¿Qué hay que hacer?"><div class="error" id="e-titulo" hidden>Escribe un título.</div></div>
         ${t ? '' : `<div class="campo"><label for="f-lista-t">Lista</label><select id="f-lista-t">${p.listas.map(l => `<option value="${l.id}" ${l.id === c.lista ? 'selected' : ''}>${esc(l.nombre)}</option>`).join('')}</select><div class="ayuda">Se agrega al final de la lista.</div></div>`}
-        ${origen ? `<div class="campo"><label for="f-termina">Marcar como terminado cuando pase a</label>
-          <select id="f-termina">${p.listas.map(l => `<option value="${l.id}" ${l.id === (p.listas.find(x => x.cierre) || p.listas[p.listas.length - 1]).id ? 'selected' : ''}>${esc(l.nombre)}</option>`).join('')}<option value="0">Ninguna: lo palomeo a mano</option></select>
-          <div class="ayuda">Cuando esta tarjeta llegue a esa lista, «${esc(c.titulo)}» se palomea solo en la checklist de «${esc(origen.titulo)}».</div></div>` : ''}
         <div class="campo"><label for="f-desc">Descripción <span style="text-transform:none;font-weight:400">(opcional)</span></label><textarea id="f-desc" placeholder="Detalles, criterios de terminado…">${t ? esc(t.descripcion) : ''}</textarea></div>
         <div class="campo"><span class="etiqueta">Prioridad</span><div class="elegir-prioridad" role="radiogroup" aria-label="Prioridad">${PRIORIDADES.map(([k, txt]) => `
           <label><input type="radio" name="prioridad" value="${k}" ${(t ? t.prioridad : 'media') === k ? 'checked' : ''}><span class="chip prio-${k}"><span class="punto"></span>${txt}</span></label>`).join('')}</div></div>
@@ -788,26 +789,12 @@ function renderCapa(){
         <div class="campo"><label for="f-lnombre">Nombre</label><input id="f-lnombre" type="text" maxlength="50" value="${esc(l.nombre)}"><div class="error" id="e-lnombre" hidden></div></div>
         <div class="fila-botones" style="margin-bottom:18px"><button type="submit" class="btn btn-primario">Guardar</button></div>
       </form>
-      <div class="campo"><span class="etiqueta">Lista de cierre</span>
-        <div class="opciones-filtro"><label><input type="checkbox" data-accion="cierre" ${l.cierre ? 'checked' : ''}>Lo que llega aquí cuenta como terminado</label></div>
-        <div class="ayuda">Sus tarjetas ya no salen vencidas ni en «Mis tarjetas». Puede haber más de una (p. ej. «Finalizada» y «Cancelada»).</div></div>
       <div class="campo"><span class="etiqueta">Orden en el tablero</span>
         <div class="fila-botones"><button class="btn btn-secundario" data-accion="lista-izq" ${i === 0 ? 'disabled' : ''}>${I.izq} Mover a la izquierda</button><button class="btn btn-secundario" data-accion="lista-der" ${i === p.listas.length - 1 ? 'disabled' : ''}>Mover a la derecha ${I.der}</button></div>
         <div class="ayuda">Posición ${i + 1} de ${p.listas.length}.</div></div>
       <div class="campo"><span class="etiqueta">Eliminar</span>
         <button class="btn btn-chico btn-peligro" data-accion="eliminar-lista" ${n ? 'disabled' : ''}>Eliminar lista</button>
         <div class="ayuda">${n ? `Tiene ${n} tarjeta${n === 1 ? '' : 's'}: muévelas o elimínalas antes. Así ninguna tarjeta se borra sin querer.` : 'La lista está vacía.'}</div></div>`;
-  }
-  if (c.tipo === 'termina'){
-    const t = tarjetaDe(c.tarjeta), p = proyectoDe(t.proyecto), it = t.checklist.find(x => x.id === c.item), hija = tarjetaDe(it.tarjeta);
-    cuerpo = `<div class="hoja-cab"><h2>¿Cuándo se marca «${esc(it.texto)}»?</h2><button class="btn-icono" data-accion="cerrar" aria-label="Cerrar">${I.cerrar}</button></div>
-      <form id="form-termina" novalidate>
-        <div class="campo"><span class="etiqueta">Marcar como terminado cuando pase a</span><div class="opciones-filtro">
-          ${p.listas.map(l => `<label><input type="radio" name="termina" value="${l.id}" ${it.terminaEn === l.id ? 'checked' : ''}>${esc(l.nombre)}${l.id === hija.lista ? ' <span class="chip neutro">aquí está ahora</span>' : ''}</label>`).join('')}
-          <label><input type="radio" name="termina" value="0" ${!it.terminaEn ? 'checked' : ''}>Ninguna: lo palomeo a mano</label></div>
-          <div class="ayuda">Se aplica de inmediato: si la tarjeta ya está en la lista elegida, el elemento queda palomeado.</div></div>
-        <div class="fila-botones"><button type="button" class="btn btn-secundario" data-accion="cerrar">Cancelar</button><button type="submit" class="btn btn-primario">Guardar</button></div>
-      </form>`;
   }
   if (c.tipo === 'filtros'){
     const p = proyectoDe(estado.proyecto);
@@ -825,7 +812,7 @@ function renderCapa(){
     cuerpo = `<div class="hoja-cab"><h2>Nueva pizarra</h2><button class="btn-icono" data-accion="cerrar" aria-label="Cerrar">${I.cerrar}</button></div>
       <form id="form-proyecto" novalidate>
         <div class="campo"><label for="f-nombre">Nombre</label><input id="f-nombre" type="text" maxlength="150" placeholder="Ej. Feria de empleo 2027"><div class="error" id="e-nombre" hidden>Escribe un nombre.</div></div>
-        <div class="campo"><div class="ayuda">Empieza con las listas ${LISTAS_INICIALES.map(([x]) => `«${x}»`).join(', ')} («Finalizada» como lista de cierre); puedes renombrarlas, agregar otras o eliminarlas.</div></div>
+        <div class="campo"><div class="ayuda">Empieza vacía: en el tablero agregas las listas que necesites (por ejemplo «Pendiente», «En curso» y «Finalizada»).</div></div>
         <div class="fila-botones"><button type="button" class="btn btn-secundario" data-accion="cerrar">Cancelar</button><button type="submit" class="btn btn-primario">Crear pizarra</button></div>
       </form>`;
   }
@@ -837,31 +824,35 @@ function renderCapa(){
 }
 
 /* Checklist del detalle. Palomear, agregar y quitar elementos: permiso «Editar». Convertir en
-   tarjeta: permiso «Crear». Un elemento convertido muestra la lista de su tarjeta y se palomea
-   solo cuando ésta llega a una lista de cierre. */
+   tarjeta: permiso «Crear». Un elemento convertido muestra la lista de su tarjeta. Si hay alguno,
+   debajo va «Lo que llega a [lista] cuenta como terminado» (2026-10-06): una lista para toda la
+   checklist, sin ofrecer la de esta tarjeta; con ella, los convertidos se palomean solos. */
 function htmlChecklist(t, p){
   const items = t.checklist || [];
   const editar = puede(p, 'editar'), crear = puede(p, 'crear');
   if (!items.length && !editar) return '';
-  const n = items.filter(itemHecho).length, completo = items.length && n === items.length;
+  const n = items.filter(it => itemHecho(it, t)).length, completo = items.length && n === items.length;
+  const opciones = p.listas.filter(l => l.id !== t.lista || l.id === t.terminaEn);
   return `<div class="campo"><span class="etiqueta">Checklist${items.length ? ` · ${n}/${items.length}` : ''}</span>
     ${items.length ? `<div class="avance${completo ? ' completo' : ''}"><i style="width:${n / items.length * 100}%"></i></div>` : ''}
     <ul class="checklist">${items.map(it => {
       const hija = it.tarjeta ? tarjetaDe(it.tarjeta) : null;
-      const caja = itemAuto(it)
-        ? `<span class="caja-enlace" aria-label="${itemHecho(it) ? 'Hecho' : 'Pendiente'}">${itemHecho(it) ? I.palomita : ''}</span>`
+      const caja = itemAuto(it, t)
+        ? `<span class="caja-enlace" aria-label="${itemHecho(it, t) ? 'Hecho' : 'Pendiente'}">${itemHecho(it, t) ? I.palomita : ''}</span>`
         : `<input type="checkbox" data-check="${it.id}" ${it.hecho ? 'checked' : ''} ${editar ? '' : 'disabled'} aria-label="${esc(it.texto)}">`;
       const cuerpo = hija
         ? `<label class="solo-caja">${caja}</label>
-           <button class="enlace-tarjeta" data-tarjeta="${hija.id}"><span class="texto">${esc(it.texto)}</span><small>${I.enlace} En «${esc(listaDe(p, hija.lista).nombre)}» · ${itemAuto(it) ? `se marca al pasar a «${esc(listaDe(p, it.terminaEn).nombre)}»` : 'se palomea a mano'}</small></button>`
+           <button class="enlace-tarjeta" data-tarjeta="${hija.id}"><span class="texto">${esc(it.texto)}</span><small>${I.enlace} En «${esc(listaDe(p, hija.lista).nombre)}»</small></button>`
         : `<label>${caja}<span class="texto">${esc(it.texto)}</span></label>`;
-      return `<li class="${itemHecho(it) ? 'hecho' : ''}">${cuerpo}
-        ${hija && editar ? `<button class="btn-icono" data-accion="cambiar-termina" data-item="${it.id}" aria-label="Cambiar cuándo se marca «${esc(it.texto)}»" title="Cambiar cuándo se marca">${I.bandera}</button>` : ''}
+      return `<li class="${itemHecho(it, t) ? 'hecho' : ''}">${cuerpo}
         ${!hija && crear ? `<button class="btn-icono" data-accion="convertir" data-item="${it.id}" aria-label="Convertir «${esc(it.texto)}» en tarjeta" title="Convertir en tarjeta">${I.enlace}</button>` : ''}
         ${editar ? `<button class="btn-icono" data-accion="quitar-item" data-item="${it.id}" aria-label="Quitar «${esc(it.texto)}»" title="Quitar">${I.cerrarChico}</button>` : ''}</li>`;
     }).join('')}</ul>
+    ${items.some(it => it.tarjeta) ? `<div class="lista-terminado">${I.palomitaCirculo}<label for="f-terminado">Lo que llega a</label>
+      <select id="f-terminado" ${editar ? '' : 'disabled'}><option value="0">ninguna (a mano)</option>${opciones.map(l => `<option value="${l.id}" ${l.id === t.terminaEn ? 'selected' : ''}>${esc(l.nombre)}</option>`).join('')}</select>
+      <span>cuenta como terminado</span></div>` : ''}
     ${editar ? `<form id="form-item" class="agregar-item" novalidate><input id="f-item" type="text" maxlength="200" placeholder="Agregar elemento" aria-label="Agregar elemento a la checklist"><button class="btn btn-chico btn-secundario">Agregar</button></form>` : ''}
-    ${items.length && crear ? `<div class="ayuda">${I.enlace} convierte un elemento en tarjeta enlazada; al convertirlo eliges a qué lista debe llegar para marcarse como terminado.</div>` : ''}
+    ${items.length && crear ? `<div class="ayuda">${I.enlace} convierte un elemento en tarjeta enlazada; se palomea solo cuando esa tarjeta llega a la lista que elijas en «Lo que llega a … cuenta como terminado».</div>` : ''}
   </div>`;
 }
 
@@ -905,18 +896,10 @@ document.addEventListener('click', e => {
   if (a === 'solo-mias'){ estado.soloMias = !estado.soloMias; return render(); }
   if (a === 'filtros'){ estado.capa = {tipo:'filtros'}; return render(); }
   if (a === 'quitar-filtros'){ Object.assign(estado, {soloMias:false, filtroTipo:null, capa:null}); return render(); }
-  if (a === 'cierre'){
-    const l = listaDe(proyectoDe(estado.proyecto), estado.capa.id); l.cierre = !l.cierre;
-    toast(l.cierre ? `«${l.nombre}» es ahora una lista de cierre.` : `«${l.nombre}» dejó de ser lista de cierre.`); return render();
-  }
   if (a === 'convertir'){
     const t = tarjetaDe(estado.capa.id), it = t.checklist.find(x => x.id === +b.dataset.item);
     estado.capa = {tipo:'nueva', lista:t.lista, titulo:it.texto, asignados:t.asignados, origen:{tarjeta:t.id, item:it.id}, volver:{tipo:'detalle', id:t.id}};
     return render();
-  }
-  if (a === 'cambiar-termina'){
-    const id = estado.capa.id;
-    estado.capa = {tipo:'termina', tarjeta:id, item:+b.dataset.item, volver:{tipo:'detalle', id}}; return render();
   }
   if (a === 'quitar-item'){
     const t = tarjetaDe(estado.capa.id); t.checklist = t.checklist.filter(x => x.id !== +b.dataset.item); return render();
@@ -930,7 +913,8 @@ document.addEventListener('click', e => {
   if (a === 'eliminar-lista'){
     const p = proyectoDe(estado.proyecto), l = listaDe(p, estado.capa.id);
     estado.capa = {tipo:'confirmar', mensaje:`¿Eliminar la lista «${l.nombre}»? Está vacía; esta acción no se puede deshacer.`, boton:'Eliminar lista',
-      hacer:() => { p.listas = p.listas.filter(x => x !== l); tarjetas.forEach(x => (x.checklist || []).forEach(it => { if (it.terminaEn === l.id) it.terminaEn = null; })); toast('Se eliminó la lista.'); }};
+      // Las checklists que se marcaban al llegar aquí pasan a manual, sin palomear (la lista estaba vacía).
+      hacer:() => { p.listas = p.listas.filter(x => x !== l); tarjetas.forEach(x => { if (x.terminaEn === l.id){ x.terminaEn = null; (x.checklist || []).forEach(it => { if (it.tarjeta) it.hecho = false; }); } }); toast('Se eliminó la lista.'); }};
     return render();
   }
   if (a === 'eliminar-tarjeta'){
@@ -938,7 +922,7 @@ document.addEventListener('click', e => {
     estado.capa = {tipo:'confirmar', mensaje:`¿Eliminar la tarjeta «${t.titulo}»? Esta acción no se puede deshacer.`, boton:'Eliminar',
       hacer:() => {
         // El elemento que la originó vuelve a ser texto (conserva si estaba hecho); sus hijas pierden el «Viene de».
-        tarjetas.forEach(x => (x.checklist || []).forEach(it => { if (it.tarjeta === t.id){ it.hecho = itemHecho(it); it.tarjeta = null; it.terminaEn = null; } }));
+        tarjetas.forEach(x => (x.checklist || []).forEach(it => { if (it.tarjeta === t.id){ it.hecho = itemHecho(it, x); it.tarjeta = null; } }));
         tarjetas.forEach(x => { if (x.origen === t.id) x.origen = null; });
         const l = t.lista; tarjetas.splice(tarjetas.indexOf(t), 1); deLista(l).forEach((x, i) => x.pos = i); toast('Se eliminó la tarjeta.'); }};
     return render();
@@ -947,6 +931,14 @@ document.addEventListener('click', e => {
 });
 
 document.addEventListener('change', e => {
+  if (e.target.id === 'f-terminado'){
+    // Al pasar a «ninguna», cada elemento conserva el estado que tenía en ese momento.
+    const t = tarjetaDe(estado.capa.id), p = proyectoDe(t.proyecto), nueva = +e.target.value || null;
+    if (!nueva) (t.checklist || []).forEach(it => { it.hecho = itemHecho(it, t); });
+    t.terminaEn = nueva;
+    toast(nueva ? `Se marcó «${listaDe(p, nueva).nombre}» como la lista de terminado.` : 'Se pasó la checklist a palomeo manual.');
+    return render();
+  }
   if (!e.target.dataset.check) return;
   const t = tarjetaDe(estado.capa.id), it = t.checklist.find(x => x.id === +e.target.dataset.check);
   it.hecho = e.target.checked; render();
@@ -955,14 +947,6 @@ document.addEventListener('change', e => {
 document.addEventListener('submit', e => {
   const f = e.target; e.preventDefault();
   const p = proyectoDe(estado.proyecto);
-  if (f.id === 'form-termina'){
-    const c = estado.capa, it = tarjetaDe(c.tarjeta).checklist.find(x => x.id === c.item);
-    // Al pasar a manual, el elemento conserva el estado que tenía en ese momento.
-    const antes = itemHecho(it);
-    it.terminaEn = +f.querySelector('[name=termina]:checked').value || null;
-    if (!it.terminaEn) it.hecho = antes;
-    estado.capa = c.volver; toast('Se guardó cuándo se marca el elemento.'); return render();
-  }
   if (f.id === 'form-item'){
     const texto = $('#f-item').value.trim(); if (!texto) return;
     const t = tarjetaDe(estado.capa.id);
@@ -997,7 +981,7 @@ document.addEventListener('submit', e => {
       if (o){
         // Enlace en los dos sentidos: el elemento apunta a la tarjeta nueva y ésta a su origen.
         const padre = tarjetaDe(o.tarjeta), it = padre.checklist.find(x => x.id === o.item);
-        it.tarjeta = nueva.id; it.terminaEn = +$('#f-termina').value || null; nueva.origen = padre.id;
+        it.tarjeta = nueva.id; nueva.origen = padre.id;
         padre.historial.push({cuando:ahora(), quien:estado.yo, texto:`convirtió «${it.texto}» de la checklist en tarjeta`});
         nueva.historial.push({cuando:ahora(), quien:estado.yo, texto:`la creó desde la checklist de «${padre.titulo}»`});
         estado.capa = {tipo:'detalle', id:padre.id}; toast('Se creó la tarjeta desde la checklist.');
@@ -1022,7 +1006,7 @@ document.addEventListener('submit', e => {
     $('#e-nombre').hidden = !!nombre; if (!nombre) return;
     const id = Math.max(...proyectos.map(x => x.id)) + 1;
     proyectos.push({id, nombre, dueno:estado.yo, miembros:[estado.yo], archivado:false, permisos:{}, tipos:[],
-      listas:LISTAS_INICIALES.map(([n, cierre]) => ({id:sigLista++, nombre:n, cierre}))});
+      listas:[]});  // nace sin listas (2026-10-06): cada quien arma las suyas
     Object.assign(estado, {capa:null, proyecto:id, pantalla:'tablero'}); toast('Se creó la pizarra.');
     return render();
   }

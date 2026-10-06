@@ -29,7 +29,7 @@ class MiembroInline(admin.TabularInline):
 class ListaInline(admin.TabularInline):
     model = Lista
     extra = 0
-    fields = ["nombre", "posicion", "es_cierre"]
+    fields = ["nombre", "posicion"]
 
 
 class TipoInline(admin.TabularInline):
@@ -101,8 +101,7 @@ class InvitacionAdmin(admin.ModelAdmin):
 
 @admin.register(Lista)
 class ListaAdmin(admin.ModelAdmin):
-    list_display = ["nombre", "pizarra", "posicion", "es_cierre"]
-    list_filter = ["es_cierre"]
+    list_display = ["nombre", "pizarra", "posicion"]
     search_fields = ["nombre", "pizarra__nombre"]
     autocomplete_fields = ["pizarra"]
 

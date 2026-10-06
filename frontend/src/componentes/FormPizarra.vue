@@ -45,8 +45,8 @@ async function guardar() {
       </div>
       <div v-if="!pizarra" class="campo">
         <div class="ayuda">
-          Empieza con las listas «Pendiente», «En curso» y «Finalizada» (esta, de cierre); puedes renombrarlas, agregar
-          otras o eliminarlas. Serás el dueño: podrás invitar a otras personas y decidir qué puede hacer cada una.
+          Empieza vacía: en el tablero agregas las listas que necesites (por ejemplo «Pendiente», «En curso» y
+          «Finalizada»). Serás el dueño: podrás invitar a otras personas y decidir qué puede hacer cada una.
         </div>
       </div>
       <div class="fila-botones">

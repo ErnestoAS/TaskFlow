@@ -19,12 +19,10 @@ def test_quien_crea_la_pizarra_es_su_dueno(pizarra, dueno):
     assert list(Pizarra.objects.de_usuario(dueno)) == [pizarra]
 
 
-def test_la_pizarra_nace_con_las_listas_iniciales(pizarra):
-    assert list(pizarra.listas.values_list("nombre", "posicion", "es_cierre")) == [
-        ("Pendiente", 0, False),
-        ("En curso", 1, False),
-        ("Finalizada", 2, True),
-    ]
+def test_la_pizarra_nace_sin_listas(dueno):
+    # Cada quien arma sus listas (2026-10-06): no se imponen «Pendiente / En curso / Finalizada».
+    p = servicios.crear_pizarra(dueno, "Nueva")
+    assert not p.listas.exists()
 
 
 def test_un_no_miembro_no_ve_la_pizarra(pizarra, crear_usuario):
@@ -221,7 +219,7 @@ def test_invitacion_cancelada_no_se_acepta(pizarra, dueno, crear_usuario):
 
 def test_crear_lista_la_pone_al_final_y_valida_el_nombre(pizarra, dueno):
     ideas = servicios.crear_lista(pizarra, dueno, "  Ideas ")
-    assert (ideas.nombre, ideas.posicion, ideas.es_cierre) == ("Ideas", 3, False)
+    assert (ideas.nombre, ideas.posicion) == ("Ideas", 3)
     with pytest.raises(ValidationError):
         servicios.crear_lista(pizarra, dueno, "IDEAS")  # mismo nombre sin distinguir mayúsculas
     with pytest.raises(ValidationError):
@@ -230,11 +228,11 @@ def test_crear_lista_la_pone_al_final_y_valida_el_nombre(pizarra, dueno):
     servicios.crear_lista(otra, dueno, "Ideas")  # en otra pizarra sí
 
 
-def test_renombrar_y_marcar_de_cierre(pizarra, dueno, listas):
+def test_renombrar_lista(pizarra, dueno, listas):
     en_curso = listas["En curso"]
-    servicios.editar_lista(en_curso, dueno, nombre="Haciéndose", es_cierre=True)
+    servicios.editar_lista(en_curso, dueno, nombre="Haciéndose")
     en_curso.refresh_from_db()
-    assert (en_curso.nombre, en_curso.es_cierre) == ("Haciéndose", True)
+    assert en_curso.nombre == "Haciéndose"
     with pytest.raises(ValidationError):
         servicios.editar_lista(en_curso, dueno, nombre="pendiente")
     with pytest.raises(ValidationError):

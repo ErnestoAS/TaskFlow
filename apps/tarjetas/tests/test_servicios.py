@@ -54,8 +54,9 @@ def test_el_titulo_es_obligatorio(pizarra, dueno):
 
 def test_la_lista_debe_ser_de_la_pizarra(pizarra, dueno):
     otra = pizarras.crear_pizarra(dueno, "Otra")
+    ajena = pizarras.crear_lista(otra, dueno, "Pendiente")
     with pytest.raises(ValidationError):
-        servicios.crear_tarjeta(pizarra, dueno, titulo="a", lista=otra.listas.first())
+        servicios.crear_tarjeta(pizarra, dueno, titulo="a", lista=ajena)
 
 
 def test_fecha_de_inicio_editable_y_limite_no_anterior(pizarra, dueno):
@@ -261,7 +262,7 @@ def test_la_checklist_requiere_editar_y_convertir_requiere_crear(
     servicios.convertir_elemento(e, luis)
 
 
-def test_convertir_crea_tarjeta_enlazada(padre, dueno, listas):
+def test_convertir_crea_tarjeta_enlazada(padre, dueno):
     e = padre.checklist.get(texto="Asignar salas")
     nueva = servicios.convertir_elemento(e, dueno, prioridad="alta")
     e.refresh_from_db()
@@ -272,19 +273,20 @@ def test_convertir_crea_tarjeta_enlazada(padre, dueno, listas):
         "alta",
     )
     assert e.tarjeta_creada == nueva and nueva.elemento_origen == e
-    # Sin indicar, se marca al llegar a la lista de cierre.
-    assert e.lista_terminado == listas["Finalizada"] and e.automatico
+    # Sin lista de terminado en la tarjeta, se palomea a mano.
+    assert padre.lista_terminado is None and not e.automatico
     assert ("", "", "convirtió «Asignar salas» de la checklist en tarjeta") in _historial(padre)
     assert ("", "", "la creó desde la checklist de «Programa del evento»") in _historial(nueva)
     with pytest.raises(ValidationError):
         servicios.convertir_elemento(e, dueno)  # ya convertido
 
 
-def test_el_elemento_se_palomea_al_llegar_a_su_lista(padre, dueno, listas):
+def test_el_elemento_se_palomea_al_llegar_a_la_lista_de_su_tarjeta(padre, dueno, listas):
     e = padre.checklist.get(texto="Asignar salas")
-    nueva = servicios.convertir_elemento(e, dueno, lista_terminado=listas["En curso"])
+    nueva = servicios.convertir_elemento(e, dueno)
+    servicios.editar_tarjeta(padre, dueno, lista_terminado=listas["En curso"].pk)
     e.refresh_from_db()
-    assert not e.esta_hecho
+    assert e.automatico and not e.esta_hecho
     servicios.mover_tarjeta(nueva, dueno, listas["En curso"])
     e.refresh_from_db()
     assert e.esta_hecho
@@ -295,37 +297,52 @@ def test_el_elemento_se_palomea_al_llegar_a_su_lista(padre, dueno, listas):
         servicios.editar_elemento(e, dueno, hecho=True)  # automático: no se palomea a mano
 
 
-def test_convertir_con_palomeo_manual_y_cambiarlo_despues(padre, dueno, listas):
+def test_una_lista_para_toda_la_checklist(padre, dueno, listas):
+    e1, e2, e3 = list(padre.checklist.all())
+    a = servicios.convertir_elemento(e1, dueno)
+    b = servicios.convertir_elemento(e2, dueno)
+    servicios.editar_tarjeta(padre, dueno, lista_terminado=listas["Finalizada"].pk)
+    servicios.mover_tarjeta(a, dueno, listas["Finalizada"])
+    servicios.mover_tarjeta(b, dueno, listas["En curso"])
+    hechos = {e.texto: e.esta_hecho for e in padre.checklist.all()}
+    assert hechos == {"Confirmar ponentes": True, "Asignar salas": False, "Imprimir": False}
+    assert not e3.automatico  # sin tarjeta, siempre a mano
+
+
+def test_quitar_la_lista_de_terminado_conserva_el_estado(padre, dueno, listas):
     e = padre.checklist.get(texto="Imprimir")
-    nueva = servicios.convertir_elemento(e, dueno, lista_terminado=None)
-    e.refresh_from_db()
-    assert e.lista_terminado is None and not e.automatico
-    servicios.editar_elemento(e, dueno, hecho=True)
-    servicios.editar_elemento(e, dueno, lista_terminado=listas["Pendiente"].pk)
-    e.refresh_from_db()
-    assert e.automatico and e.esta_hecho  # la tarjeta ya está en «Pendiente»
+    nueva = servicios.convertir_elemento(e, dueno)
+    servicios.editar_elemento(e, dueno, hecho=False)
+    servicios.editar_tarjeta(padre, dueno, lista_terminado=listas["En curso"].pk)
     servicios.mover_tarjeta(nueva, dueno, listas["En curso"])
-    servicios.editar_elemento(e, dueno, lista_terminado=None)  # a manual: conserva el estado
+    servicios.editar_tarjeta(padre, dueno, lista_terminado=None)  # a manual
     e.refresh_from_db()
-    assert not e.automatico and not e.esta_hecho
+    assert not e.automatico and e.esta_hecho  # la tarjeta estaba en la lista: queda palomeado
+    servicios.editar_elemento(e, dueno, hecho=False)
+    e.refresh_from_db()
+    assert not e.esta_hecho
 
 
-def test_lista_terminado_solo_de_la_pizarra_y_solo_si_convertido(padre, dueno):
-    e1, e2 = list(padre.checklist.all())[:2]
+def test_la_lista_de_terminado_es_de_la_pizarra_y_no_la_propia(padre, dueno):
     otra = pizarras.crear_pizarra(dueno, "Otra")
+    ajena = pizarras.crear_lista(otra, dueno, "Hecho")
+    for lista in (ajena, padre.lista):  # otra pizarra, o donde ya está la tarjeta
+        with pytest.raises(ValidationError) as e:
+            servicios.editar_tarjeta(padre, dueno, lista_terminado=lista.pk)
+        assert set(e.value.message_dict) == {"lista_terminado"}
     with pytest.raises(ValidationError):
-        servicios.convertir_elemento(e1, dueno, lista_terminado=otra.listas.first())
-    with pytest.raises(ValidationError):
-        servicios.editar_elemento(e2, dueno, lista_terminado=padre.lista)
+        servicios.editar_elemento(padre.checklist.first(), dueno, lista_terminado=padre.lista.pk)
 
 
 def test_eliminar_la_tarjeta_creada_devuelve_el_elemento_a_texto(padre, dueno, listas):
     e = padre.checklist.get(texto="Asignar salas")
-    nueva = servicios.convertir_elemento(e, dueno, lista_terminado=listas["Pendiente"])
+    nueva = servicios.convertir_elemento(e, dueno)
+    servicios.editar_tarjeta(padre, dueno, lista_terminado=listas["En curso"].pk)
+    servicios.mover_tarjeta(nueva, dueno, listas["En curso"])
     servicios.eliminar_tarjeta(nueva, dueno)
     e.refresh_from_db()
-    assert e.tarjeta_creada is None and e.lista_terminado is None
-    assert e.hecho  # conserva que estaba hecho (la tarjeta estaba en su lista)
+    assert e.tarjeta_creada is None and not e.automatico
+    assert e.hecho  # conserva que estaba hecho (la tarjeta estaba en la lista elegida)
 
 
 def test_eliminar_la_original_deja_la_nueva_sin_origen(padre, dueno):
@@ -336,10 +353,12 @@ def test_eliminar_la_original_deja_la_nueva_sin_origen(padre, dueno):
     assert not hasattr(nueva, "elemento_origen")
 
 
-def test_eliminar_la_lista_elegida_pasa_el_elemento_a_manual(padre, dueno):
+def test_eliminar_la_lista_elegida_pasa_la_checklist_a_manual(padre, dueno):
     ideas = pizarras.crear_lista(padre.pizarra, dueno, "Ideas")
     e = padre.checklist.get(texto="Asignar salas")
-    servicios.convertir_elemento(e, dueno, lista_terminado=ideas)
+    servicios.convertir_elemento(e, dueno)
+    servicios.editar_tarjeta(padre, dueno, lista_terminado=ideas.pk)
     pizarras.eliminar_lista(ideas, dueno)
+    padre.refresh_from_db()
     e.refresh_from_db()
-    assert e.lista_terminado is None and not e.automatico
+    assert padre.lista_terminado is None and not e.automatico and not e.esta_hecho

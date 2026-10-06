@@ -19,7 +19,7 @@ class ElementoChecklistInline(admin.TabularInline):
     model = ElementoChecklist
     fk_name = "tarjeta"
     extra = 0
-    fields = ["texto", "hecho", "posicion", "tarjeta_creada", "lista_terminado"]
+    fields = ["texto", "hecho", "posicion", "tarjeta_creada"]
     raw_id_fields = ["tarjeta_creada"]
 
 
@@ -35,9 +35,16 @@ class TarjetaAdmin(admin.ModelAdmin):
         "creada_por",
         "creado_en",
     ]
-    list_filter = ["prioridad", "lista__es_cierre", "pizarra"]
+    list_filter = ["prioridad", "pizarra"]
     search_fields = ["titulo", "descripcion", "pizarra__nombre", "lista__nombre"]
-    autocomplete_fields = ["pizarra", "lista", "asignados", "tipos", "creada_por"]
+    autocomplete_fields = [
+        "pizarra",
+        "lista",
+        "lista_terminado",
+        "asignados",
+        "tipos",
+        "creada_por",
+    ]
     readonly_fields = ["creado_en", "actualizado_en"]
     inlines = [ElementoChecklistInline, MovimientoInline]
 

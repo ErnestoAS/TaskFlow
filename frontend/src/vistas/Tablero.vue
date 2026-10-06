@@ -124,7 +124,7 @@ async function alSoltar({ id, destino, antesDe }: Soltado) {
   const posicion = colocar(t, listaId, antesDe);
   try {
     const r = await api<Tarjeta>(`tarjetas/${id}/mover/`, "POST", { lista: listaId, posicion });
-    Object.assign(t, { lista_nombre: r.lista_nombre, en_cierre: r.en_cierre });
+    t.lista_nombre = r.lista_nombre;
     if (cambiaDeLista) {
       avisar(`Se movió a «${r.lista_nombre}».`);
       recargarPizarras().catch(() => undefined);
@@ -172,10 +172,10 @@ async function agregarLista() {
 
 function listaActualizada(p: PizarraDetalle) {
   pizarra.value = p;
-  // Renombrar o marcar de cierre cambia lo que muestran las tarjetas (nombre, vencidas).
+  // Renombrar cambia el nombre de lista que muestran las tarjetas.
   for (const t of tarjetas.value) {
     const l = p.listas.find((x) => x.id === t.lista);
-    if (l) Object.assign(t, { lista_nombre: l.nombre, en_cierre: l.es_cierre });
+    if (l) t.lista_nombre = l.nombre;
   }
   recargarPizarras().catch(() => undefined);
 }
@@ -264,12 +264,18 @@ function quitarFiltros() {
         </button>
       </div>
 
+      <!-- Una pizarra nace sin listas (2026-10-06): cada quien arma las suyas. -->
+      <div v-if="!pizarra.listas.length" class="aviso" style="margin-bottom: 12px">
+        <Icono nombre="info" />
+        <span>{{
+          permisos?.gestionar_listas
+            ? "Esta pizarra aún no tiene listas. Agrega la primera (por ejemplo «Pendiente») para empezar a crear tarjetas."
+            : "Esta pizarra aún no tiene listas. Pídele al dueño que agregue la primera."
+        }}</span>
+      </div>
       <div ref="tablero" class="tablero" @scroll.passive="alDesplazar">
         <section v-for="l in pizarra.listas" :key="l.id" class="lista" :data-columna="l.id" :aria-label="l.nombre">
           <div class="lista-cab">
-            <span v-if="l.es_cierre" class="marca-cierre" title="Lista de cierre: lo que llega aquí cuenta como terminado"
-              ><Icono nombre="palomitaCirculo"
-            /></span>
             <h3 :title="l.nombre">{{ l.nombre }}</h3>
             <span class="num">{{ visibles(l.id).length }}</span>
             <button

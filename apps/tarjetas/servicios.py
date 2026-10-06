@@ -21,10 +21,8 @@ CAMPOS_EDITABLES = (
     "fecha_fin",
     "asignados",
     "tipos",
+    "lista_terminado",
 )
-
-# «Sin indicar» para `lista_terminado` al convertir: distinto de None, que pide palomeo manual.
-POR_OMISION = object()
 
 
 # ---------------------------------------------------------------------------------------------
@@ -173,6 +171,8 @@ def editar_tarjeta(tarjeta: Tarjeta, usuario, **campos) -> Tarjeta:
     if "fecha_fin" in campos:
         tarjeta.fecha_fin = campos["fecha_fin"]
     _validar_fechas(tarjeta.fecha_inicio, tarjeta.fecha_fin)
+    if "lista_terminado" in campos:
+        _fijar_lista_terminado(tarjeta, campos["lista_terminado"])
     tarjeta.save()
     if "asignados" in campos:
         tarjeta.asignados.set(_validar_asignados(tarjeta.pizarra, campos["asignados"]))
@@ -223,8 +223,7 @@ def eliminar_tarjeta(tarjeta: Tarjeta, usuario) -> None:
     if origen:
         origen.hecho = _hecho_ahora(origen)
         origen.tarjeta_creada = None
-        origen.lista_terminado = None
-        origen.save(update_fields=["hecho", "tarjeta_creada", "lista_terminado", "actualizado_en"])
+        origen.save(update_fields=["hecho", "tarjeta_creada", "actualizado_en"])
     lista_id = tarjeta.lista_id
     tarjeta.delete()
     _renumerar(lista_id)
@@ -237,16 +236,47 @@ def eliminar_tarjeta(tarjeta: Tarjeta, usuario) -> None:
 
 
 def _hecho_ahora(elemento: ElementoChecklist) -> bool:
-    """Como `esta_hecho`, pero leyendo de la base dónde está hoy la tarjeta enlazada (el objeto en
-    memoria puede traer una lista vieja si la tarjeta se movió por otro camino)."""
-    if not elemento.automatico:
+    """Como `esta_hecho`, pero leyendo de la base dónde está hoy la tarjeta enlazada y la lista de
+    terminado de la suya (los objetos en memoria pueden traer datos viejos)."""
+    if not elemento.tarjeta_creada_id:
+        return elemento.hecho
+    terminado = (
+        Tarjeta.objects.filter(pk=elemento.tarjeta_id)
+        .values_list("lista_terminado_id", flat=True)
+        .first()
+    )
+    if not terminado:
         return elemento.hecho
     lista_id = (
         Tarjeta.objects.filter(pk=elemento.tarjeta_creada_id)
         .values_list("lista_id", flat=True)
         .first()
     )
-    return lista_id == elemento.lista_terminado_id
+    return lista_id == terminado
+
+
+def _fijar_lista_terminado(tarjeta: Tarjeta, lista) -> None:
+    """
+    «Lo que llega a [lista] cuenta como terminado» de la checklist de `tarjeta` (2026-10-06).
+    No puede ser la lista donde está la propia tarjeta: sus tarjetas hijas nacen ahí y se darían
+    por hechas al crearlas. Vacía = palomeo manual; cada elemento conserva el estado que tenía.
+    """
+    if lista in (None, ""):
+        if tarjeta.lista_terminado_id:
+            for e in tarjeta.checklist.filter(tarjeta_creada__isnull=False):
+                e.hecho = _hecho_ahora(e)
+                e.save(update_fields=["hecho", "actualizado_en"])
+        tarjeta.lista_terminado = None
+        return
+    try:
+        destino = _lista_de(tarjeta.pizarra, lista)
+    except ValidationError as e:
+        raise ValidationError({"lista_terminado": "Elige una lista de esta pizarra."}) from e
+    if destino.pk == tarjeta.lista_id:
+        raise ValidationError(
+            {"lista_terminado": "Elige una lista distinta de la que tiene esta tarjeta."}
+        )
+    tarjeta.lista_terminado = destino
 
 
 def _validar_texto(texto) -> str:
@@ -270,31 +300,20 @@ def agregar_elemento(tarjeta: Tarjeta, usuario, texto: str) -> ElementoChecklist
 @transaction.atomic
 def editar_elemento(elemento: ElementoChecklist, usuario, **campos) -> ElementoChecklist:
     """
-    Cambia `texto`, `hecho` (solo si se palomea a mano) o `lista_terminado` (solo si ya es
-    tarjeta; None = palomeo manual, conservando el estado que tenía en ese momento).
+    Cambia `texto` o `hecho` (solo si se palomea a mano). La lista en la que un elemento
+    convertido se da por hecho es de toda la tarjeta: `editar_tarjeta(lista_terminado=…)`.
     """
     pizarra = elemento.tarjeta.pizarra
     exigir_permiso(pizarra, usuario, "editar")
-    desconocidos = set(campos) - {"texto", "hecho", "lista_terminado"}
+    desconocidos = set(campos) - {"texto", "hecho"}
     if desconocidos:
         raise ValidationError(f"Campos no editables: {', '.join(sorted(desconocidos))}.")
     if "texto" in campos:
         elemento.texto = _validar_texto(campos["texto"])
-    if "lista_terminado" in campos:
-        if not elemento.tarjeta_creada_id:
-            raise ValidationError(
-                {"lista_terminado": "Solo un elemento convertido en tarjeta se marca solo."}
-            )
-        nueva = campos["lista_terminado"]
-        if nueva in (None, ""):
-            elemento.hecho = _hecho_ahora(elemento)
-            elemento.lista_terminado = None
-        else:
-            elemento.lista_terminado = _lista_de(pizarra, nueva)
     if "hecho" in campos:
         if elemento.automatico:
             raise ValidationError(
-                {"hecho": "Este elemento se marca solo cuando su tarjeta llega a su lista."}
+                {"hecho": "Este elemento se marca solo cuando su tarjeta llega a la lista elegida."}
             )
         elemento.hecho = bool(campos["hecho"])
     elemento.save()
@@ -324,35 +343,22 @@ def quitar_elemento(elemento: ElementoChecklist, usuario) -> None:
 
 
 @transaction.atomic
-def convertir_elemento(
-    elemento: ElementoChecklist, usuario, *, lista_terminado=POR_OMISION, **datos
-) -> Tarjeta:
+def convertir_elemento(elemento: ElementoChecklist, usuario, **datos) -> Tarjeta:
     """
     Crea una tarjeta en la misma pizarra a partir del elemento y las enlaza (§4.6). `datos` son
-    los de `crear_tarjeta` (el título por omisión es el texto del elemento). `lista_terminado`:
-    en qué lista se da por hecho el elemento; sin indicar, la primera lista de cierre (o la
-    última); None = se palomea a mano.
+    los de `crear_tarjeta` (el título por omisión es el texto del elemento). Se da por hecho
+    según la `lista_terminado` de la tarjeta de la checklist (o se palomea a mano si no tiene).
     """
     padre = elemento.tarjeta
     pizarra = padre.pizarra
     exigir_permiso(pizarra, usuario, "crear")
     if elemento.tarjeta_creada_id:
         raise ValidationError("Este elemento ya se convirtió en tarjeta.")
-    if lista_terminado is POR_OMISION:
-        lista_terminado = (
-            pizarra.listas.filter(es_cierre=True).first()
-            or pizarra.listas.order_by("-posicion").first()
-        )
-    elif lista_terminado not in (None, ""):
-        lista_terminado = _lista_de(pizarra, lista_terminado)
-    else:
-        lista_terminado = None
     datos.setdefault("titulo", elemento.texto)
     datos.setdefault("lista", padre.lista)
     nueva = crear_tarjeta(pizarra, usuario, **datos)
     elemento.tarjeta_creada = nueva
-    elemento.lista_terminado = lista_terminado
-    elemento.save(update_fields=["tarjeta_creada", "lista_terminado", "actualizado_en"])
+    elemento.save(update_fields=["tarjeta_creada", "actualizado_en"])
     registrar_movimiento(
         padre, usuario, nota=f"convirtió «{elemento.texto}» de la checklist en tarjeta"
     )

@@ -78,7 +78,6 @@ def test_el_admin_transfiere_una_pizarra(
                 f"listas-{i}-pizarra": pizarra.pk,
                 f"listas-{i}-nombre": lista.nombre,
                 f"listas-{i}-posicion": lista.posicion,
-                **({f"listas-{i}-es_cierre": "on"} if lista.es_cierre else {}),
             }
         )
     datos = {
