@@ -3,7 +3,7 @@
   "private": true,
   "version": "1.0.0",
   "type": "module",
-  "description": "PWA de TaskFlow: pizarras con listas y tarjetas (§5 de la propuesta).",
+  "description": "PWA de TaskFlow: pizarras con listas y actividades (§5 de la propuesta).",
   "scripts": {
     "dev": "vite --host 0.0.0.0",
     "build": "vue-tsc --noEmit && vite build",

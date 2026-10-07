@@ -72,6 +72,26 @@ export async function api<T = unknown>(ruta: string, metodo: Metodo = "GET", dat
   return cuerpo as T;
 }
 
+/** Ruta completa de la API, para enlaces (descargar un adjunto): funciona bajo /taskflow/. */
+export const rutaApi = (ruta: string) => `${API}${ruta}`;
+
+/** POST multipart (adjuntos): sin Content-Type, que lo pone el navegador con su separador. */
+export async function subir<T = unknown>(ruta: string, datos: FormData): Promise<T> {
+  const cabeceras: Record<string, string> = { Accept: "application/json" };
+  const token = await tokenCsrf();
+  if (token) cabeceras["X-CSRFToken"] = token;
+  let respuesta: Response;
+  try {
+    respuesta = await fetch(`${API}${ruta}`, { method: "POST", credentials: "same-origin", headers: cabeceras, body: datos });
+  } catch {
+    throw new ErrorApi(0, { detalle: "Sin conexión. Revisa tu internet e inténtalo de nuevo." });
+  }
+  const cuerpo = await respuesta.json().catch(() => null);
+  if (respuesta.status === 413) throw new ErrorApi(413, { archivo: "El archivo es demasiado grande." });
+  if (!respuesta.ok) throw new ErrorApi(respuesta.status, cuerpo);
+  return cuerpo as T;
+}
+
 export function mensajeDeError(error: unknown, respaldo = "Ocurrió un error. Inténtalo de nuevo."): string {
   return error instanceof ErrorApi ? error.message : respaldo;
 }

@@ -5,6 +5,7 @@ Se usan funciones y no serializers de DRF porque la salida mezcla datos calculad
 usuario, conteos, vencidas, checklist hecha) y las reglas de entrada ya viven en `servicios.py`.
 """
 
+from django.conf import settings
 from django.utils import timezone
 
 from apps.pizarras.models import PERMISOS, Invitacion, MiembroPizarra
@@ -23,32 +24,61 @@ def permisos(m: MiembroPizarra | None) -> dict:
     return {p: bool(m and m.puede(p)) for p in PERMISOS}
 
 
-def tipo(t, n_tarjetas=None):
+def tipo(t, n_actividades=None):
     datos = {"id": t.pk, "nombre": t.nombre, "descripcion": t.descripcion, "color": t.color}
-    if n_tarjetas is not None:
-        datos["n_tarjetas"] = n_tarjetas
+    if n_actividades is not None:
+        datos["n_actividades"] = n_actividades
     return datos
 
 
-def lista(lst, n_tarjetas=None):
+def solicitante(t):
+    """«Solicitada por» de una actividad (Etapa 3.8): un miembro o un externo del catálogo."""
+    if t.solicitada_por_id:
+        return {
+            "tipo": "miembro",
+            "id": t.solicitada_por_id,
+            "nombre": usuario(t.solicitada_por)["nombre"],
+        }
+    if t.solicitante_externo_id:
+        return {
+            "tipo": "externo",
+            "id": t.solicitante_externo_id,
+            "nombre": t.solicitante_externo.nombre,
+        }
+    return None
+
+
+def adjunto(a):
+    """La descarga es `GET adjuntos/<id>/` (la PWA arma la ruta): no hay URL pública (§7)."""
+    return {
+        "id": a.pk,
+        "nombre": a.nombre,
+        "tamano": a.tamano,
+        "tipo": a.tipo,
+        "subido_por": usuario(a.subido_por),
+        "creado_en": a.creado_en,
+    }
+
+
+def lista(lst, n_actividades=None):
     datos = {
         "id": lst.pk,
         "nombre": lst.nombre,
         "posicion": lst.posicion,
     }
-    if n_tarjetas is not None:
-        datos["n_tarjetas"] = n_tarjetas
+    if n_actividades is not None:
+        datos["n_actividades"] = n_actividades
     return datos
 
 
 def conteos(p, yo) -> dict:
     """Resumen de tamaño fijo para «Mis pizarras» (§4.6): no crece con el número de listas."""
-    tarjetas = p.tarjetas.all()
+    actividades = p.actividades.all()
     return {
-        "tarjetas": tarjetas.count(),
+        "actividades": actividades.count(),
         "listas": p.listas.count(),
-        "mias": tarjetas.filter(asignados=yo).count(),
-        "vencidas": tarjetas.filter(fecha_fin__lt=timezone.localdate()).count(),
+        "mias": actividades.filter(asignados=yo).count(),
+        "vencidas": actividades.filter(fecha_fin__lt=timezone.localdate()).count(),
     }
 
 
@@ -77,8 +107,19 @@ def pizarra_detalle(p, yo):
             "rol", "usuario__nombre", "usuario__email"
         )
     ]
-    datos["listas"] = [lista(lst, lst.tarjetas.count()) for lst in p.listas.all()]
-    datos["tipos"] = [tipo(t, t.tarjetas.count()) for t in p.tipos.all()]
+    datos["listas"] = [lista(lst, lst.actividades.count()) for lst in p.listas.all()]
+    datos["tipos"] = [tipo(t, t.actividades.count()) for t in p.tipos.all()]
+    from apps.actividades.servicios import MB, espacio_adjuntos
+
+    datos["adjuntos_espacio"] = {
+        "usado": espacio_adjuntos(p),
+        "limite": settings.TASKFLOW_ADJUNTOS_PIZARRA_MB * MB,
+        "max_archivo": settings.TASKFLOW_ADJUNTO_MAX_MB * MB,
+    }
+    datos["solicitantes"] = [
+        {"id": s.pk, "nombre": s.nombre, "n_actividades": s.actividades.count()}
+        for s in p.solicitantes.all()
+    ]
     datos["invitaciones"] = (
         [
             {
@@ -106,13 +147,13 @@ def movimiento(m):
 
 
 def elemento(e):
-    hija = e.tarjeta_creada
+    hija = e.actividad_creada
     return {
         "id": e.pk,
         "texto": e.texto,
         "hecho": e.esta_hecho,
         "automatico": e.automatico,
-        "tarjeta": (
+        "actividad": (
             {
                 "id": hija.pk,
                 "titulo": hija.titulo,
@@ -129,10 +170,10 @@ def _viene_de(t):
     origen = getattr(t, "elemento_origen", None)
     if origen is None:
         return None
-    return {"id": origen.tarjeta_id, "titulo": origen.tarjeta.titulo, "elemento": origen.texto}
+    return {"id": origen.actividad_id, "titulo": origen.actividad.titulo, "elemento": origen.texto}
 
 
-def tarjeta(t, con_detalle=False):
+def actividad(t, con_detalle=False):
     elementos = list(t.checklist.all())
     datos = {
         "id": t.pk,
@@ -141,14 +182,15 @@ def tarjeta(t, con_detalle=False):
         "lista": t.lista_id,
         "lista_nombre": t.lista.nombre,
         "lista_terminado": t.lista_terminado_id,
+        "lista_al_completar": t.lista_al_completar_id,
         "posicion": t.posicion,
         "titulo": t.titulo,
         "descripcion": t.descripcion,
-        "prioridad": t.prioridad,
-        "fecha_inicio": t.fecha_inicio.isoformat(),
+        "fecha_solicitud": t.fecha_solicitud.isoformat() if t.fecha_solicitud else None,
         "fecha_fin": t.fecha_fin.isoformat() if t.fecha_fin else None,
         "asignados": [usuario(u) for u in t.asignados.all()],
         "tipos": [tp.pk for tp in t.tipos.all()],
+        "solicitante": solicitante(t),
         "creada_por": usuario(t.creada_por),
         "creado_en": t.creado_en,
         "checklist_conteo": (
@@ -157,8 +199,10 @@ def tarjeta(t, con_detalle=False):
             else None
         ),
         "viene_de": _viene_de(t),
+        "n_adjuntos": len(t.adjuntos.all()),
     }
     if con_detalle:
         datos["checklist"] = [elemento(e) for e in elementos]
         datos["historial"] = [movimiento(m) for m in t.movimientos.select_related("usuario")]
+        datos["adjuntos"] = [adjunto(a) for a in t.adjuntos.all()]
     return datos

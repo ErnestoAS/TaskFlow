@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import ElementoChecklist, Movimiento, Tarjeta
+from .models import Actividad, ElementoChecklist, Movimiento
 from .servicios import registrar_movimiento
 
 
@@ -17,32 +17,33 @@ class MovimientoInline(admin.TabularInline):
 
 class ElementoChecklistInline(admin.TabularInline):
     model = ElementoChecklist
-    fk_name = "tarjeta"
+    fk_name = "actividad"
     extra = 0
-    fields = ["texto", "hecho", "posicion", "tarjeta_creada"]
-    raw_id_fields = ["tarjeta_creada"]
+    fields = ["texto", "hecho", "posicion", "actividad_creada"]
+    raw_id_fields = ["actividad_creada"]
 
 
-@admin.register(Tarjeta)
-class TarjetaAdmin(admin.ModelAdmin):
+@admin.register(Actividad)
+class ActividadAdmin(admin.ModelAdmin):
     list_display = [
         "titulo",
         "pizarra",
         "lista",
-        "prioridad",
-        "fecha_inicio",
+        "fecha_solicitud",
         "fecha_fin",
         "creada_por",
         "creado_en",
     ]
-    list_filter = ["prioridad", "pizarra"]
+    list_filter = ["pizarra"]
     search_fields = ["titulo", "descripcion", "pizarra__nombre", "lista__nombre"]
     autocomplete_fields = [
         "pizarra",
         "lista",
         "lista_terminado",
+        "lista_al_completar",
         "asignados",
         "tipos",
+        "solicitada_por",
         "creada_por",
     ]
     readonly_fields = ["creado_en", "actualizado_en"]
@@ -50,7 +51,7 @@ class TarjetaAdmin(admin.ModelAdmin):
 
     def save_model(self, request, obj, form, change):
         # El admin también deja rastro en el historial (§4.6): ningún cambio de lista sin fila.
-        anterior = Tarjeta.objects.get(pk=obj.pk).lista.nombre if change else ""
+        anterior = Actividad.objects.get(pk=obj.pk).lista.nombre if change else ""
         super().save_model(request, obj, form, change)
         if not change or "lista" in form.changed_data:
             registrar_movimiento(obj, request.user, anterior, obj.lista.nombre)

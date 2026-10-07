@@ -9,7 +9,7 @@ from django.db import migrations
 class Migration(migrations.Migration):
     dependencies = [
         ("pizarras", "0003_listas_y_permisos"),
-        ("tarjetas", "0011_sin_lista_terminado_en_elemento"),
+        ("actividades", "0011_sin_lista_terminado_en_elemento"),
     ]
 
     operations = [

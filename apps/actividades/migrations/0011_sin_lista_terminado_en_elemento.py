@@ -4,7 +4,7 @@ from django.db import migrations
 
 
 class Migration(migrations.Migration):
-    dependencies = [("tarjetas", "0010_lista_terminado_en_tarjeta")]
+    dependencies = [("actividades", "0010_lista_terminado_en_tarjeta")]
 
     operations = [
         migrations.RemoveField(model_name="elementochecklist", name="lista_terminado"),

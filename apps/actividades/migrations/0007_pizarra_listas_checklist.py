@@ -16,7 +16,7 @@ from django.db import migrations, models
 
 class Migration(migrations.Migration):
     dependencies = [
-        ("tarjetas", "0006_prioridad"),
+        ("actividades", "0006_prioridad"),
         ("pizarras", "0003_listas_y_permisos"),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
     ]
@@ -72,7 +72,7 @@ class Migration(migrations.Migration):
                     models.ForeignKey(
                         on_delete=django.db.models.deletion.CASCADE,
                         related_name="movimientos",
-                        to="tarjetas.tarjeta",
+                        to="actividades.tarjeta",
                         verbose_name="tarjeta",
                     ),
                 ),
@@ -121,7 +121,7 @@ class Migration(migrations.Migration):
                     models.ForeignKey(
                         on_delete=django.db.models.deletion.CASCADE,
                         related_name="checklist",
-                        to="tarjetas.tarjeta",
+                        to="actividades.tarjeta",
                         verbose_name="tarjeta",
                     ),
                 ),
@@ -132,7 +132,7 @@ class Migration(migrations.Migration):
                         null=True,
                         on_delete=django.db.models.deletion.SET_NULL,
                         related_name="elemento_origen",
-                        to="tarjetas.tarjeta",
+                        to="actividades.tarjeta",
                         verbose_name="tarjeta creada",
                     ),
                 ),

@@ -3,7 +3,7 @@
  *
  * - Computadora: se arrastra con el mouse al instante.
  * - Teléfono: hay que mantener presionado ~0.35 s (`delayOnTouchOnly`); si el dedo se mueve antes,
- *   es un desplazamiento normal. La tarjeta se levanta con una vibración breve y cerca de los
+ *   es un desplazamiento normal. La actividad se levanta con una vibración breve y cerca de los
  *   bordes la pantalla y el tablero se desplazan solos (`scroll`, `bubbleScroll`).
  * - SortableJS mueve el nodo en el DOM; al soltar se devuelve a su lugar y se avisa con
  *   `alSoltar`: quien la usa actualiza sus datos y Vue vuelve a pintar. Así el DOM nunca se
@@ -33,7 +33,7 @@ export interface OpcionesArrastre {
 
 const ESPERA_TACTIL_MS = 350;
 
-// Soltar una tarjeta no debe abrir su detalle: se ignora el clic que llega justo después.
+// Soltar una actividad no debe abrir su detalle: se ignora el clic que llega justo después.
 let finDelArrastre = 0;
 document.addEventListener(
   "click",
@@ -58,7 +58,7 @@ function crear(el: HTMLElement, opciones: OpcionesArrastre): Sortable {
     delayOnTouchOnly: true,
     touchStartThreshold: 8,
     // Arrastre propio (no el nativo del navegador): igual en teléfono y computadora, y permite
-    // dar estilo a la tarjeta levantada (.fantasma) y al hueco que deja (.hueco).
+    // dar estilo a la actividad levantada (.fantasma) y al hueco que deja (.hueco).
     forceFallback: true,
     fallbackOnBody: true,
     fallbackTolerance: 4,

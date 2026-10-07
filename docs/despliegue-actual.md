@@ -22,7 +22,7 @@
 | Imagen | `ghcr.io/ernestoas/taskflow:<commit corto>` (privada; la publica GitHub Actions) |
 | Directorio | `/opt/taskflow` (`compose.prod.yaml`, `.env`, `.env.prod`) |
 | Proyecto de Compose | `taskflow-prod` (contenedores `taskflow-prod-db-1` y `taskflow-prod-web-1`) |
-| Volúmenes | `taskflow-prod_db-data`, `taskflow-prod_media` |
+| Volúmenes | `taskflow-prod_db-data`, `taskflow-prod_media` (desde la Etapa 3.8 guarda los **adjuntos** en `adjuntos/`: hasta 500 MB por pizarra; vigilar el disco de 40 GB) |
 | Puerto | `web` publicado solo en **`127.0.0.1:8082`**; PostgreSQL **sin publicar** |
 | Certificado | Let's Encrypt propio de `taskflow.rourendev.com` (certbot, renovación automática con `certbot.timer`) |
 | HSTS | `max-age=300` desde 2026-10-02; **pendiente** subirlo a `31536000` |

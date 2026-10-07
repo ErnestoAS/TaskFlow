@@ -11,7 +11,7 @@
   --fondo:var(--tf-bg); --superficie:var(--tf-surface); --texto:var(--tf-text); --tenue:var(--tf-text-muted); --linea:var(--tf-border);
   --sombra:var(--tf-shadow); --sombra-alta:var(--tf-shadow-float);
   --exito:var(--tf-success-text); --exito-suave:var(--tf-success-soft);
-  --vencida:var(--tf-danger-text); --vencida-suave:var(--tf-danger-soft); --urgente:var(--tf-priority-urgent);
+  --vencida:var(--tf-danger-text); --vencida-suave:var(--tf-danger-soft);
   --av1:var(--tf-primary); --av2:var(--tf-primary-hover); /* --av3: el de tema.css */
 }
 /* =========================================================

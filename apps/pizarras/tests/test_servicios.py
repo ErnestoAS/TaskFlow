@@ -3,7 +3,7 @@ from django.core.exceptions import ValidationError
 from django.db import IntegrityError, transaction
 
 from apps.pizarras import servicios
-from apps.pizarras.models import Invitacion, Lista, MiembroPizarra, Pizarra, TipoTarjeta
+from apps.pizarras.models import Invitacion, Lista, MiembroPizarra, Pizarra, TipoActividad
 from apps.pizarras.servicios import PermisoDenegado
 
 pytestmark = pytest.mark.django_db
@@ -86,13 +86,13 @@ def test_solo_el_dueno_archiva_y_elimina(pizarra, crear_usuario, agregar_miembro
         servicios.eliminar_pizarra(pizarra, luis)
 
 
-def test_eliminar_pizarra_borra_sus_tarjetas_y_listas(pizarra, dueno):
-    from apps.tarjetas.models import Tarjeta
-    from apps.tarjetas.servicios import crear_tarjeta
+def test_eliminar_pizarra_borra_sus_actividades_y_listas(pizarra, dueno):
+    from apps.actividades.models import Actividad
+    from apps.actividades.servicios import crear_actividad
 
-    crear_tarjeta(pizarra, dueno, titulo="Una")
+    crear_actividad(pizarra, dueno, titulo="Una")
     servicios.eliminar_pizarra(pizarra, dueno)
-    assert not Tarjeta.objects.exists() and not Lista.objects.exists()
+    assert not Actividad.objects.exists() and not Lista.objects.exists()
 
 
 # --- miembros y permisos -----------------------------------------------------------------------
@@ -121,11 +121,11 @@ def test_el_dueno_cambia_permisos_y_nadie_mas(pizarra, dueno, crear_usuario, agr
 
 
 def test_quitar_miembro_lo_desasigna(pizarra, dueno, crear_usuario, agregar_miembro):
-    from apps.tarjetas.servicios import crear_tarjeta
+    from apps.actividades.servicios import crear_actividad
 
     luis = crear_usuario()
     agregar_miembro(luis)
-    t = crear_tarjeta(pizarra, dueno, titulo="Una", asignados=[luis, dueno])
+    t = crear_actividad(pizarra, dueno, titulo="Una", asignados=[luis, dueno])
     servicios.quitar_miembro(pizarra, dueno, luis)
     assert servicios.membresia(pizarra, luis) is None
     assert list(t.asignados.all()) == [dueno]
@@ -252,9 +252,9 @@ def test_ordenar_listas_exige_todas(pizarra, dueno, listas):
 
 
 def test_solo_se_elimina_una_lista_vacia(pizarra, dueno, listas):
-    from apps.tarjetas.servicios import crear_tarjeta
+    from apps.actividades.servicios import crear_actividad
 
-    crear_tarjeta(pizarra, dueno, titulo="Una", lista=listas["En curso"])
+    crear_actividad(pizarra, dueno, titulo="Una", lista=listas["En curso"])
     with pytest.raises(ValidationError):
         servicios.eliminar_lista(listas["En curso"], dueno)
     servicios.eliminar_lista(listas["Finalizada"], dueno)
@@ -270,7 +270,7 @@ def test_gestionar_listas_requiere_permiso(pizarra, dueno, crear_usuario, agrega
     servicios.crear_lista(pizarra, luis, "Ideas")
 
 
-# --- tipos de tarjeta --------------------------------------------------------------------------
+# --- tipos de actividad --------------------------------------------------------------------------
 
 
 def test_crear_tipo_normaliza_y_valida(pizarra, dueno):
@@ -288,7 +288,7 @@ def test_el_mismo_nombre_de_tipo_vale_en_otra_pizarra(pizarra, dueno):
     otra = servicios.crear_pizarra(dueno, "Otra")
     servicios.crear_tipo(pizarra, dueno, nombre="Logística", color="#f08c00")
     servicios.crear_tipo(otra, dueno, nombre="Logística", color="#f08c00")
-    assert TipoTarjeta.objects.count() == 2
+    assert TipoActividad.objects.count() == 2
 
 
 def test_gestionar_tipos_requiere_permiso(pizarra, dueno, crear_usuario, agregar_miembro):
@@ -299,14 +299,14 @@ def test_gestionar_tipos_requiere_permiso(pizarra, dueno, crear_usuario, agregar
     servicios.cambiar_permisos(pizarra, dueno, luis, gestionar_tipos=True)
     t = servicios.crear_tipo(pizarra, luis, nombre="Logística", color="#f08c00")
     servicios.editar_tipo(t, luis, color="#123abc")
-    assert TipoTarjeta.objects.get(pk=t.pk).color == "#123abc"
+    assert TipoActividad.objects.get(pk=t.pk).color == "#123abc"
 
 
-def test_eliminar_tipo_no_borra_tarjetas(pizarra, dueno):
-    from apps.tarjetas.servicios import crear_tarjeta
+def test_eliminar_tipo_no_borra_actividades(pizarra, dueno):
+    from apps.actividades.servicios import crear_actividad
 
     tipo = servicios.crear_tipo(pizarra, dueno, nombre="Urgente", color="#c92a2a")
-    t = crear_tarjeta(pizarra, dueno, titulo="Una", tipos=[tipo])
+    t = crear_actividad(pizarra, dueno, titulo="Una", tipos=[tipo])
     servicios.eliminar_tipo(tipo, dueno)
     t.refresh_from_db()
     assert list(t.tipos.all()) == []

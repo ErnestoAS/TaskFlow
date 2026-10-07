@@ -15,7 +15,7 @@ from django.db import migrations
 class Migration(migrations.Migration):
     # Después de todas las migraciones de `tarjetas` que aún apuntan a `pizarras.proyecto`: en
     # una base nueva, renombrar antes las dejaría con una referencia a un modelo que ya no existe.
-    dependencies = [("pizarras", "0001_initial"), ("tarjetas", "0006_prioridad")]
+    dependencies = [("pizarras", "0001_initial"), ("actividades", "0006_prioridad")]
 
     operations = [
         migrations.RemoveConstraint(model_name="miembroproyecto", name="miembro_unico"),

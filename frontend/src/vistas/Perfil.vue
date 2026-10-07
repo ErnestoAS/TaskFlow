@@ -89,29 +89,29 @@ async function cerrarSesion() {
       <div v-if="errores.general" class="error-general" role="alert">{{ errores.general }}</div>
       <template v-if="hoja === 'nombre'">
         <div class="campo">
-          <label for="p-nombre">Nombre</label>
-          <input id="p-nombre" v-model="datos.nombre" type="text" autocomplete="given-name" />
+          <label for="p-nombre">Nombre <span class="obligatorio" aria-hidden="true">*</span></label>
+          <input id="p-nombre" aria-required="true" v-model="datos.nombre" type="text" autocomplete="given-name" />
           <div v-if="errores.nombre" class="error">{{ errores.nombre }}</div>
         </div>
         <div class="campo">
-          <label for="p-primer-apellido">Primer apellido</label>
-          <input id="p-primer-apellido" v-model="datos.primer_apellido" type="text" autocomplete="family-name" />
+          <label for="p-primer-apellido">Primer apellido <span class="obligatorio" aria-hidden="true">*</span></label>
+          <input id="p-primer-apellido" aria-required="true" v-model="datos.primer_apellido" type="text" autocomplete="family-name" />
           <div v-if="errores.primer_apellido" class="error">{{ errores.primer_apellido }}</div>
         </div>
         <div class="campo">
-          <label for="p-segundo-apellido">Segundo apellido <span style="text-transform: none; font-weight: 400">(opcional)</span></label>
+          <label for="p-segundo-apellido">Segundo apellido</label>
           <input id="p-segundo-apellido" v-model="datos.segundo_apellido" type="text" autocomplete="off" />
         </div>
       </template>
       <template v-else>
         <div class="campo">
-          <label for="p-actual">Contraseña actual</label>
-          <input id="p-actual" v-model="datos.actual" type="password" autocomplete="current-password" />
+          <label for="p-actual">Contraseña actual <span class="obligatorio" aria-hidden="true">*</span></label>
+          <input id="p-actual" aria-required="true" v-model="datos.actual" type="password" autocomplete="current-password" />
           <div v-if="errores.actual" class="error">{{ errores.actual }}</div>
         </div>
         <div class="campo">
-          <label for="p-nueva">Contraseña nueva</label>
-          <input id="p-nueva" v-model="datos.nueva" type="password" autocomplete="new-password" />
+          <label for="p-nueva">Contraseña nueva <span class="obligatorio" aria-hidden="true">*</span></label>
+          <input id="p-nueva" aria-required="true" v-model="datos.nueva" type="password" autocomplete="new-password" />
           <div v-if="errores.nueva" class="error">{{ errores.nueva }}</div>
         </div>
       </template>

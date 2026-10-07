@@ -39,29 +39,28 @@ async function enviar() {
       <form v-else novalidate @submit.prevent="enviar">
         <div v-if="errorGeneral" class="error-general" role="alert">{{ errorGeneral }}</div>
         <div class="campo">
-          <label for="nombre">Nombre</label>
-          <input id="nombre" v-model="form.nombre" type="text" autocomplete="given-name" />
+          <label for="nombre">Nombre <span class="obligatorio" aria-hidden="true">*</span></label>
+          <input id="nombre" aria-required="true" v-model="form.nombre" type="text" autocomplete="given-name" />
           <div v-if="errores.nombre" class="error">{{ errores.nombre }}</div>
         </div>
         <div class="campo">
-          <label for="primer_apellido">Primer apellido</label>
-          <input id="primer_apellido" v-model="form.primer_apellido" type="text" autocomplete="family-name" />
+          <label for="primer_apellido">Primer apellido <span class="obligatorio" aria-hidden="true">*</span></label>
+          <input id="primer_apellido" aria-required="true" v-model="form.primer_apellido" type="text" autocomplete="family-name" />
           <div v-if="errores.primer_apellido" class="error">{{ errores.primer_apellido }}</div>
         </div>
         <div class="campo">
-          <label for="segundo_apellido">Segundo apellido <span style="text-transform: none; font-weight: 400">(opcional)</span></label>
+          <label for="segundo_apellido">Segundo apellido</label>
           <input id="segundo_apellido" v-model="form.segundo_apellido" type="text" autocomplete="off" />
         </div>
         <div class="campo">
-          <label for="correo">Correo</label>
-          <input id="correo" v-model="form.correo" type="email" autocomplete="email" inputmode="email" />
+          <label for="correo">Correo <span class="obligatorio" aria-hidden="true">*</span></label>
+          <input id="correo" aria-required="true" v-model="form.correo" type="email" autocomplete="email" inputmode="email" />
           <div v-if="errores.correo" class="error">{{ errores.correo }}</div>
         </div>
         <div class="campo">
-          <label for="password">Contraseña</label>
-          <input id="password" v-model="form.password" type="password" autocomplete="new-password" />
+          <label for="password">Contraseña <span class="obligatorio" aria-hidden="true">*</span></label>
+          <input id="password" aria-required="true" v-model="form.password" type="password" autocomplete="new-password" />
           <div v-if="errores.password" class="error">{{ errores.password }}</div>
-          <div v-else class="ayuda">Al menos 8 caracteres, que no sea solo números ni muy común. Te enviaremos un código a tu correo para confirmarlo.</div>
         </div>
         <button type="submit" class="btn btn-primario btn-bloque" :disabled="ocupado">
           {{ ocupado ? "Creando…" : "Crear cuenta" }}

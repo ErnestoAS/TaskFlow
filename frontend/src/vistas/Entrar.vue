@@ -42,16 +42,16 @@ async function enviar() {
     <div class="marca"><Logo /><span>TaskFlow</span></div>
     <div class="caja">
       <h1>Entrar</h1>
-      <p class="intro">Organiza tus actividades en pizarras con listas y tarjetas.</p>
+      <p class="intro">Organiza tus actividades en pizarras con listas.</p>
       <form novalidate @submit.prevent="enviar">
         <div v-if="error" class="error-general" role="alert">{{ error }}</div>
         <div class="campo">
-          <label for="correo">Correo</label>
-          <input id="correo" v-model="correo" type="email" autocomplete="username" inputmode="email" />
+          <label for="correo">Correo <span class="obligatorio" aria-hidden="true">*</span></label>
+          <input id="correo" aria-required="true" v-model="correo" type="email" autocomplete="username" inputmode="email" />
         </div>
         <div class="campo">
-          <label for="password">Contraseña</label>
-          <input id="password" v-model="password" type="password" autocomplete="current-password" />
+          <label for="password">Contraseña <span class="obligatorio" aria-hidden="true">*</span></label>
+          <input id="password" aria-required="true" v-model="password" type="password" autocomplete="current-password" />
         </div>
         <button type="submit" class="btn btn-primario btn-bloque" :disabled="ocupado">
           {{ ocupado ? "Entrando…" : "Entrar" }}

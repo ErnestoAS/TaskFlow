@@ -1,8 +1,8 @@
 import pytest
 
+from apps.actividades.models import Actividad
+from apps.actividades.servicios import crear_actividad
 from apps.pizarras.models import MiembroPizarra
-from apps.tarjetas.models import Tarjeta
-from apps.tarjetas.servicios import crear_tarjeta
 
 pytestmark = pytest.mark.django_db
 
@@ -24,25 +24,24 @@ def admin(crear_usuario, client):
 
 
 def test_mover_de_lista_en_el_admin_deja_rastro(admin, client, pizarra, dueno, listas):
-    t = crear_tarjeta(pizarra, dueno, titulo="Una")
+    t = crear_actividad(pizarra, dueno, titulo="Una")
     datos = {
         "pizarra": pizarra.pk,
         "lista": listas["Finalizada"].pk,
         "posicion": 0,
         "titulo": "Una",
         "descripcion": "",
-        "prioridad": "media",
-        "fecha_inicio": t.fecha_inicio.isoformat(),
+        "fecha_solicitud": "",
         "fecha_fin": "",
         "creada_por": dueno.pk,
         **_formset("checklist"),
         **_formset("movimientos", 1, 1),
         "movimientos-0-id": t.movimientos.get().pk,
-        "movimientos-0-tarjeta": t.pk,
+        "movimientos-0-actividad": t.pk,
     }
-    r = client.post(f"/django-admin/tarjetas/tarjeta/{t.pk}/change/", datos)
+    r = client.post(f"/django-admin/actividades/actividad/{t.pk}/change/", datos)
     assert r.status_code == 302, r.content.decode()[:2000]
-    t = Tarjeta.objects.get(pk=t.pk)
+    t = Actividad.objects.get(pk=t.pk)
     assert t.lista == listas["Finalizada"]
     ultimo = t.movimientos.first()
     assert (ultimo.lista_anterior, ultimo.lista_nueva, ultimo.usuario) == (
@@ -89,6 +88,7 @@ def test_el_admin_transfiere_una_pizarra(
         **_formset("miembros", 2, 2),
         **_formset("listas", len(listas), len(listas)),
         **_formset("tipos"),
+        **_formset("solicitantes"),
         **filas,
     }
     r = client.post(f"/django-admin/pizarras/pizarra/{pizarra.pk}/change/", datos)

@@ -25,9 +25,9 @@ sombras ni muchos colores. **Ante la duda, neutro.**
 | Petróleo `#0E7490` | Acento: progreso («En curso»), seleccionado, indicadores. Nunca como fondo de áreas grandes. (Antes coral `#F97360`, retirado el 2026-10-01.) |
 | Verde | Finalizada / éxito. |
 | Azul | Información (avisos neutros). |
-| Ámbar | Advertencia / prioridad alta / «vence pronto». |
-| Rojo | Urgente / vencida / error. |
-| Grises | Pendiente, prioridad baja y media, metadatos, texto secundario. |
+| Ámbar | Advertencia / «vence pronto». (Hasta la Etapa 3.8 también prioridad alta.) |
+| Rojo | Vencida / error / eliminar. (Hasta la Etapa 3.8 también prioridad urgente.) |
+| Grises | Metadatos, texto secundario. |
 
 ## 2. Logo
 
@@ -62,9 +62,11 @@ Otras decisiones:
 - **Prioridad alta en ámbar `#D97706`, no naranja `#F97316`.** El naranja y el coral tienen un
   contraste entre sí de 1.02: son indistinguibles, y una tarjeta en curso con prioridad alta se
   vería de un solo color.
-- **Prioridad** es un campo fijo de la tarjeta (baja, media, alta, urgente; por omisión media),
-  decidido el 2026-10-01. Urgente se marca con un **indicador lateral rojo**; la tarjeta sigue
-  blanca. Desde el 2026-10-05 el orden dentro de cada lista es manual (se arrastra).
+- **Prioridad** era un campo fijo de la tarjeta (baja, media, alta, urgente; por omisión media),
+  decidido el 2026-10-01, con un **indicador lateral rojo** para urgente. **Se quitó en la Etapa
+  3.8 (2026-10-06)**, junto con `--tf-priority-*` y el indicador: quien la necesite crea un tipo o
+  una lista «Urgente» (§4.7 de la propuesta). Desde el 2026-10-05 el orden dentro de cada lista es
+  manual (se arrastra).
 - **Los tipos no son fijos:** cada pizarra crea los suyos (§4.5 de la propuesta). Los seis colores
   de la guía (desarrollo, reunión, soporte, mantenimiento, diseño, administración) son los
   **colores sugeridos** del selector; el usuario puede elegir otro.
@@ -86,7 +88,6 @@ Todas en `static/css/tema.css`. Resumen:
 | Base | `--tf-bg` `#F5F7FA`, `--tf-surface` `#FFF`, `--tf-text` `#172033`, `--tf-text-muted` `#64748B`, `--tf-text-disabled`, `--tf-border` `#E2E8F0`, `--tf-sidebar-text` |
 | Éxito | `--tf-success` `#16A34A`, `--tf-success-text` `#15803D`, `--tf-success-soft` `#ECFDF5`: checklist completa y marca de lista de cierre (2026-10-05). Reemplaza a `--tf-status-*`, que se fueron con los estatus: las listas no tienen color (su chip es navy suave, `--tf-primary-soft`/`--tf-primary`). |
 | Semánticos | `--tf-{danger,warning,info}`, `…-text`, `…-soft` |
-| Prioridad | `--tf-priority-{low,medium,high,urgent}`, `…-text`, `…-soft` |
 | Forma | `--tf-radius-card` 12px, `--tf-radius-btn` 9px, `--tf-radius-modal` 16px, `--tf-shadow`, `--tf-shadow-float` |
 
 Patrón de **badge**: punto con el color base, texto con la variante `-text`, fondo `-soft`,
@@ -95,7 +96,7 @@ tipografía 11–12 px peso 600, radio completo.
 ## 5. Componentes
 
 - **Fondo general** `--tf-bg`; **listas** (columnas) en gris muy suave (`--tf-border` mezclado con
-  `--tf-bg`), con nombre, contador y «⋯»; las de cierre llevan una palomita verde. **Tarjetas**
+  `--tf-bg`), con nombre, contador y «⋯»; **tarjetas** de cada actividad (clase `.actividad`)
   blancas con borde de 1 px y sombra casi imperceptible; al arrastrarlas se levantan (inclinadas,
   con sombra y borde petróleo) y dejan un hueco punteado.
 - **Cabecera** blanca con borde inferior. En computadora, **barra lateral navy** con el logo blanco;

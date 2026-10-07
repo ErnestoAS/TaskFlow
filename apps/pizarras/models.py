@@ -1,8 +1,8 @@
 """
-Pizarras, sus miembros, invitaciones, listas y tipos de tarjeta (§4.5 y §4.6 de la propuesta).
+Pizarras, sus miembros, invitaciones, listas y tipos de actividad (§4.5 y §4.6 de la propuesta).
 
 Una pizarra (antes «proyecto», renombrado el 2026-10-05) agrupa listas con nombre libre, y las
-listas, tarjetas. Las reglas de negocio (quién puede qué) viven en `servicios.py`, no aquí: los
+listas, actividades. Las reglas de negocio (quién puede qué) viven en `servicios.py`, no aquí: los
 modelos solo guardan datos y las restricciones que la base de datos sí puede garantizar.
 """
 
@@ -89,12 +89,12 @@ class MiembroPizarra(models.Model):
         related_name="membresias",
     )
     rol = models.CharField("rol", max_length=10, choices=Rol.choices, default=Rol.MIEMBRO)
-    # Permisos sobre las tarjetas y la estructura de la pizarra. Para el dueño se ignoran: puede
+    # Permisos sobre las actividades y la estructura de la pizarra. Para el dueño se ignoran: puede
     # todo. Los valores por omisión son los que recibe quien acepta una invitación.
-    puede_crear = models.BooleanField("puede crear tarjetas", default=True)
-    puede_editar = models.BooleanField("puede editar tarjetas", default=True)
-    puede_mover = models.BooleanField("puede mover tarjetas", default=True)
-    puede_eliminar = models.BooleanField("puede eliminar tarjetas", default=False)
+    puede_crear = models.BooleanField("puede crear actividades", default=True)
+    puede_editar = models.BooleanField("puede editar actividades", default=True)
+    puede_mover = models.BooleanField("puede mover actividades", default=True)
+    puede_eliminar = models.BooleanField("puede eliminar actividades", default=False)
     puede_gestionar_listas = models.BooleanField("puede gestionar listas", default=False)
     puede_gestionar_tipos = models.BooleanField("puede gestionar tipos", default=False)
     unido_en = models.DateTimeField("unido en", auto_now_add=True)
@@ -195,8 +195,8 @@ class Invitacion(models.Model):
 class Lista(TimeStampedModel):
     """
     Columna de una pizarra con nombre libre (§4.6), en lugar de los tres estatus fijos. Ninguna
-    lista significa «terminado» por sí misma (2026-10-06): eso lo elige cada tarjeta para su
-    checklist (`Tarjeta.lista_terminado`).
+    lista significa «terminado» por sí misma (2026-10-06): eso lo elige cada actividad para su
+    checklist (`Actividad.lista_terminado`).
     """
 
     pizarra = models.ForeignKey(
@@ -224,7 +224,7 @@ class Lista(TimeStampedModel):
         super().save(*args, **kwargs)
 
 
-class TipoTarjeta(TimeStampedModel):
+class TipoActividad(TimeStampedModel):
     pizarra = models.ForeignKey(
         Pizarra, verbose_name="pizarra", on_delete=models.CASCADE, related_name="tipos"
     )
@@ -234,8 +234,8 @@ class TipoTarjeta(TimeStampedModel):
     color = models.CharField("color", max_length=7, validators=[validar_color])
 
     class Meta:
-        verbose_name = "tipo de tarjeta"
-        verbose_name_plural = "tipos de tarjeta"
+        verbose_name = "tipo de actividad"
+        verbose_name_plural = "tipos de actividad"
         ordering = ["nombre"]
         constraints = [
             models.UniqueConstraint(
@@ -253,3 +253,29 @@ class TipoTarjeta(TimeStampedModel):
         self.nombre = (self.nombre or "").strip()
         self.color = (self.color or "").strip().lower()
         super().save(*args, **kwargs)
+
+
+class Solicitante(TimeStampedModel):
+    """
+    Quien pide actividades sin ser miembro de la pizarra (un director, otra área), Etapa 3.8 (§4.5).
+    Solo el nombre: se captura al vuelo desde el combo «Solicitada por». Los miembros no se copian
+    aquí: la actividad los apunta directo (`Actividad.solicitada_por`).
+    """
+
+    pizarra = models.ForeignKey(
+        Pizarra, verbose_name="pizarra", on_delete=models.CASCADE, related_name="solicitantes"
+    )
+    nombre = models.CharField("nombre", max_length=100)
+
+    class Meta:
+        verbose_name = "solicitante"
+        verbose_name_plural = "solicitantes"
+        ordering = ["nombre"]
+        constraints = [
+            models.UniqueConstraint(
+                "pizarra", Lower("nombre"), name="solicitante_nombre_unico_en_pizarra"
+            ),
+        ]
+
+    def __str__(self):
+        return self.nombre

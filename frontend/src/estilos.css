@@ -42,7 +42,7 @@ svg{flex-shrink:0}
 .vacio{color:var(--tf-text-muted);text-align:center;padding:36px 16px;font-size:14px}
 
 /* ---------- pizarras ---------- */
-.lista-pizarras,.mis-tarjetas{display:grid;gap:10px}
+.lista-pizarras,.mis-actividades{display:grid;gap:10px}
 .pizarra{background:var(--tf-surface);border-radius:var(--tf-radius-card);border:1px solid var(--tf-border);box-shadow:var(--tf-shadow);padding:14px;text-align:left;width:100%;display:flex;flex-direction:column;gap:10px;transition:border-color .12s,box-shadow .12s}
 .pizarra:hover{border-color:color-mix(in srgb,var(--tf-primary) 30%,var(--tf-border));box-shadow:var(--tf-shadow-float)}
 .pizarra .fila{display:flex;align-items:center;gap:8px}
@@ -64,14 +64,6 @@ svg{flex-shrink:0}
 .chip.vencida{background:var(--tf-danger-soft);color:var(--tf-danger-text)}
 .chip.por-vencer{background:var(--tf-warning-soft);color:var(--tf-warning-text)}
 .chip.fecha{background:var(--tf-bg);color:var(--tf-text-muted);font-weight:500}
-.chip.prio-baja{background:var(--tf-priority-low-soft);color:var(--tf-priority-low-text)}
-.chip.prio-baja .punto{background:var(--tf-priority-low)}
-.chip.prio-media{background:var(--tf-priority-medium-soft);color:var(--tf-priority-medium-text)}
-.chip.prio-media .punto{background:var(--tf-priority-medium)}
-.chip.prio-alta{background:var(--tf-priority-high-soft);color:var(--tf-priority-high-text)}
-.chip.prio-alta .punto{background:var(--tf-priority-high)}
-.chip.prio-urgente{background:var(--tf-priority-urgent-soft);color:var(--tf-priority-urgent-text)}
-.chip.prio-urgente .punto{background:var(--tf-priority-urgent)}
 
 /* ---------- avatares ---------- */
 .avatares{display:flex}
@@ -108,31 +100,58 @@ svg{flex-shrink:0}
 .lista-cab h3{margin:0;font-size:14px;font-weight:700;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .lista-cab .num{color:var(--tf-text-muted);font-weight:600;font-size:12px;background:var(--tf-surface);border-radius:99px;padding:1px 8px}
 .lista-cab .btn-icono{width:30px;height:30px;color:var(--tf-text-muted)}
-.lista-tarjetas{display:flex;flex-direction:column;gap:8px;min-height:40px}
-.lista-tarjetas .vacio{padding:12px 8px;font-size:13px}
-.agregar-tarjeta{border:0;background:transparent;color:var(--tf-text-muted);font-weight:600;font-size:13.5px;text-align:left;padding:8px;border-radius:9px;display:flex;align-items:center;gap:6px}
-.agregar-tarjeta:hover{background:color-mix(in srgb,var(--tf-text) 6%,transparent);color:var(--tf-text)}
+.lista-actividades{display:flex;flex-direction:column;gap:8px;min-height:40px}
+.lista-actividades .vacio{padding:12px 8px;font-size:13px}
+.agregar-actividad{border:0;background:transparent;color:var(--tf-text-muted);font-weight:600;font-size:13.5px;text-align:left;padding:8px;border-radius:9px;display:flex;align-items:center;gap:6px}
+.agregar-actividad:hover{background:color-mix(in srgb,var(--tf-text) 6%,transparent);color:var(--tf-text)}
+/* Adjuntos (Etapa 3.8): lista con ícono, nombre (enlace de descarga), tamaño y quitar. */
+.adjuntos{list-style:none;margin:0 0 8px;padding:0;display:flex;flex-direction:column}
+.adjuntos li{display:flex;align-items:center;gap:8px;padding:6px 2px 6px 4px;border-radius:8px;min-height:40px;font-size:14px}
+.adjuntos li:hover{background:var(--tf-bg)}
+.adjuntos li>svg{color:var(--tf-text-muted);flex-shrink:0}
+.adjuntos a,.adjuntos .nombre-archivo{flex:1;min-width:0;overflow-wrap:anywhere;color:var(--tf-accent-text)}
+.adjuntos .nombre-archivo{color:var(--tf-text)}
+.adjuntos small{color:var(--tf-text-muted);font-size:12px;white-space:nowrap}
+.adjuntos .btn-icono{width:30px;height:30px;color:var(--tf-text-muted)}
+.espacio-adjuntos{font-size:13px;color:var(--tf-text-muted);margin:0 2px 10px}
+.espacio-adjuntos .avance{margin-top:6px}
+/* Filtro «Solicitada por» del tablero en computadora (Etapa 3.8). */
+.filtro-solicitante{margin-left:auto;display:flex;align-items:center;gap:6px}
+.filtro-solicitante select{border:1px solid var(--tf-border);border-radius:var(--tf-radius-btn);padding:5px 9px;background:var(--tf-surface);font-size:13px;color:var(--tf-text);max-width:220px}
+.filtro-solicitante select:focus{outline:none;border-color:var(--tf-accent);box-shadow:0 0 0 3px var(--tf-accent-soft)}
+/* Combo con búsqueda (Etapa 3.8, «Solicitada por»): campo de texto con lista desplegable. */
+.combo{position:relative;display:flex;align-items:center}
+.combo .btn-icono{position:absolute;right:4px;width:32px;height:32px;color:var(--tf-text-muted)}
+.campo .combo input{padding-right:40px}
+.combo-lista{position:absolute;z-index:4;top:calc(100% + 4px);left:0;right:0;max-height:240px;overflow-y:auto;margin:0;padding:4px;list-style:none;background:var(--tf-surface);border:1px solid var(--tf-border);border-radius:var(--tf-radius-btn);box-shadow:var(--tf-shadow-float)}
+.combo-grupo{padding:8px 10px 4px;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--tf-text-muted)}
+.combo-opcion{padding:9px 10px;border-radius:7px;font-size:14px;cursor:pointer;display:flex;align-items:center;gap:6px}
+.combo-opcion.activa{background:var(--tf-primary-soft);color:var(--tf-primary)}
+.combo-opcion.nuevo{color:var(--tf-accent-text);font-weight:600;border-top:1px solid var(--tf-border);margin-top:2px}
+.persona-texto{font-size:14.5px}
+/* Teléfono (Etapa 3.8): «Agregar actividad» flotante sobre la barra inferior, en la lista a la vista. */
+.btn-flotante{position:fixed;right:16px;bottom:calc(80px + env(safe-area-inset-bottom));z-index:5;display:flex;align-items:center;gap:6px;border:0;border-radius:99px;padding:12px 18px;background:var(--tf-btn);color:var(--tf-on-btn);font-weight:650;font-size:14px;box-shadow:var(--tf-shadow-float)}
+.btn-flotante:hover{background:var(--tf-btn-hover)}
+.contenido-tablero{padding-bottom:calc(150px + env(safe-area-inset-bottom))}
 .lista.nueva{background:transparent;border:2px dashed var(--tf-border)}
 .lista.nueva form{display:flex;flex-direction:column;gap:8px}
 .lista.nueva input{border:1px solid var(--tf-border);border-radius:var(--tf-radius-btn);padding:9px 11px;background:var(--tf-surface)}
 .lista.nueva input:focus{outline:none;border-color:var(--tf-accent);box-shadow:0 0 0 3px var(--tf-accent-soft)}
 .lista.nueva .error{font-size:12px;color:var(--tf-danger-text)}
-/* Arrastrar (arrastre.ts): la tarjeta levantada sigue al puntero y deja un hueco punteado. */
-.lista-tarjetas .tarjeta,.checklist .manija{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+/* Arrastrar (arrastre.ts): la actividad levantada sigue al puntero y deja un hueco punteado. */
+.lista-actividades .actividad,.checklist .manija{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
 .elegida{transform:scale(.98)}
 .hueco{opacity:.35;box-shadow:none!important;border-style:dashed!important}
 .fantasma{transform:rotate(2.5deg) scale(1.03);box-shadow:0 18px 40px color-mix(in srgb,var(--tf-text) 28%,transparent)!important;border-color:var(--tf-accent)!important;opacity:1!important}
-.tarjeta{position:relative;background:var(--tf-surface);border-radius:var(--tf-radius-card);border:1px solid var(--tf-border);box-shadow:var(--tf-shadow);padding:12px 13px;text-align:left;width:100%;display:flex;flex-direction:column;gap:8px;overflow:hidden;transition:border-color .12s,box-shadow .12s,transform .12s}
-.tarjeta:hover{border-color:color-mix(in srgb,var(--tf-primary) 28%,var(--tf-border));box-shadow:var(--tf-shadow-float)}
-.tarjeta:active{transform:scale(.995)}
-/* Urgente: indicador lateral; la tarjeta sigue blanca. */
-.tarjeta.urgente::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--tf-priority-urgent)}
-.tarjeta h4{margin:0;font-size:14.5px;font-weight:650;line-height:1.3;letter-spacing:-.005em}
-.tarjeta p{margin:0;font-size:13px;color:var(--tf-text-muted);line-height:1.45;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
-.tarjeta .etiquetas{display:flex;gap:5px;flex-wrap:wrap}
-.tarjeta .pie{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
-.tarjeta .pie .avatares{margin-left:auto}
-.tarjeta .pizarra-de{font-size:11.5px;color:var(--tf-primary);font-weight:600}
+.actividad{position:relative;background:var(--tf-surface);border-radius:var(--tf-radius-card);border:1px solid var(--tf-border);box-shadow:var(--tf-shadow);padding:12px 13px;text-align:left;width:100%;display:flex;flex-direction:column;gap:8px;overflow:hidden;transition:border-color .12s,box-shadow .12s,transform .12s}
+.actividad:hover{border-color:color-mix(in srgb,var(--tf-primary) 28%,var(--tf-border));box-shadow:var(--tf-shadow-float)}
+.actividad:active{transform:scale(.995)}
+.actividad h4{margin:0;font-size:14.5px;font-weight:650;line-height:1.3;letter-spacing:-.005em;overflow-wrap:anywhere}
+.actividad p{margin:0;font-size:13px;color:var(--tf-text-muted);line-height:1.45;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;overflow-wrap:anywhere}
+.actividad .etiquetas{display:flex;gap:5px;flex-wrap:wrap}
+.actividad .pie{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.actividad .pie .avatares{margin-left:auto}
+.actividad .pizarra-de{font-size:11.5px;color:var(--tf-primary);font-weight:600}
 
 /* ---------- botones ---------- */
 .btn{border:0;border-radius:var(--tf-radius-btn);padding:10px 16px;font-weight:600;font-size:14px;display:inline-flex;align-items:center;justify-content:center;gap:7px;transition:background .12s,box-shadow .12s}
@@ -172,14 +191,15 @@ svg{flex-shrink:0}
 .hoja-cab h2{font-size:18px;margin:0;flex:1;line-height:1.3;font-weight:700;letter-spacing:-.01em}
 .hoja-cab .btn-icono{color:var(--tf-text-muted)}
 .campo{margin-bottom:16px}
-.campo>label,.campo>.etiqueta{display:block;font-size:11.5px;font-weight:600;color:var(--tf-text-muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:.06em}
+.campo>label,.campo>.etiqueta,.checklist-cab>.etiqueta{display:block;font-size:11.5px;font-weight:600;color:var(--tf-text-muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:.06em}
 .campo input[type=text],.campo input[type=email],.campo input[type=password],.campo input[type=date],.campo textarea,.campo select{width:100%;border:1px solid var(--tf-border);border-radius:var(--tf-radius-btn);padding:10px 12px;background:var(--tf-surface);font-size:14.5px;transition:border-color .12s,box-shadow .12s}
 .campo input:focus,.campo textarea:focus,.campo select:focus{outline:none;border-color:var(--tf-accent);box-shadow:0 0 0 3px var(--tf-accent-soft)}
 .campo textarea{min-height:96px;resize:vertical}
 .ayuda,.campo .ayuda{font-size:12px;color:var(--tf-text-muted);margin-top:5px}
 .campo .error{font-size:12px;color:var(--tf-danger-text);margin-top:5px}
-.texto-largo{font-size:14.5px;line-height:1.55;white-space:pre-wrap;margin:0}
-.opcional{text-transform:none;font-weight:400}
+.texto-largo{font-size:14.5px;line-height:1.55;white-space:pre-wrap;margin:0;overflow-wrap:anywhere}
+/* Campo obligatorio (Etapa 3.8): un asterisco junto a la etiqueta; sin «(opcional)» en ninguna parte. */
+.obligatorio{color:inherit;font-weight:700;margin-left:1px}
 .dos-campos{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .linea-campo{display:flex;gap:8px}
 .linea-campo input{flex:1;min-width:0}
@@ -195,6 +215,19 @@ svg{flex-shrink:0}
 .avance{height:4px;border-radius:99px;background:var(--tf-border);overflow:hidden;margin:2px 0 8px}
 .avance i{display:block;height:100%;background:var(--tf-accent);transition:width .2s}
 .avance.completo i{background:var(--tf-success)}
+/* Etapa 3.8: título de la checklist con «copiar» y «Al completar, mover a»; texto editable. */
+.checklist-cab{display:flex;align-items:center;flex-wrap:wrap;gap:4px 8px;margin-bottom:4px}
+.checklist-cab .etiqueta{margin:0}
+.checklist-cab .btn-icono{width:30px;height:30px;color:var(--tf-text-muted)}
+.al-completar{margin-left:auto;display:flex;align-items:center;gap:6px;font-size:12.5px;color:var(--tf-text-muted)}
+.campo .al-completar select{width:auto;border:1px solid var(--tf-border);border-radius:var(--tf-radius-btn);padding:4px 8px;background:var(--tf-surface);font-size:12.5px;max-width:150px}
+.campo .al-completar select:focus{outline:none;border-color:var(--tf-accent);box-shadow:0 0 0 3px var(--tf-accent-soft)}
+.checklist .elemento{flex:1;display:flex;gap:10px;align-items:center;font-size:14px;min-width:0}
+.checklist .texto{overflow-wrap:anywhere}
+.checklist .texto.editable{cursor:text;border-radius:4px}
+.checklist .texto.editable:hover{background:color-mix(in srgb,var(--tf-text) 5%,transparent)}
+.checklist .texto.editable:focus-visible{outline:2px solid var(--tf-accent);outline-offset:2px}
+.campo .checklist .editar-texto{flex:1;min-width:0;font:inherit;font-size:14px;border:1px solid var(--tf-accent);border-radius:6px;padding:4px 8px;min-height:0;resize:vertical;box-shadow:0 0 0 3px var(--tf-accent-soft);outline:none;background:var(--tf-surface)}
 .checklist{list-style:none;margin:0 0 8px;padding:0;display:flex;flex-direction:column}
 .checklist li{display:flex;align-items:center;flex-wrap:wrap;gap:6px;padding:4px 2px 4px 4px;border-radius:8px;min-height:40px;background:var(--tf-surface)}
 .checklist li:hover{background:var(--tf-bg)}
@@ -205,11 +238,11 @@ svg{flex-shrink:0}
 .checklist .manija{color:var(--tf-text-disabled);cursor:grab;display:inline-flex;padding:4px 0}
 .caja-enlace{width:18px;height:18px;border-radius:4px;border:2px solid var(--tf-text-disabled);display:grid;place-items:center;flex-shrink:0;color:var(--tf-surface)}
 .checklist li.hecho .caja-enlace{background:var(--tf-accent);border-color:var(--tf-accent)}
-.enlace-tarjeta{flex:1;min-width:0;border:0;background:transparent;text-align:left;padding:0;font-size:14px;display:flex;flex-direction:column;gap:1px;margin-left:4px}
-.enlace-tarjeta .texto{color:var(--tf-accent-text);font-weight:600}
-.checklist li.hecho .enlace-tarjeta .texto{color:var(--tf-text-muted)}
-.enlace-tarjeta small{font-size:12px;color:var(--tf-text-muted);display:block}
-.enlace-tarjeta small svg{vertical-align:-2px;margin-right:2px}
+.enlace-actividad{flex:1;min-width:0;border:0;background:transparent;text-align:left;padding:0;font-size:14px;display:flex;flex-direction:column;gap:1px;margin-left:4px}
+.enlace-actividad .texto{color:var(--tf-accent-text);font-weight:600}
+.checklist li.hecho .enlace-actividad .texto{color:var(--tf-text-muted)}
+.enlace-actividad small{font-size:12px;color:var(--tf-text-muted);display:block}
+.enlace-actividad small svg{vertical-align:-2px;margin-right:2px}
 /* «Lo que llega a [lista] cuenta como terminado», bajo la checklist (2026-10-06). */
 .lista-terminado{display:flex;align-items:center;flex-wrap:wrap;gap:6px;margin-top:10px;padding:10px 12px;border-radius:var(--tf-radius-btn);background:var(--tf-bg);font-size:13.5px;color:var(--tf-text)}
 .lista-terminado svg{color:var(--tf-success-text)}
@@ -218,16 +251,6 @@ svg{flex-shrink:0}
 .agregar-item{display:flex;gap:8px}
 .agregar-item input{flex:1;min-width:0;border:1px solid var(--tf-border);border-radius:var(--tf-radius-btn);padding:8px 11px;background:var(--tf-surface);font-size:14px}
 .agregar-item input:focus{outline:none;border-color:var(--tf-accent);box-shadow:0 0 0 3px var(--tf-accent-soft)}
-/* Prioridad en el formulario: cuatro opciones de radio con apariencia de botón. */
-.elegir-prioridad{display:flex;gap:6px}
-.elegir-prioridad label{flex:1;cursor:pointer}
-.elegir-prioridad input{position:absolute;opacity:0;pointer-events:none}
-.elegir-prioridad .chip{width:100%;justify-content:center;padding:8px 4px;font-size:12.5px;border:1px solid var(--tf-border);background:var(--tf-surface);color:var(--tf-text-muted)}
-.elegir-prioridad input:checked + .chip.prio-baja{background:var(--tf-priority-low-soft);color:var(--tf-priority-low-text);border-color:var(--tf-priority-low)}
-.elegir-prioridad input:checked + .chip.prio-media{background:var(--tf-priority-medium-soft);color:var(--tf-priority-medium-text);border-color:var(--tf-priority-medium)}
-.elegir-prioridad input:checked + .chip.prio-alta{background:var(--tf-priority-high-soft);color:var(--tf-priority-high-text);border-color:var(--tf-priority-high)}
-.elegir-prioridad input:checked + .chip.prio-urgente{background:var(--tf-priority-urgent-soft);color:var(--tf-priority-urgent-text);border-color:var(--tf-priority-urgent)}
-.elegir-prioridad input:focus-visible + .chip{outline:2px solid var(--tf-accent)}
 .personas{display:flex;flex-direction:column;gap:6px}
 .persona{display:flex;align-items:center;gap:10px;padding:6px 4px;border-radius:10px;flex-wrap:wrap}
 .persona .nombre{flex:1;font-size:14px}
@@ -235,10 +258,10 @@ svg{flex-shrink:0}
 .persona input[type=checkbox]{width:18px;height:18px;accent-color:var(--tf-accent)}
 label.persona{cursor:pointer}
 label.persona:hover{background:var(--tf-bg)}
-/* Tipos de tarjeta: el color lo elige el usuario (dato, no diseño) y llega como --tipo en línea. */
+/* Tipos de actividad: el color lo elige el usuario (dato, no diseño) y llega como --tipo en línea. */
 .chip.tipo{background:color-mix(in srgb,var(--tipo) 12%,var(--tf-surface));color:color-mix(in srgb,var(--tipo) 70%,var(--tf-text))}
 .chip.tipo .punto{background:var(--tipo)}
-.tipos-tarjeta{display:flex;gap:5px;flex-wrap:wrap}
+.tipos-actividad{display:flex;gap:5px;flex-wrap:wrap}
 .filtro-tipos{display:flex;gap:6px;overflow-x:auto;margin:0 0 12px;padding-bottom:2px}
 .filtro-tipos button{border:1px solid var(--tf-border);background:var(--tf-surface);border-radius:99px;padding:5px 11px;font-size:12.5px;font-weight:600;color:var(--tf-text-muted);display:inline-flex;gap:6px;align-items:center;white-space:nowrap}
 .filtro-tipos button .punto{background:var(--tipo,var(--tf-text-muted))}
@@ -337,9 +360,13 @@ label.persona:hover{background:var(--tf-bg)}
   .cabecera{padding:14px 24px}
   .sello{display:none}
   .contenido{padding:20px 24px 24px}
-  .lista-pizarras,.mis-tarjetas{grid-template-columns:repeat(auto-fill,minmax(300px,1fr))}
+  .lista-pizarras,.mis-actividades{grid-template-columns:repeat(auto-fill,minmax(300px,1fr))}
   .tablero{margin:0;padding:0 0 16px;scroll-snap-type:none}
-  .lista{flex-basis:284px}
+  .contenido-tablero{padding-bottom:24px}
+  /* Cada lista se desplaza por dentro: su «+» y su «Agregar actividad» quedan siempre a la vista. */
+  .lista{flex-basis:284px;max-height:calc(100vh - 210px)}
+  .lista:not(.nueva) .lista-actividades{overflow-y:auto;flex:1 1 auto;margin:0 -4px;padding:0 4px 2px}
+  .lista-actividades>*{flex-shrink:0}
   .acciones-cab{display:flex}
   .solo-telefono{display:none!important}
   .nav-inferior{display:none}

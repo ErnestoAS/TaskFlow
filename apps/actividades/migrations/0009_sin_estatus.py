@@ -7,11 +7,11 @@ lista y posición, y fecha límite no anterior a la de inicio.
 import django.db.models.deletion
 from django.db import migrations, models
 
-import apps.tarjetas.models
+import apps.actividades.models
 
 
 class Migration(migrations.Migration):
-    dependencies = [("tarjetas", "0008_estatus_a_listas")]
+    dependencies = [("actividades", "0008_estatus_a_listas")]
 
     operations = [
         # Solo el texto del campo (renombrado en 0007).
@@ -38,7 +38,7 @@ class Migration(migrations.Migration):
         migrations.AlterField(
             model_name="tarjeta",
             name="fecha_inicio",
-            field=models.DateField(default=apps.tarjetas.models.hoy, verbose_name="fecha de inicio"),
+            field=models.DateField(default=apps.actividades.models.hoy, verbose_name="fecha de inicio"),
         ),
         migrations.RemoveConstraint(model_name="tarjeta", name="tarjeta_estatus_valido"),
         migrations.RemoveField(model_name="tarjeta", name="estatus"),

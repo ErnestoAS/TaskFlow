@@ -39,15 +39,9 @@ async function guardar() {
   <Hoja :titulo="pizarra ? 'Cambiar nombre' : 'Nueva pizarra'" @cerrar="emit('cerrar')">
     <form novalidate @submit.prevent="guardar">
       <div class="campo">
-        <label for="f-nombre">Nombre</label>
-        <input id="f-nombre" v-model="nombre" type="text" maxlength="150" placeholder="Ej. Feria de empleo 2027" />
+        <label for="f-nombre">Nombre <span class="obligatorio" aria-hidden="true">*</span></label>
+        <input id="f-nombre" aria-required="true" v-model="nombre" type="text" maxlength="150" placeholder="Ej. Feria de empleo 2027" />
         <div v-if="error" class="error">{{ error }}</div>
-      </div>
-      <div v-if="!pizarra" class="campo">
-        <div class="ayuda">
-          Empieza vacía: en el tablero agregas las listas que necesites (por ejemplo «Pendiente», «En curso» y
-          «Finalizada»). Serás el dueño: podrás invitar a otras personas y decidir qué puede hacer cada una.
-        </div>
       </div>
       <div class="fila-botones">
         <button type="button" class="btn btn-secundario" @click="emit('cerrar')">Cancelar</button>

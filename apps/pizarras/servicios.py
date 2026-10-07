@@ -24,7 +24,8 @@ from .models import (
     Lista,
     MiembroPizarra,
     Pizarra,
-    TipoTarjeta,
+    Solicitante,
+    TipoActividad,
 )
 
 # Tope de reenvíos de una misma invitación: las invitaciones no vencen y se pueden reenviar
@@ -119,7 +120,7 @@ def restaurar(pizarra: Pizarra, por) -> Pizarra:
 
 
 def eliminar_pizarra(pizarra: Pizarra, por) -> None:
-    """Borra la pizarra con sus tarjetas, listas, tipos, miembros e invitaciones (CASCADE)."""
+    """Borra la pizarra con sus actividades, listas, tipos, miembros e invitaciones (CASCADE)."""
     exigir_dueno(pizarra, por)
     pizarra.delete()
 
@@ -180,11 +181,11 @@ def cambiar_permisos(pizarra: Pizarra, por, usuario, **permisos: bool) -> Miembr
 
 
 def _desasignar(pizarra: Pizarra, usuario) -> None:
-    # Import local: tarjetas depende de pizarras, no al revés.
-    from apps.tarjetas.models import Tarjeta
+    # Import local: actividades depende de pizarras, no al revés.
+    from apps.actividades.models import Actividad
 
-    for tarjeta in Tarjeta.objects.filter(pizarra=pizarra, asignados=usuario):
-        tarjeta.asignados.remove(usuario)
+    for actividad in Actividad.objects.filter(pizarra=pizarra, asignados=usuario):
+        actividad.asignados.remove(usuario)
 
 
 @transaction.atomic
@@ -361,34 +362,34 @@ def ordenar_listas(pizarra: Pizarra, por, ids: list[int]) -> list[Lista]:
 
 
 def eliminar_lista(lista: Lista, por) -> None:
-    """Solo una lista vacía: borrar en cascada tarjetas al quitar una columna es muy fácil."""
+    """Solo una lista vacía: borrar en cascada actividades al quitar una columna es muy fácil."""
     exigir_permiso(lista.pizarra, por, "gestionar_listas")
-    n = lista.tarjetas.count()
+    n = lista.actividades.count()
     if n:
         raise ValidationError(
-            f"La lista tiene {n} tarjeta{'s' if n != 1 else ''}: muévelas o elimínalas antes."
+            f"La lista tiene {n} actividad{'s' if n != 1 else ''}: muévelas o elimínalas antes."
         )
-    from apps.tarjetas.models import ElementoChecklist
+    from apps.actividades.models import ElementoChecklist
 
     # Las checklists que se marcaban al llegar aquí pasan a palomeo manual (SET_NULL) con el
-    # estado que tenían: como la lista está vacía, ninguna tarjeta enlazada estaba en ella.
+    # estado que tenían: como la lista está vacía, ninguna actividad enlazada estaba en ella.
     ElementoChecklist.objects.filter(
-        tarjeta__lista_terminado=lista, tarjeta_creada__isnull=False
+        actividad__lista_terminado=lista, actividad_creada__isnull=False
     ).update(hecho=False)
     lista.delete()
 
 
 # ---------------------------------------------------------------------------------------------
-# Tipos de tarjeta
+# Tipos de actividad
 # ---------------------------------------------------------------------------------------------
 
 
-def _guardar_tipo(tipo: TipoTarjeta) -> TipoTarjeta:
+def _guardar_tipo(tipo: TipoActividad) -> TipoActividad:
     tipo.nombre = (tipo.nombre or "").strip()
     tipo.color = (tipo.color or "").strip().lower()
     if not tipo.nombre:
         raise ValidationError({"nombre": "Escribe un nombre."})
-    repetido = TipoTarjeta.objects.filter(pizarra=tipo.pizarra, nombre__iexact=tipo.nombre)
+    repetido = TipoActividad.objects.filter(pizarra=tipo.pizarra, nombre__iexact=tipo.nombre)
     if tipo.pk:
         repetido = repetido.exclude(pk=tipo.pk)
     if repetido.exists():
@@ -398,16 +399,66 @@ def _guardar_tipo(tipo: TipoTarjeta) -> TipoTarjeta:
     return tipo
 
 
+# ---------------------------------------------------------------------------------------------
+# Solicitantes externos (Etapa 3.8, §4.5): quien tenga «Crear» o «Editar». Son un dato de
+# captura (se agregan desde el combo «Solicitada por»), no una configuración de la pizarra.
+# ---------------------------------------------------------------------------------------------
+
+
+def exigir_crear_o_editar(pizarra: Pizarra, usuario) -> MiembroPizarra:
+    m = exigir_miembro(pizarra, usuario)
+    exigir_activa(pizarra)
+    if not (m.puede("crear") or m.puede("editar")):
+        raise PermisoDenegado("El dueño de la pizarra no te ha dado permiso para hacer esto.")
+    return m
+
+
+def _nombre_solicitante(nombre) -> str:
+    nombre = " ".join((nombre or "").split())
+    if not nombre:
+        raise ValidationError({"nombre": "Escribe un nombre."})
+    if len(nombre) > 100:
+        raise ValidationError({"nombre": "Máximo 100 caracteres."})
+    return nombre
+
+
+def crear_solicitante(pizarra: Pizarra, por, nombre: str) -> Solicitante:
+    """Si ya hay uno con ese nombre (sin distinguir mayúsculas), devuelve ese."""
+    exigir_crear_o_editar(pizarra, por)
+    nombre = _nombre_solicitante(nombre)
+    existente = Solicitante.objects.filter(pizarra=pizarra, nombre__iexact=nombre).first()
+    return existente or Solicitante.objects.create(pizarra=pizarra, nombre=nombre)
+
+
+def renombrar_solicitante(solicitante: Solicitante, por, nombre: str) -> Solicitante:
+    exigir_crear_o_editar(solicitante.pizarra, por)
+    nombre = _nombre_solicitante(nombre)
+    repetido = Solicitante.objects.filter(
+        pizarra=solicitante.pizarra, nombre__iexact=nombre
+    ).exclude(pk=solicitante.pk)
+    if repetido.exists():
+        raise ValidationError({"nombre": "Ya hay un solicitante con ese nombre en esta pizarra."})
+    solicitante.nombre = nombre
+    solicitante.save(update_fields=["nombre", "actualizado_en"])
+    return solicitante
+
+
+def eliminar_solicitante(solicitante: Solicitante, por) -> None:
+    """Sus actividades quedan sin solicitante (SET_NULL); no se borran."""
+    exigir_crear_o_editar(solicitante.pizarra, por)
+    solicitante.delete()
+
+
 def crear_tipo(
     pizarra: Pizarra, por, *, nombre: str, color: str, descripcion: str = ""
-) -> TipoTarjeta:
+) -> TipoActividad:
     exigir_permiso(pizarra, por, "gestionar_tipos")
     return _guardar_tipo(
-        TipoTarjeta(pizarra=pizarra, nombre=nombre, color=color, descripcion=descripcion)
+        TipoActividad(pizarra=pizarra, nombre=nombre, color=color, descripcion=descripcion)
     )
 
 
-def editar_tipo(tipo: TipoTarjeta, por, **campos) -> TipoTarjeta:
+def editar_tipo(tipo: TipoActividad, por, **campos) -> TipoActividad:
     exigir_permiso(tipo.pizarra, por, "gestionar_tipos")
     for campo in ("nombre", "color", "descripcion"):
         if campo in campos:
@@ -415,7 +466,7 @@ def editar_tipo(tipo: TipoTarjeta, por, **campos) -> TipoTarjeta:
     return _guardar_tipo(tipo)
 
 
-def eliminar_tipo(tipo: TipoTarjeta, por) -> None:
-    """Lo quita de las tarjetas (se borran las filas del M2M); las tarjetas no se borran."""
+def eliminar_tipo(tipo: TipoActividad, por) -> None:
+    """Lo quita de las actividades (se borran las filas del M2M); las actividades no se borran."""
     exigir_permiso(tipo.pizarra, por, "gestionar_tipos")
     tipo.delete()

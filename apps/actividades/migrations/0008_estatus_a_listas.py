@@ -28,9 +28,9 @@ ORDEN_PRIORIDAD = {"urgente": 0, "alta": 1, "media": 2, "baja": 3}
 def estatus_a_listas(apps, schema_editor):
     Pizarra = apps.get_model("pizarras", "Pizarra")
     Lista = apps.get_model("pizarras", "Lista")
-    Tarjeta = apps.get_model("tarjetas", "Tarjeta")
-    CambioEstatus = apps.get_model("tarjetas", "CambioEstatus")
-    Movimiento = apps.get_model("tarjetas", "Movimiento")
+    Tarjeta = apps.get_model("actividades", "Tarjeta")
+    CambioEstatus = apps.get_model("actividades", "CambioEstatus")
+    Movimiento = apps.get_model("actividades", "Movimiento")
     zona = zoneinfo.ZoneInfo(settings.TIME_ZONE)
 
     for pizarra in Pizarra.objects.all():
@@ -77,9 +77,9 @@ def _estatus_de(nombre: str, es_cierre: bool) -> str:
 
 
 def listas_a_estatus(apps, schema_editor):
-    Tarjeta = apps.get_model("tarjetas", "Tarjeta")
-    CambioEstatus = apps.get_model("tarjetas", "CambioEstatus")
-    Movimiento = apps.get_model("tarjetas", "Movimiento")
+    Tarjeta = apps.get_model("actividades", "Tarjeta")
+    CambioEstatus = apps.get_model("actividades", "CambioEstatus")
+    Movimiento = apps.get_model("actividades", "Movimiento")
     Lista = apps.get_model("pizarras", "Lista")
 
     tarjetas = list(Tarjeta.objects.select_related("lista"))
@@ -107,6 +107,6 @@ def listas_a_estatus(apps, schema_editor):
 
 
 class Migration(migrations.Migration):
-    dependencies = [("tarjetas", "0007_pizarra_listas_checklist")]
+    dependencies = [("actividades", "0007_pizarra_listas_checklist")]
 
     operations = [migrations.RunPython(estatus_a_listas, listas_a_estatus)]

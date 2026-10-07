@@ -21,7 +21,7 @@ const conArmazon = computed(() => !route.meta.publica && !!sesion.usuario);
 
 const SECCIONES: [string, string, NombreIcono][] = [
   ["pizarras", "Pizarras", "carpetas"],
-  ["mis-tarjetas", "Mis tarjetas", "check"],
+  ["mis-actividades", "Mis actividades", "check"],
   ["perfil", "Perfil", "persona"],
 ];
 const enPizarra = computed(() => route.name === "tablero" || route.name === "ajustes");

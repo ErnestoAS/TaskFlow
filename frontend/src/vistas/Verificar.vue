@@ -68,9 +68,9 @@ async function reenviar() {
         <form novalidate @submit.prevent="confirmar">
           <div v-if="error" class="error-general" role="alert">{{ error }}</div>
           <div class="campo">
-            <label for="codigo">Código</label>
+            <label for="codigo">Código <span class="obligatorio" aria-hidden="true">*</span></label>
             <input
-              id="codigo"
+              id="codigo" aria-required="true"
               v-model="codigo"
               type="text"
               inputmode="numeric"
@@ -78,7 +78,6 @@ async function reenviar() {
               maxlength="6"
               pattern="\d{6}"
             />
-            <div class="ayuda">Vence en 15 minutos.</div>
           </div>
           <div class="fila-botones">
             <button type="button" class="btn btn-secundario" :disabled="espera > 0" @click="reenviar">

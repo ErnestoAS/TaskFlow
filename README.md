@@ -1,9 +1,9 @@
 # TaskFlow
 
-Gestor de tarjetas para organizar actividades. Las tarjetas viven en **pizarras**, ordenadas en
-**listas** con nombre libre que se arrastran como en un tablero kanban. Cada tarjeta tiene título,
-descripción opcional, fecha de inicio y fecha límite, prioridad, tipos, asignados y una checklist
-cuyos elementos se pueden convertir en tarjetas enlazadas.
+Gestor de actividades. Las actividades viven en **pizarras**, ordenadas en **listas** con nombre
+libre y se arrastran como tarjetas en un tablero kanban. Cada actividad tiene título, descripción,
+fecha de inicio y fecha límite, tipos, asignados y una checklist cuyos elementos se pueden
+convertir en actividades enlazadas.
 
 ## Stack
 
@@ -16,8 +16,8 @@ PWA con Vue 3 + Vite + TypeScript
 config/              settings (base, dev, test, production), urls, wsgi/asgi
 apps/core/           TimeStampedModel, /healthz/, portada de instalación (/) y entrega de la PWA (/app/)
 apps/usuarios/       cuenta de acceso (Usuario) con el correo como credencial
-apps/pizarras/       Pizarra, MiembroPizarra (permisos), Invitacion, Lista, TipoTarjeta + servicios.py
-apps/tarjetas/       Tarjeta, Movimiento (historial) y ElementoChecklist + servicios.py
+apps/pizarras/       Pizarra, MiembroPizarra (permisos), Invitacion, Lista, TipoActividad + servicios.py
+apps/actividades/    Actividad, Movimiento (historial) y ElementoChecklist + servicios.py
 apps/api/            API de la PWA (/api/v1/)
 frontend/            PWA (Vue + Vite); se compila a pwa/app/ (no se versiona)
 docker/              entrypoint, script de despliegue (desplegar.sh) y snippet de nginx
@@ -45,7 +45,7 @@ docker compose exec web python manage.py createsuperuser
 | http://localhost:8030/ | Portada de instalación |
 | http://localhost:8030/app/ | La app (PWA). Crea tu cuenta en «Crear cuenta». |
 | http://localhost:5173/app/ | La app con recarga en caliente: `docker compose --profile frontend up` |
-| http://localhost:8030/django-admin/ | Admin de Django (usuarios y tarjetas) |
+| http://localhost:8030/django-admin/ | Admin de Django (usuarios y actividades) |
 | http://localhost:8030/healthz/ | Healthcheck |
 
 ## Comandos frecuentes

@@ -1,10 +1,11 @@
 # TaskFlow
 
-Gestor de tarjetas para organizar actividades. Las tarjetas viven en **pizarras** (antes
-«proyectos»), en **listas** con nombre libre que arma cada pizarra (nace sin listas). Cada tarjeta
-tiene título, descripción opcional, fecha de inicio, fecha límite opcional, cero o más asignados,
-prioridad, tipos y una checklist cuyos elementos se pueden convertir en tarjetas enlazadas; la
-tarjeta elige en qué lista esas tarjetas cuentan como terminadas.
+Gestor de actividades (antes «tarjetas», hasta la Etapa 3.8). Las actividades viven en
+**pizarras** (antes «proyectos»), en **listas** con nombre libre que arma cada pizarra (nace sin
+listas), y en el tablero se ven como tarjetas. Cada actividad tiene título, descripción opcional,
+fecha de solicitud («Solicitada el») y fecha límite («Vence el») opcionales, cero o más asignados, tipos y una checklist cuyos elementos
+se pueden convertir en actividades enlazadas; la actividad elige en qué lista esas actividades
+cuentan como terminadas. Sin prioridad desde la Etapa 3.8 (se usa un tipo o una lista).
 
 - Stack: Python 3.13 · Django 5.2 LTS · DRF · PostgreSQL 18 · uv · Docker. PWA en `frontend/`:
   Vue 3 + Vite + TypeScript. Mismas convenciones que mi-campus.
@@ -33,10 +34,13 @@ tarjeta elige en qué lista esas tarjetas cuentan como terminadas.
   **En producción: `90939ed` desde 2026-10-05** (todo lo anterior). **Sin desplegar (2026-10-06,
   Etapa 3.7):** pizarra nueva sin listas, sin listas de cierre, «Lo que llega a … cuenta como
   terminado» una por tarjeta bajo su checklist, y «Editar»/«Eliminar» arriba del detalle. Ver
-  «Pasos propios» en docs/operacion.md antes de desplegar.
+  «Pasos propios» en docs/operacion.md antes de desplegar. **Etapa 3.8 implementada (2026-10-06),
+  sin desplegar:** «tarjeta» → «actividad» en todo el sistema, sin prioridad, solicitantes, adjuntos,
+  formulario único y ajustes de checklist e interfaz (§4.7 de la propuesta). Al desplegar hay que
+  actualizar a mano el sitio de nginx del servidor (`client_max_body_size 12m`).
 - **Las reglas de negocio viven en `apps/<app>/servicios.py`.** Toda acción (también la API)
-  pasa por esas funciones; nunca cambiar `Tarjeta.lista` (ni su `posicion`) directamente, sino con
-  `tarjetas.servicios.mover_tarjeta`, para que quede en el historial (`Movimiento`).
+  pasa por esas funciones; nunca cambiar `Actividad.lista` (ni su `posicion`) directamente, sino con
+  `actividades.servicios.mover_actividad`, para que quede en el historial (`Movimiento`).
 
 ## URLs y publicación bajo una ruta (reglas)
 
@@ -45,7 +49,7 @@ de otro dominio (`DJANGO_FORCE_SCRIPT_NAME=/taskflow`, como hasta 2026-10-03; ve
 «Publicar bajo una ruta»). Para que eso no se rompa:
 
 - Toda URL se genera con `{% url %}`, `reverse()`, `redirect("nombre")` o `{% static %}`;
-  **nunca** rutas absolutas escritas a mano (`href="/tarjetas/"`, `fetch("/api/…")`), que bajo
+  **nunca** rutas absolutas escritas a mano (`href="/actividades/"`, `fetch("/api/…")`), que bajo
   una ruta saltarían fuera de `/taskflow/` y caerían en otra aplicación. Tampoco dominios escritos
   a mano en plantillas: `{{ request.get_host }}` (la portada lo usa así).
 - `STATIC_URL` y `MEDIA_URL` se arman con `RUTA_BASE` (`/static/` o `/taskflow/static/`); no volverlas relativas
@@ -99,13 +103,17 @@ mecanismos propios; usar los que aquí se documentan y agregar aquí los nuevos 
   razones: [docs/identidad-visual.md](docs/identidad-visual.md). Variables `--tf-*` en
   [`static/css/tema.css`](static/css/tema.css), **fuente única** de los colores: **nunca hex
   sueltos** en templates ni en CSS de componentes. Si falta un color, se agrega ahí y en la guía.
-- Reglas que más se olvidan: **rojo y ámbar solo para alertas** (vencida, urgente, eliminar, vence
+- Reglas que más se olvidan: **rojo y ámbar solo para alertas** (vencida, eliminar, vence
   pronto); nada de coral ni naranja decorativo. Texto en petróleo con `--tf-accent-text`; sobre la barra
   navy, `--tf-accent-on-dark`; ante la duda, **neutro**.
 - Logo en `static/img/marca/` (SVG navy y blanco); conserva su color propio `--tf-logo`.
 - **Componentes de la PWA:** las clases de `frontend/src/estilos.css`, tomadas de las maquetas
-  aprobadas `app-v2.html` y `app-v3.html` (`.btn-primario`, `.chip`, `.tarjeta`, `.hoja`,
-  `.tablero`/`.lista`, `.pestanas-listas`, `.elegir-lista`, `.checklist`, …). **Sin
+  aprobadas `app-v2.html` y `app-v3.html` (`.btn-primario`, `.chip`, `.actividad` —la tarjeta de una actividad—, `.hoja`,
+  `.tablero`/`.lista`, `.pestanas-listas`, `.elegir-lista`, `.checklist`, `.btn-flotante`
+  («Agregar actividad» en teléfono), `.checklist-cab`/`.al-completar` (título de la checklist con
+  copiar y «Al completar, mover a»), `.combo` (lista con búsqueda: «Solicitada por»;
+  `ElegirSolicitante.vue`), `.filtro-solicitante`, `.adjuntos` (lista de archivos de una actividad; `Adjuntos.vue`), `.obligatorio` (el `*` de los campos obligatorios; nunca
+  «(opcional)»), …). **Sin
   Bootstrap** (decidido 2026-10-01): la maqueta aprobada ya define cada componente con los `--tf-*`
   y Bootstrap solo agregaría peso y estilos que habría que deshacer. Un componente nuevo se agrega
   a `estilos.css` usando variables, nunca hex.
@@ -120,10 +128,10 @@ mecanismos propios; usar los que aquí se documentan y agregar aquí los nuevos 
 
 | Acción | Clase | Ejemplo |
 |---|---|---|
-| Principal (guardar, crear, asignar) — navy con texto blanco | `btn btn-primario` | «Guardar», «Nueva tarjeta» |
+| Principal (guardar, crear, asignar) — navy con texto blanco | `btn btn-primario` | «Guardar», «Nueva actividad» |
 | Secundaria (editar, filtrar, cancelar) | `btn btn-secundario` | «Editar», «Cancelar» |
 | Destructiva (quitar, eliminar) | `btn btn-chico btn-peligro` (confirmación: `btn-peligro-lleno`) | «Eliminar», «Quitar» |
-| Enlace / navegación | `btn btn-link` | «Ir a tarjetas» |
+| Enlace / navegación | `btn btn-link` | «Ir a actividades» |
 
 - «Cancelar» en formularios siempre es `btn-outline-secondary`, nunca `btn-link`.
 - La misma acción lleva la misma clase en todo el sitio, sin excepciones.
@@ -131,32 +139,31 @@ mecanismos propios; usar los que aquí se documentan y agregar aquí los nuevos 
 ### Mensajes al usuario
 
 1. **Avisos (`avisar()` de `frontend/src/ui.ts`)**: confirman que una acción **ya ocurrió**
-   («Se creó la tarjeta.», «Se movió a En curso.»). Texto plano, sin HTML ni emojis, verbo en
+   («Se creó la actividad.», «Se movió a En curso.»). Texto plano, sin HTML ni emojis, verbo en
    pasado, una oración corta, sin signos de exclamación.
 2. **Confirmaciones destructivas (`confirmar(mensaje, boton)` de `ui.ts`)**: toda acción que
    elimina, quita, cancela, archiva o transfiere pregunta antes nombrando lo afectado y la
-   consecuencia («¿Eliminar la tarjeta «…»? Esta acción no se puede deshacer.»). Un solo diálogo
+   consecuencia («¿Eliminar la actividad «…»? Esta acción no se puede deshacer.»). Un solo diálogo
    en `App.vue`; nunca `window.confirm()` ni `alert()`.
 3. **Validación de formularios**: las reglas y mensajes viven en los servicios (en español); la API
    los devuelve por campo (`{"titulo": ["…"]}`) y la vista los pinta bajo cada campo
    (`.campo .error`); lo general va en `.error-general`. No duplicar en Vue las reglas del
    servidor (solo lo mínimo, como «Escribe un título.»).
 
-### Badges (lista, prioridad, fecha, checklist)
+### Badges (lista, fecha, checklist, tipo)
 
 Patrón único: **punto** con el color base, **texto** con la variante `-text` y **fondo** `-soft`.
 
 | Significado | Variables |
 |---|---|
 | Nombre de una lista (`.chip.nombre-lista`) | `--tf-primary-soft` / `--tf-primary`: neutro, las listas no tienen color |
-| Prioridad baja · media · alta · urgente | `--tf-priority-{low,medium,high,urgent}*` (gris claro · gris · ámbar · rojo) |
 | Checklist completa (`.chip.avance-checklist.completo`), ícono de «Lo que llega a … cuenta como terminado» (`.lista-terminado`) | `--tf-success*` (verde) |
 | Vencida (fecha límite pasada, en cualquier lista) | `--tf-danger*` |
 | Vence hoy / mañana | `--tf-warning*` |
-| Tipo de tarjeta | color del usuario (`--tipo` en línea, mezclado con `color-mix()`) |
+| Tipo de actividad | color del usuario (`--tipo` en línea, mezclado con `color-mix()`) |
 
-No inventar combinaciones fuera de esta tabla. **Urgente** además lleva un indicador lateral rojo
-en la tarjeta; la tarjeta sigue blanca.
+No inventar combinaciones fuera de esta tabla. *(Las variables `--tf-priority-*` y el indicador
+lateral rojo de «urgente» se quitaron con la prioridad en la Etapa 3.8, 2026-10-06.)*
 
 ## Maquetas de diseño (`docs/_mockups/`)
 
@@ -180,7 +187,9 @@ aprobarse.
 ### Decisiones de las maquetas *(aprobadas e implementadas 2026-10-01)*
 
 Las de `app-v3.html` (abajo) reemplazan lo que contradicen: estatus, «el estatus se cambia desde
-el detalle», orden por prioridad, permiso «cambiar estatus» y «proyecto».
+el detalle», orden por prioridad, permiso «cambiar estatus» y «proyecto». A su vez, la **Etapa 3.8**
+(2026-10-06, §4.7 de la propuesta) reemplaza «tarjeta» por «actividad» y quita la **prioridad**;
+abajo se conserva la palabra «tarjeta» donde se cuenta lo que se decidió entonces.
 
 - **Tres pestañas: Proyectos · Mis tarjetas · Perfil.** «Mis tarjetas» reúne lo asignado a uno en
   todos sus proyectos, sin finalizadas, con las vencidas arriba y ordenado por fecha de fin.
@@ -292,12 +301,12 @@ construir HTML con concatenación o `.format()`, e inyectar `request.GET`/`reque
 
 ## Permisos y acceso a datos
 
-- Toda vista que liste o modifique tarjetas filtra por lo que el usuario puede ver; nunca
-  `Tarjeta.objects.all()` en una vista sin pensar quién la consulta.
+- Toda vista que liste o modifique actividades filtra por lo que el usuario puede ver; nunca
+  `Actividad.objects.all()` en una vista sin pensar quién la consulta.
 - La API (`apps/api/`) deriva los datos de `request.user`; no acepta `usuario_id` arbitrario. Lo
   ajeno responde **404** (no 403), con `get_object_or_404` sobre lo visible para el usuario.
 - Cada vista o endpoint nuevo lleva una prueba de acceso: un usuario sin permiso no puede leer ni
-  modificar tarjetas ajenas.
+  modificar actividades ajenas.
 
 ---
 

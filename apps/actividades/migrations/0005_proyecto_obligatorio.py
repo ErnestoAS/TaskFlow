@@ -8,7 +8,7 @@ class Migration(migrations.Migration):
 
     dependencies = [
         ('pizarras', '0001_initial'),
-        ('tarjetas', '0004_tarjetas_existentes_a_proyecto'),
+        ('actividades', '0004_tarjetas_existentes_a_proyecto'),
     ]
 
     operations = [

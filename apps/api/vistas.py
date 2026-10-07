@@ -3,7 +3,7 @@ API privada de la PWA: /api/v1/ (§6 de la propuesta).
 
 Reglas:
 - Sesión de Django en el mismo origen + CSRF (cookie `taskflow_csrftoken`, cabecera X-CSRFToken).
-- Los datos salen siempre de `request.user`: una pizarra, lista, tarjeta o elemento ajeno responde
+- Los datos salen siempre de `request.user`: una pizarra, lista, actividad o elemento ajeno responde
   404, no 403, para no revelar que existe.
 - Cada acción llama a un servicio (`apps/*/servicios.py`); aquí no hay reglas de negocio.
 """
@@ -21,6 +21,7 @@ from django.contrib.auth import (
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
 from django.db import transaction
+from django.http import FileResponse
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from django.views.decorators.csrf import ensure_csrf_cookie
@@ -29,17 +30,27 @@ from rest_framework.authentication import SessionAuthentication
 from rest_framework.decorators import (
     api_view,
     authentication_classes,
+    parser_classes,
     permission_classes,
     throttle_classes,
 )
+from rest_framework.parsers import MultiPartParser
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.throttling import AnonRateThrottle
 
+from apps.actividades import servicios as st
+from apps.actividades.almacen import TIPOS_EN_LINEA
+from apps.actividades.models import Actividad, Adjunto, ElementoChecklist
 from apps.pizarras import servicios as sp
-from apps.pizarras.models import PERMISOS, Invitacion, Lista, Pizarra, TipoTarjeta
-from apps.tarjetas import servicios as st
-from apps.tarjetas.models import ORDEN_PRIORIDAD, ElementoChecklist, Tarjeta
+from apps.pizarras.models import (
+    PERMISOS,
+    Invitacion,
+    Lista,
+    Pizarra,
+    Solicitante,
+    TipoActividad,
+)
 from apps.usuarios import servicios as su
 from apps.usuarios.models import CodigoCorreo
 
@@ -69,18 +80,24 @@ def _pizarra(request, pk) -> Pizarra:
     return get_object_or_404(Pizarra.objects.de_usuario(request.user).distinct(), pk=pk)
 
 
-def _tarjetas():
-    return Tarjeta.objects.select_related(
-        "pizarra", "lista", "creada_por", "elemento_origen__tarjeta"
+def _actividades():
+    return Actividad.objects.select_related(
+        "pizarra",
+        "lista",
+        "creada_por",
+        "elemento_origen__actividad",
+        "solicitada_por",
+        "solicitante_externo",
     ).prefetch_related(
         "asignados",
         "tipos",
-        "checklist__tarjeta_creada__lista",
+        "checklist__actividad_creada__lista",
+        "adjuntos__subido_por",
     )
 
 
-def _tarjeta(request, pk) -> Tarjeta:
-    visibles = _tarjetas().filter(pizarra__miembros__usuario=request.user).distinct()
+def _actividad(request, pk) -> Actividad:
+    visibles = _actividades().filter(pizarra__miembros__usuario=request.user).distinct()
     return get_object_or_404(visibles, pk=pk)
 
 
@@ -92,8 +109,8 @@ def _lista(request, pk) -> Lista:
 
 
 def _elemento(request, pk) -> ElementoChecklist:
-    visibles = ElementoChecklist.objects.select_related("tarjeta__pizarra").filter(
-        tarjeta__pizarra__miembros__usuario=request.user
+    visibles = ElementoChecklist.objects.select_related("actividad__pizarra").filter(
+        actividad__pizarra__miembros__usuario=request.user
     )
     return get_object_or_404(visibles.distinct(), pk=pk)
 
@@ -107,20 +124,24 @@ def _fecha(valor, campo="fecha_fin"):
         raise ValidationError({campo: "Fecha inválida (AAAA-MM-DD)."}) from e
 
 
-def _datos_tarjeta(d) -> dict:
-    """Campos de alta de tarjeta presentes en la petición, ya convertidos."""
-    datos = {k: d[k] for k in ("titulo", "descripcion", "prioridad", "lista") if k in d}
+def _datos_actividad(d) -> dict:
+    """Campos de alta de actividad presentes en la petición, ya convertidos."""
+    datos = {
+        k: d[k]
+        for k in ("titulo", "descripcion", "lista", "lista_al_completar", *st.CAMPOS_SOLICITANTE)
+        if k in d
+    }
     datos["asignados"] = d.get("asignados") or []
     datos["tipos"] = d.get("tipos") or []
-    datos["fecha_inicio"] = _fecha(d.get("fecha_inicio"), "fecha_inicio")
+    datos["fecha_solicitud"] = _fecha(d.get("fecha_solicitud"), "fecha_solicitud")
     datos["fecha_fin"] = _fecha(d.get("fecha_fin"))
-    if not datos.get("prioridad"):
-        datos.pop("prioridad", None)
+    datos["checklist"] = [str(t) for t in d.get("checklist") or []]
+    datos["arriba"] = bool(d.get("arriba"))
     return datos
 
 
 def _detalle(request, pk):
-    return Response(rep.tarjeta(_tarjeta(request, pk), con_detalle=True))
+    return Response(rep.actividad(_actividad(request, pk), con_detalle=True))
 
 
 def _nombre(request, actual=None) -> dict:
@@ -319,10 +340,10 @@ def cambiar_password(request):
 
 
 @api_view(["GET"])
-def mis_tarjetas(request):
+def mis_actividades(request):
     """Asignadas a mí en pizarras activas de las que soy miembro."""
     ts = (
-        _tarjetas()
+        _actividades()
         .filter(
             asignados=request.user,
             pizarra__miembros__usuario=request.user,
@@ -330,8 +351,8 @@ def mis_tarjetas(request):
         )
         .distinct()
     )
-    ordenadas = sorted(ts, key=lambda t: (t.fecha_fin or date.max, ORDEN_PRIORIDAD[t.prioridad]))
-    return Response([rep.tarjeta(t) for t in ordenadas])
+    ordenadas = sorted(ts, key=lambda t: (t.fecha_fin or date.max, t.creado_en))
+    return Response([rep.actividad(t) for t in ordenadas])
 
 
 # ---------------------------------------------------------------------------------------------
@@ -497,7 +518,7 @@ def lista(request, pk):
 
 
 # ---------------------------------------------------------------------------------------------
-# Tipos de tarjeta
+# Tipos de actividad
 # ---------------------------------------------------------------------------------------------
 
 
@@ -517,70 +538,137 @@ def tipos(request, pk):
 @api_view(["PATCH", "DELETE"])
 def tipo(request, pk, tipo_id):
     p = _pizarra(request, pk)
-    t = get_object_or_404(TipoTarjeta, pk=tipo_id, pizarra=p)
+    t = get_object_or_404(TipoActividad, pk=tipo_id, pizarra=p)
     if request.method == "DELETE":
         sp.eliminar_tipo(t, request.user)
         return Response(status=status.HTTP_204_NO_CONTENT)
     campos = {k: request.data[k] for k in ("nombre", "color", "descripcion") if k in request.data}
     sp.editar_tipo(t, request.user, **campos)
-    return Response(rep.tipo(t, t.tarjetas.count()))
+    return Response(rep.tipo(t, t.actividades.count()))
 
 
 # ---------------------------------------------------------------------------------------------
-# Tarjetas
+# Solicitantes externos (Etapa 3.8). Devuelven la pizarra, como las listas.
+# ---------------------------------------------------------------------------------------------
+
+
+@api_view(["POST"])
+def solicitantes(request, pk):
+    p = _pizarra(request, pk)
+    sp.crear_solicitante(p, request.user, request.data.get("nombre"))
+    return Response(rep.pizarra_detalle(p, request.user), status=status.HTTP_201_CREATED)
+
+
+@api_view(["PATCH", "DELETE"])
+def solicitante(request, pk):
+    visibles = Solicitante.objects.select_related("pizarra").filter(
+        pizarra__miembros__usuario=request.user
+    )
+    s = get_object_or_404(visibles.distinct(), pk=pk)
+    if request.method == "DELETE":
+        sp.eliminar_solicitante(s, request.user)
+    else:
+        sp.renombrar_solicitante(s, request.user, request.data.get("nombre"))
+    return Response(rep.pizarra_detalle(s.pizarra, request.user))
+
+
+# ---------------------------------------------------------------------------------------------
+# Actividades
 # ---------------------------------------------------------------------------------------------
 
 
 @api_view(["GET", "POST"])
-def tarjetas(request, pk):
+def actividades(request, pk):
     p = _pizarra(request, pk)
     if request.method == "POST":
-        t = st.crear_tarjeta(p, request.user, **_datos_tarjeta(request.data))
+        t = st.crear_actividad(p, request.user, **_datos_actividad(request.data))
         return Response(
-            rep.tarjeta(_tarjeta(request, t.pk), con_detalle=True), status=status.HTTP_201_CREATED
+            rep.actividad(_actividad(request, t.pk), con_detalle=True),
+            status=status.HTTP_201_CREATED,
         )
-    ts = _tarjetas().filter(pizarra=p).order_by("lista__posicion", "posicion", "id")
-    return Response([rep.tarjeta(t) for t in ts])
+    ts = _actividades().filter(pizarra=p).order_by("lista__posicion", "posicion", "id")
+    return Response([rep.actividad(t) for t in ts])
 
 
 @api_view(["GET", "PATCH", "DELETE"])
-def tarjeta(request, pk):
-    t = _tarjeta(request, pk)
+def actividad(request, pk):
+    t = _actividad(request, pk)
     if request.method == "DELETE":
-        st.eliminar_tarjeta(t, request.user)
+        st.eliminar_actividad(t, request.user)
         return Response(status=status.HTTP_204_NO_CONTENT)
     if request.method == "PATCH":
         campos = {k: request.data[k] for k in st.CAMPOS_EDITABLES if k in request.data}
-        for campo in ("fecha_inicio", "fecha_fin"):
+        for campo in ("fecha_solicitud", "fecha_fin"):
             if campo in campos:
                 campos[campo] = _fecha(campos[campo], campo)
-        st.editar_tarjeta(t, request.user, **campos)
+        st.editar_actividad(t, request.user, **campos)
     return _detalle(request, pk)
 
 
 @api_view(["POST"])
-def tarjeta_mover(request, pk):
+def actividad_mover(request, pk):
     """Arrastrar o «Mover a»: `{lista, posicion}`; sin posición, al final de la lista."""
-    t = _tarjeta(request, pk)
-    st.mover_tarjeta(t, request.user, request.data.get("lista"), request.data.get("posicion"))
+    t = _actividad(request, pk)
+    st.mover_actividad(t, request.user, request.data.get("lista"), request.data.get("posicion"))
     return _detalle(request, pk)
 
 
 # ---------------------------------------------------------------------------------------------
-# Checklist (§4.6). Cada acción devuelve la tarjeta completa a la que pertenece el elemento.
+# Adjuntos (Etapa 3.8, §4.4 y §7)
+# ---------------------------------------------------------------------------------------------
+
+
+@api_view(["POST"])
+@parser_classes([MultiPartParser])
+def adjuntos(request, pk):
+    """Multipart, campo `archivo`. Devuelve la actividad."""
+    t = _actividad(request, pk)
+    st.adjuntar(t, request.user, request.FILES.get("archivo"))
+    return Response(rep.actividad(_actividad(request, pk), con_detalle=True), status=201)
+
+
+@api_view(["GET", "DELETE"])
+def adjunto(request, pk):
+    """
+    Descarga, solo para miembros (lo ajeno es 404). Imágenes y PDF se muestran en el navegador; lo
+    demás (también SVG y HTML) se descarga, y nada se interpreta como otro tipo (`nosniff`) ni
+    puede ejecutar código en el dominio de TaskFlow (`sandbox`).
+    """
+    visibles = Adjunto.objects.select_related("actividad__pizarra").filter(
+        actividad__pizarra__miembros__usuario=request.user
+    )
+    a = get_object_or_404(visibles.distinct(), pk=pk)
+    if request.method == "DELETE":
+        st.quitar_adjunto(a, request.user)
+        return _detalle(request, a.actividad_id)
+    en_linea = a.tipo in TIPOS_EN_LINEA
+    respuesta = FileResponse(
+        a.archivo.open("rb"),
+        as_attachment=not en_linea,
+        filename=a.nombre,
+        content_type=a.tipo if en_linea else "application/octet-stream",
+    )
+    respuesta["X-Content-Type-Options"] = "nosniff"
+    respuesta["Content-Security-Policy"] = "sandbox"
+    respuesta["Cache-Control"] = "private, max-age=3600"
+    return respuesta
+
+
+# ---------------------------------------------------------------------------------------------
+# Checklist (§4.6). Cada acción devuelve la actividad completa a la que pertenece el elemento.
 # ---------------------------------------------------------------------------------------------
 
 
 @api_view(["POST"])
 def checklist(request, pk):
-    t = _tarjeta(request, pk)
+    t = _actividad(request, pk)
     st.agregar_elemento(t, request.user, request.data.get("texto"))
-    return Response(rep.tarjeta(_tarjeta(request, pk), con_detalle=True), status=201)
+    return Response(rep.actividad(_actividad(request, pk), con_detalle=True), status=201)
 
 
 @api_view(["POST"])
 def checklist_orden(request, pk):
-    t = _tarjeta(request, pk)
+    t = _actividad(request, pk)
     st.ordenar_checklist(t, request.user, request.data.get("ids"))
     return _detalle(request, pk)
 
@@ -593,18 +681,18 @@ def elemento(request, pk):
     else:
         campos = {k: request.data[k] for k in ("texto", "hecho") if k in request.data}
         st.editar_elemento(e, request.user, **campos)
-    return _detalle(request, e.tarjeta_id)
+    return _detalle(request, e.actividad_id)
 
 
 @api_view(["POST"])
 def elemento_convertir(request, pk):
-    """Crea la tarjeta enlazada. Devuelve la tarjeta original y la nueva."""
+    """Crea la actividad enlazada. Devuelve la actividad original y la nueva."""
     e = _elemento(request, pk)
-    nueva = st.convertir_elemento(e, request.user, **_datos_tarjeta(request.data))
+    nueva = st.convertir_elemento(e, request.user, **_datos_actividad(request.data))
     return Response(
         {
-            "tarjeta": rep.tarjeta(_tarjeta(request, e.tarjeta_id), con_detalle=True),
-            "nueva": rep.tarjeta(_tarjeta(request, nueva.pk), con_detalle=True),
+            "actividad": rep.actividad(_actividad(request, e.actividad_id), con_detalle=True),
+            "nueva": rep.actividad(_actividad(request, nueva.pk), con_detalle=True),
         },
         status=status.HTTP_201_CREATED,
     )

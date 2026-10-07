@@ -20,6 +20,11 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 COPY --from=uv /uv /usr/local/bin/uv
 
+# Ghostscript: comprime los PDF adjuntos (Etapa 3.8, §4.4).
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends ghostscript \
+    && rm -rf /var/lib/apt/lists/*
+
 RUN groupadd --system --gid 1000 app \
     && useradd --system --uid 1000 --gid app --create-home app \
     && mkdir -p /app /app/media /app/staticfiles \
@@ -91,7 +96,12 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     DJANGO_SETTINGS_MODULE=config.settings.production \
     DJANGO_STATIC_ROOT=/app/staticfiles \
     DJANGO_MEDIA_ROOT=/app/media \
-    GUNICORN_CMD_ARGS="--bind=0.0.0.0:8000 --workers=3 --timeout=60 --access-logfile=-"
+    GUNICORN_CMD_ARGS="--bind=0.0.0.0:8000 --workers=3 --timeout=90 --access-logfile=-"
+
+# Ghostscript: comprime los PDF adjuntos (Etapa 3.8, §4.4).
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends ghostscript \
+    && rm -rf /var/lib/apt/lists/*
 
 RUN groupadd --system --gid 1000 app \
     && useradd --system --uid 1000 --gid app --create-home app

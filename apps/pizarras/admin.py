@@ -3,7 +3,7 @@ from django.contrib import admin, messages
 from django.contrib.auth import get_user_model
 
 from . import servicios
-from .models import Invitacion, Lista, MiembroPizarra, Pizarra, TipoTarjeta
+from .models import Invitacion, Lista, MiembroPizarra, Pizarra, Solicitante, TipoActividad
 
 
 class MiembroInline(admin.TabularInline):
@@ -32,8 +32,14 @@ class ListaInline(admin.TabularInline):
     fields = ["nombre", "posicion"]
 
 
+class SolicitanteInline(admin.TabularInline):
+    model = Solicitante
+    extra = 0
+    fields = ["nombre"]
+
+
 class TipoInline(admin.TabularInline):
-    model = TipoTarjeta
+    model = TipoActividad
     extra = 0
     fields = ["nombre", "color", "descripcion"]
 
@@ -69,7 +75,7 @@ class PizarraAdmin(admin.ModelAdmin):
     search_fields = ["nombre", "miembros__usuario__email"]
     autocomplete_fields = ["creado_por"]
     readonly_fields = ["creado_en", "actualizado_en"]
-    inlines = [MiembroInline, ListaInline, TipoInline]
+    inlines = [MiembroInline, ListaInline, TipoInline, SolicitanteInline]
 
     @admin.display(description="dueño")
     def dueno(self, obj):
@@ -106,8 +112,8 @@ class ListaAdmin(admin.ModelAdmin):
     autocomplete_fields = ["pizarra"]
 
 
-@admin.register(TipoTarjeta)
-class TipoTarjetaAdmin(admin.ModelAdmin):
+@admin.register(TipoActividad)
+class TipoActividadAdmin(admin.ModelAdmin):
     list_display = ["nombre", "pizarra", "color"]
     search_fields = ["nombre", "pizarra__nombre"]
     autocomplete_fields = ["pizarra"]

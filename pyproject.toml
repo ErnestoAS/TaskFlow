@@ -1,7 +1,7 @@
 [project]
 name = "taskflow"
 version = "0.1.0"
-description = "Gestor de tarjetas para organizar actividades."
+description = "Gestor de actividades en pizarras con listas."
 readme = "README.md"
 requires-python = ">=3.13,<3.14"
 dependencies = [

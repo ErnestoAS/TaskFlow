@@ -26,7 +26,7 @@ LOCAL_APPS = [
     "apps.core",
     "apps.usuarios",
     "apps.pizarras",
-    "apps.tarjetas",
+    "apps.actividades",
     "apps.api",
 ]
 
@@ -139,6 +139,14 @@ STATIC_URL = RUTA_BASE + "static/"
 
 MEDIA_ROOT = env.path("DJANGO_MEDIA_ROOT", default=BASE_DIR / "media")
 MEDIA_URL = RUTA_BASE + "media/"
+# Adjuntos de las actividades (Etapa 3.8, §4.4): dentro del volumen media, pero sin URL pública.
+TASKFLOW_ADJUNTOS_ROOT = Path(
+    env("TASKFLOW_ADJUNTOS_ROOT", default=str(Path(str(MEDIA_ROOT)) / "adjuntos"))
+)
+TASKFLOW_ADJUNTO_MAX_MB = env.int("TASKFLOW_ADJUNTO_MAX_MB", default=10)
+TASKFLOW_ADJUNTOS_PIZARRA_MB = env.int("TASKFLOW_ADJUNTOS_PIZARRA_MB", default=500)
+# Los PDF de más de esto se intentan comprimir con Ghostscript.
+TASKFLOW_PDF_COMPRIMIR_DESDE_MB = env.float("TASKFLOW_PDF_COMPRIMIR_DESDE_MB", default=1.0)
 
 STORAGES = {
     "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},

@@ -12,7 +12,7 @@ import { plural } from "../utilidades";
 import Hoja from "./Hoja.vue";
 import Icono from "./Icono.vue";
 
-const props = defineProps<{ pizarra: PizarraDetalle; lista: Lista; nTarjetas: number }>();
+const props = defineProps<{ pizarra: PizarraDetalle; lista: Lista; nActividades: number }>();
 const emit = defineEmits<{ cerrar: []; actualizada: [p: PizarraDetalle] }>();
 
 const nombre = ref(props.lista.nombre);
@@ -63,9 +63,9 @@ async function eliminar() {
   <Hoja :titulo="`Lista «${actual.nombre}»`" @cerrar="emit('cerrar')">
     <div v-if="error" class="error-general" role="alert">{{ error }}</div>
     <form class="campo" novalidate @submit.prevent="renombrar">
-      <label for="f-lnombre">Nombre</label>
+      <label for="f-lnombre">Nombre <span class="obligatorio" aria-hidden="true">*</span></label>
       <div class="linea-campo">
-        <input id="f-lnombre" v-model="nombre" type="text" maxlength="50" />
+        <input id="f-lnombre" aria-required="true" v-model="nombre" type="text" maxlength="50" />
         <button type="submit" class="btn btn-primario" :disabled="ocupado">Guardar</button>
       </div>
     </form>
@@ -79,18 +79,12 @@ async function eliminar() {
           A la derecha <Icono nombre="derecha" />
         </button>
       </div>
-      <div class="ayuda">Posición {{ indice + 1 }} de {{ pizarra.listas.length }}.</div>
     </div>
     <div class="campo">
       <span class="etiqueta">Eliminar</span>
-      <button class="btn btn-chico btn-peligro" :disabled="ocupado || nTarjetas > 0" @click="eliminar">Eliminar lista</button>
-      <div class="ayuda">
-        {{
-          nTarjetas
-            ? `Tiene ${plural(nTarjetas, "tarjeta")}: muévelas o elimínalas antes. Así ninguna tarjeta se borra sin querer.`
-            : "La lista está vacía."
-        }}
-      </div>
+      <button class="btn btn-chico btn-peligro" :disabled="ocupado || nActividades > 0" @click="eliminar">Eliminar lista</button>
+      <!-- No es ayuda: dice por qué el botón está deshabilitado. -->
+      <div v-if="nActividades" class="ayuda">Tiene {{ plural(nActividades, "actividad") }}: muévelas o elimínalas antes.</div>
     </div>
   </Hoja>
 </template>

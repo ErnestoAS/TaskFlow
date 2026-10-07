@@ -61,7 +61,7 @@ async function creada(p: PizarraDetalle) {
           <!-- Una sola línea, tenga las listas que tenga (§4.6). -->
           <div class="resumen">
             <span
-              ><b>{{ p.conteos.tarjetas }}</b> {{ p.conteos.tarjetas === 1 ? "tarjeta" : "tarjetas" }} ·
+              ><b>{{ p.conteos.actividades }}</b> {{ p.conteos.actividades === 1 ? "actividad" : "actividades" }} ·
               <b>{{ p.conteos.listas }}</b> {{ p.conteos.listas === 1 ? "lista" : "listas"
               }}<template v-if="p.conteos.mias">
                 · <b>{{ p.conteos.mias }}</b> {{ p.conteos.mias === 1 ? "tuya" : "tuyas" }}</template

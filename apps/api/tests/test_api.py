@@ -4,9 +4,9 @@ import re
 import pytest
 from django.test import Client
 
+from apps.actividades import servicios as st
+from apps.actividades.models import Actividad
 from apps.pizarras import servicios as sp
-from apps.tarjetas import servicios as st
-from apps.tarjetas.models import Tarjeta
 
 pytestmark = pytest.mark.django_db
 API = "/api/v1"
@@ -187,13 +187,13 @@ def test_crear_y_listar_pizarras(cliente):
     assert r.json()["permisos"]["eliminar"] is True
     assert r.json()["listas"] == []  # nace vacía: las listas las elige el usuario
     resumen = next(p for p in cliente.get(f"{API}/pizarras/").json() if p["nombre"] == "Feria 2027")
-    assert resumen["conteos"] == {"tarjetas": 0, "listas": 0, "mias": 0, "vencidas": 0}
+    assert resumen["conteos"] == {"actividades": 0, "listas": 0, "mias": 0, "vencidas": 0}
 
 
 def test_pizarra_ajena_es_404(pizarra, listas, client, crear_usuario):
     client.force_login(crear_usuario())
     assert client.get(f"{API}/pizarras/{pizarra.pk}/").status_code == 404
-    assert client.get(f"{API}/pizarras/{pizarra.pk}/tarjetas/").status_code == 404
+    assert client.get(f"{API}/pizarras/{pizarra.pk}/actividades/").status_code == 404
     assert _post(client, f"/pizarras/{pizarra.pk}/listas/", {"nombre": "x"}).status_code == 404
     assert _post(client, f"/pizarras/{pizarra.pk}/listas/orden/", {"ids": []}).status_code == 404
     lista = listas["Pendiente"].pk
@@ -239,20 +239,20 @@ def test_miembro_no_hace_acciones_de_dueno(pizarra, client, crear_usuario, agreg
 
 
 def test_conteos_de_mis_pizarras(cliente, pizarra, dueno, listas):
-    st.crear_tarjeta(pizarra, dueno, titulo="mía", asignados=[dueno])
+    st.crear_actividad(pizarra, dueno, titulo="mía", asignados=[dueno])
     vieja = datetime.date(2020, 1, 1)
-    st.crear_tarjeta(pizarra, dueno, titulo="vencida", fecha_inicio=vieja, fecha_fin=vieja)
+    st.crear_actividad(pizarra, dueno, titulo="vencida", fecha_solicitud=vieja, fecha_fin=vieja)
     # Sin listas de cierre (2026-10-06): con la fecha pasada sale vencida esté donde esté.
-    st.crear_tarjeta(
+    st.crear_actividad(
         pizarra,
         dueno,
         titulo="en Finalizada",
         lista=listas["Finalizada"],
-        fecha_inicio=vieja,
+        fecha_solicitud=vieja,
         fecha_fin=vieja,
     )
     (p,) = cliente.get(f"{API}/pizarras/").json()
-    assert p["conteos"] == {"tarjetas": 3, "listas": 3, "mias": 1, "vencidas": 2}
+    assert p["conteos"] == {"actividades": 3, "listas": 3, "mias": 1, "vencidas": 2}
 
 
 # --- listas -------------------------------------------------------------------------------------
@@ -273,8 +273,8 @@ def test_listas_crear_renombrar_ordenar_y_eliminar(cliente, pizarra, listas):
     assert cliente.delete(f"{API}/listas/{ideas['id']}/").status_code == 200
 
 
-def test_lista_con_tarjetas_no_se_elimina(cliente, pizarra, dueno, listas):
-    st.crear_tarjeta(pizarra, dueno, titulo="a")
+def test_lista_con_actividades_no_se_elimina(cliente, pizarra, dueno, listas):
+    st.crear_actividad(pizarra, dueno, titulo="a")
     r = cliente.delete(f"{API}/listas/{listas['Pendiente'].pk}/")
     assert r.status_code == 400 and "muévelas" in r.json()["detalle"]
 
@@ -331,7 +331,7 @@ def test_reenviar_y_cancelar(cliente, pizarra, dueno):
     assert _post(cliente, f"{url}/cancelar/").json()["invitaciones"] == []
 
 
-# --- tipos y tarjetas ---------------------------------------------------------------------------
+# --- tipos y actividades -------------------------------------------------------------------------
 
 
 def test_tipos(cliente, pizarra):
@@ -349,16 +349,15 @@ def test_tipos(cliente, pizarra):
     assert cliente.delete(f"{API}/pizarras/{pizarra.pk}/tipos/{tid}/").status_code == 204
 
 
-def test_ciclo_de_una_tarjeta(cliente, pizarra, dueno, listas):
+def test_ciclo_de_una_actividad(cliente, pizarra, dueno, listas):
     tipo = sp.crear_tipo(pizarra, dueno, nombre="Logística", color="#0ea5e9")
     r = _post(
         cliente,
-        f"/pizarras/{pizarra.pk}/tarjetas/",
+        f"/pizarras/{pizarra.pk}/actividades/",
         {
             "titulo": "Auditorio",
             "lista": listas["En curso"].pk,
-            "prioridad": "urgente",
-            "fecha_inicio": "2026-10-01",
+            "fecha_solicitud": "2026-10-01",
             "fecha_fin": "2026-10-20",
             "asignados": [dueno.pk],
             "tipos": [tipo.pk],
@@ -367,7 +366,7 @@ def test_ciclo_de_una_tarjeta(cliente, pizarra, dueno, listas):
     assert r.status_code == 201, r.json()
     t = r.json()
     assert (t["descripcion"], t["lista_nombre"], t["lista_terminado"]) == ("", "En curso", None)
-    assert (t["fecha_inicio"], t["fecha_fin"], t["tipos"]) == (
+    assert (t["fecha_solicitud"], t["fecha_fin"], t["tipos"]) == (
         "2026-10-01",
         "2026-10-20",
         [tipo.pk],
@@ -375,66 +374,93 @@ def test_ciclo_de_una_tarjeta(cliente, pizarra, dueno, listas):
     assert t["historial"] == [
         {**t["historial"][0], "de": None, "a": "En curso", "nota": None},
     ]
-    r = _post(cliente, f"/tarjetas/{t['id']}/mover/", {"lista": listas["Finalizada"].pk})
+    r = _post(cliente, f"/actividades/{t['id']}/mover/", {"lista": listas["Finalizada"].pk})
     assert r.json()["lista_nombre"] == "Finalizada"
     assert len(r.json()["historial"]) == 2
-    r = _patch(cliente, f"/tarjetas/{t['id']}/", {"titulo": "Auditorio central", "fecha_fin": None})
+    r = _patch(
+        cliente, f"/actividades/{t['id']}/", {"titulo": "Auditorio central", "fecha_fin": None}
+    )
     assert r.json()["titulo"] == "Auditorio central" and r.json()["fecha_fin"] is None
-    assert _patch(cliente, f"/tarjetas/{t['id']}/", {"fecha_fin": "mañana"}).status_code == 400
-    r = _patch(cliente, f"/tarjetas/{t['id']}/", {"fecha_fin": "2026-09-01"})
+    assert _patch(cliente, f"/actividades/{t['id']}/", {"fecha_fin": "mañana"}).status_code == 400
+    r = _patch(cliente, f"/actividades/{t['id']}/", {"fecha_fin": "2026-09-01"})
     assert r.status_code == 400 and "fecha_fin" in r.json()
-    assert cliente.delete(f"{API}/tarjetas/{t['id']}/").status_code == 204
+    assert cliente.delete(f"{API}/actividades/{t['id']}/").status_code == 204
+
+
+def test_alta_con_checklist_y_arriba_y_edicion_de_lista(cliente, pizarra, dueno, listas):
+    """Mismo formulario de alta y edición (Etapa 3.8)."""
+    st.crear_actividad(pizarra, dueno, titulo="vieja", lista=listas["Pendiente"])
+    r = _post(
+        cliente,
+        f"/pizarras/{pizarra.pk}/actividades/",
+        {
+            "titulo": "Nueva",
+            "lista": listas["Pendiente"].pk,
+            "arriba": True,
+            "checklist": ["Uno", "Dos"],
+            "fecha_solicitud": None,
+        },
+    )
+    assert r.status_code == 201, r.json()
+    t = r.json()
+    assert (t["posicion"], t["fecha_solicitud"]) == (0, None)
+    assert [e["texto"] for e in t["checklist"]] == ["Uno", "Dos"]
+    r = _patch(cliente, f"/actividades/{t['id']}/", {"lista": listas["En curso"].pk})
+    assert r.status_code == 200 and r.json()["lista_nombre"] == "En curso"
+    assert r.json()["historial"][0]["de"] == "Pendiente"
 
 
 def test_tablero_en_orden_de_lista_y_posicion(cliente, pizarra, dueno, listas):
     for titulo, lista in [("b", "En curso"), ("p1", "Pendiente"), ("p2", "Pendiente")]:
-        st.crear_tarjeta(pizarra, dueno, titulo=titulo, lista=listas[lista])
-    p2 = Tarjeta.objects.get(titulo="p2")
-    _post(cliente, f"/tarjetas/{p2.pk}/mover/", {"lista": listas["Pendiente"].pk, "posicion": 0})
-    titulos = [t["titulo"] for t in cliente.get(f"{API}/pizarras/{pizarra.pk}/tarjetas/").json()]
+        st.crear_actividad(pizarra, dueno, titulo=titulo, lista=listas[lista])
+    p2 = Actividad.objects.get(titulo="p2")
+    _post(cliente, f"/actividades/{p2.pk}/mover/", {"lista": listas["Pendiente"].pk, "posicion": 0})
+    titulos = [t["titulo"] for t in cliente.get(f"{API}/pizarras/{pizarra.pk}/actividades/").json()]
     assert titulos == ["p2", "p1", "b"]
 
 
-def test_tarjeta_ajena_es_404_y_sin_permiso_es_403(
+def test_actividad_ajena_es_404_y_sin_permiso_es_403(
     pizarra, dueno, client, crear_usuario, agregar_miembro, listas
 ):
-    t = st.crear_tarjeta(pizarra, dueno, titulo="a")
+    t = st.crear_actividad(pizarra, dueno, titulo="a")
     e = st.agregar_elemento(t, dueno, "paso")
     client.force_login(crear_usuario())
-    assert client.get(f"{API}/tarjetas/{t.pk}/").status_code == 404
+    assert client.get(f"{API}/actividades/{t.pk}/").status_code == 404
     assert (
-        _post(client, f"/tarjetas/{t.pk}/mover/", {"lista": listas["En curso"].pk}).status_code
+        _post(client, f"/actividades/{t.pk}/mover/", {"lista": listas["En curso"].pk}).status_code
         == 404
     )
-    assert _post(client, f"/tarjetas/{t.pk}/checklist/", {"texto": "x"}).status_code == 404
-    assert _post(client, f"/tarjetas/{t.pk}/checklist/orden/", {"ids": [e.pk]}).status_code == 404
+    assert _post(client, f"/actividades/{t.pk}/checklist/", {"texto": "x"}).status_code == 404
+    assert (
+        _post(client, f"/actividades/{t.pk}/checklist/orden/", {"ids": [e.pk]}).status_code == 404
+    )
     assert _patch(client, f"/checklist/{e.pk}/", {"hecho": True}).status_code == 404
     assert client.delete(f"{API}/checklist/{e.pk}/").status_code == 404
     assert _post(client, f"/checklist/{e.pk}/convertir/").status_code == 404
     luis = crear_usuario()
     agregar_miembro(luis, mover=False, editar=False, crear=False)
     client.force_login(luis)
-    r = _post(client, f"/tarjetas/{t.pk}/mover/", {"lista": listas["En curso"].pk})
+    r = _post(client, f"/actividades/{t.pk}/mover/", {"lista": listas["En curso"].pk})
     assert r.status_code == 403 and "permiso" in r.json()["detalle"]
-    assert _post(client, f"/tarjetas/{t.pk}/checklist/", {"texto": "x"}).status_code == 403
+    assert _post(client, f"/actividades/{t.pk}/checklist/", {"texto": "x"}).status_code == 403
     assert _patch(client, f"/checklist/{e.pk}/", {"hecho": True}).status_code == 403
     assert _post(client, f"/checklist/{e.pk}/convertir/").status_code == 403
 
 
 def test_mover_a_lista_de_otra_pizarra_es_400(cliente, pizarra, dueno):
-    t = st.crear_tarjeta(pizarra, dueno, titulo="a")
+    t = st.crear_actividad(pizarra, dueno, titulo="a")
     otra = sp.crear_pizarra(dueno, "Otra")
     ajena = sp.crear_lista(otra, dueno, "Pendiente")
-    r = _post(cliente, f"/tarjetas/{t.pk}/mover/", {"lista": ajena.pk})
+    r = _post(cliente, f"/actividades/{t.pk}/mover/", {"lista": ajena.pk})
     assert r.status_code == 400 and "lista" in r.json()
 
 
-def test_mis_tarjetas_son_las_asignadas_en_cualquier_lista(cliente, pizarra, dueno, listas):
-    st.crear_tarjeta(pizarra, dueno, titulo="mía", asignados=[dueno])
-    st.crear_tarjeta(pizarra, dueno, titulo="de nadie")
-    otra = st.crear_tarjeta(pizarra, dueno, titulo="otra mía", asignados=[dueno])
-    st.mover_tarjeta(otra, dueno, listas["Finalizada"])  # ninguna lista la saca (2026-10-06)
-    titulos = {t["titulo"] for t in cliente.get(f"{API}/yo/tarjetas/").json()}
+def test_mis_actividades_son_las_asignadas_en_cualquier_lista(cliente, pizarra, dueno, listas):
+    st.crear_actividad(pizarra, dueno, titulo="mía", asignados=[dueno])
+    st.crear_actividad(pizarra, dueno, titulo="de nadie")
+    otra = st.crear_actividad(pizarra, dueno, titulo="otra mía", asignados=[dueno])
+    st.mover_actividad(otra, dueno, listas["Finalizada"])  # ninguna lista la saca (2026-10-06)
+    titulos = {t["titulo"] for t in cliente.get(f"{API}/yo/actividades/").json()}
     assert titulos == {"mía", "otra mía"}
 
 
@@ -442,18 +468,20 @@ def test_mis_tarjetas_son_las_asignadas_en_cualquier_lista(cliente, pizarra, due
 
 
 def test_checklist_y_conversion_enlazada(cliente, pizarra, dueno, listas):
-    t = st.crear_tarjeta(pizarra, dueno, titulo="Programa")
-    r = _post(cliente, f"/tarjetas/{t.pk}/checklist/", {"texto": "Asignar salas"})
+    t = st.crear_actividad(pizarra, dueno, titulo="Programa")
+    r = _post(cliente, f"/actividades/{t.pk}/checklist/", {"texto": "Asignar salas"})
     assert r.status_code == 201
-    _post(cliente, f"/tarjetas/{t.pk}/checklist/", {"texto": "Imprimir"})
-    salas, imprimir = (e["id"] for e in cliente.get(f"{API}/tarjetas/{t.pk}/").json()["checklist"])
+    _post(cliente, f"/actividades/{t.pk}/checklist/", {"texto": "Imprimir"})
+    salas, imprimir = (
+        e["id"] for e in cliente.get(f"{API}/actividades/{t.pk}/").json()["checklist"]
+    )
     r = _patch(cliente, f"/checklist/{imprimir}/", {"hecho": True})
     assert r.json()["checklist_conteo"] == {"hechos": 1, "total": 2}
-    r = _post(cliente, f"/checklist/{salas}/convertir/", {"prioridad": "alta"})
+    r = _post(cliente, f"/checklist/{salas}/convertir/", {})
     assert r.status_code == 201
-    padre, nueva = r.json()["tarjeta"], r.json()["nueva"]
+    padre, nueva = r.json()["actividad"], r.json()["nueva"]
     elemento = next(e for e in padre["checklist"] if e["id"] == salas)
-    assert elemento["tarjeta"] == {
+    assert elemento["actividad"] == {
         "id": nueva["id"],
         "titulo": "Asignar salas",
         "lista": listas["Pendiente"].pk,
@@ -462,29 +490,29 @@ def test_checklist_y_conversion_enlazada(cliente, pizarra, dueno, listas):
     assert padre["lista_terminado"] is None and not elemento["automatico"]
     assert nueva["viene_de"] == {"id": t.pk, "titulo": "Programa", "elemento": "Asignar salas"}
     # «Lo que llega a En curso cuenta como terminado», para toda la checklist; no la propia.
-    r = _patch(cliente, f"/tarjetas/{t.pk}/", {"lista_terminado": listas["Pendiente"].pk})
+    r = _patch(cliente, f"/actividades/{t.pk}/", {"lista_terminado": listas["Pendiente"].pk})
     assert r.status_code == 400 and "lista_terminado" in r.json()
-    r = _patch(cliente, f"/tarjetas/{t.pk}/", {"lista_terminado": listas["En curso"].pk})
+    r = _patch(cliente, f"/actividades/{t.pk}/", {"lista_terminado": listas["En curso"].pk})
     assert r.json()["lista_terminado"] == listas["En curso"].pk
-    _post(cliente, f"/tarjetas/{nueva['id']}/mover/", {"lista": listas["En curso"].pk})
-    padre = cliente.get(f"{API}/tarjetas/{t.pk}/").json()
+    _post(cliente, f"/actividades/{nueva['id']}/mover/", {"lista": listas["En curso"].pk})
+    padre = cliente.get(f"{API}/actividades/{t.pk}/").json()
     assert padre["checklist_conteo"] == {"hechos": 2, "total": 2}
     assert _patch(cliente, f"/checklist/{salas}/", {"hecho": False}).status_code == 400
     # A palomeo manual, conservando el estado.
-    r = _patch(cliente, f"/tarjetas/{t.pk}/", {"lista_terminado": None})
+    r = _patch(cliente, f"/actividades/{t.pk}/", {"lista_terminado": None})
     elemento = next(e for e in r.json()["checklist"] if e["id"] == salas)
     assert elemento["hecho"] is True and elemento["automatico"] is False
-    r = _post(cliente, f"/tarjetas/{t.pk}/checklist/orden/", {"ids": [imprimir, salas]})
+    r = _post(cliente, f"/actividades/{t.pk}/checklist/orden/", {"ids": [imprimir, salas]})
     assert [e["id"] for e in r.json()["checklist"]] == [imprimir, salas]
     assert cliente.delete(f"{API}/checklist/{imprimir}/").status_code == 200
 
 
-def test_convertir_usa_la_lista_de_terminado_de_la_tarjeta(cliente, pizarra, dueno, listas):
-    t = st.crear_tarjeta(pizarra, dueno, titulo="Programa")
-    st.editar_tarjeta(t, dueno, lista_terminado=listas["Finalizada"].pk)
+def test_convertir_usa_la_lista_de_terminado_de_la_actividad(cliente, pizarra, dueno, listas):
+    t = st.crear_actividad(pizarra, dueno, titulo="Programa")
+    st.editar_actividad(t, dueno, lista_terminado=listas["Finalizada"].pk)
     e = st.agregar_elemento(t, dueno, "Imprimir")
     r = _post(cliente, f"/checklist/{e.pk}/convertir/")
-    elemento = r.json()["tarjeta"]["checklist"][0]
+    elemento = r.json()["actividad"]["checklist"][0]
     assert elemento["automatico"] and not elemento["hecho"]
     r = _post(cliente, f"/checklist/{e.pk}/convertir/")
     assert r.status_code == 400  # ya convertido
@@ -529,3 +557,123 @@ def test_yo_trae_nombre_y_apellidos_por_separado(client, crear_usuario):
     assert r.json()["nombre"] == "Ana López Ramírez"
     r = _patch(client, "/yo/", {"primer_apellido": " "})
     assert r.status_code == 400 and "primer_apellido" in r.json()
+
+
+def test_al_completar_la_checklist_la_respuesta_ya_viene_movida(cliente, pizarra, dueno, listas):
+    """«Mover a … al completar» (Etapa 3.8)."""
+    t = st.crear_actividad(pizarra, dueno, titulo="Programa", checklist=["Único"])
+    r = _patch(cliente, f"/actividades/{t.pk}/", {"lista_al_completar": listas["Finalizada"].pk})
+    assert r.json()["lista_al_completar"] == listas["Finalizada"].pk
+    elemento = r.json()["checklist"][0]["id"]
+    r = _patch(cliente, f"/checklist/{elemento}/", {"hecho": True})
+    assert r.status_code == 200 and r.json()["lista_nombre"] == "Finalizada"
+    r = _patch(cliente, f"/checklist/{elemento}/", {"texto": "y" * 400})
+    assert r.status_code == 200 and len(r.json()["checklist"][0]["texto"]) == 400
+
+
+# --- solicitantes (Etapa 3.8) ---------------------------------------------------------------------
+
+
+def test_solicitada_por_miembro_externo_o_nuevo(cliente, pizarra, dueno, listas):
+    url = f"/pizarras/{pizarra.pk}/actividades/"
+    r = _post(
+        cliente, url, {"titulo": "a", "lista": listas["Pendiente"].pk, "solicitada_por": dueno.pk}
+    )
+    assert r.status_code == 201 and r.json()["solicitante"]["tipo"] == "miembro"
+    r = _post(
+        cliente,
+        url,
+        {"titulo": "b", "lista": listas["Pendiente"].pk, "solicitante_nuevo": " Juan  Pérez "},
+    )
+    assert r.json()["solicitante"]["nombre"] == "Juan Pérez"
+    externo = r.json()["solicitante"]["id"]
+    # Escribirlo otra vez con otras mayúsculas reutiliza el mismo.
+    r = _post(
+        cliente,
+        url,
+        {"titulo": "c", "lista": listas["Pendiente"].pk, "solicitante_nuevo": "juan pérez"},
+    )
+    assert r.json()["solicitante"]["id"] == externo
+    r = _patch(
+        cliente,
+        f"/actividades/{r.json()['id']}/",
+        {"solicitante_externo": None, "solicitada_por": None},
+    )
+    assert r.json()["solicitante"] is None
+    r = _post(
+        cliente,
+        url,
+        {
+            "titulo": "d",
+            "lista": listas["Pendiente"].pk,
+            "solicitada_por": dueno.pk,
+            "solicitante_externo": externo,
+        },
+    )
+    assert r.status_code == 400 and "solicitante" in r.json()
+    detalle = cliente.get(f"{API}/pizarras/{pizarra.pk}/").json()
+    assert detalle["solicitantes"] == [{"id": externo, "nombre": "Juan Pérez", "n_actividades": 1}]
+
+
+def test_solo_miembros_y_externos_de_la_pizarra(cliente, pizarra, dueno, listas, crear_usuario):
+    url = f"/pizarras/{pizarra.pk}/actividades/"
+    ajeno = crear_usuario()
+    r = _post(
+        cliente, url, {"titulo": "a", "lista": listas["Pendiente"].pk, "solicitada_por": ajeno.pk}
+    )
+    assert r.status_code == 400 and "solicitante" in r.json()
+    otra = sp.crear_pizarra(dueno, "Otra")
+    de_otra = sp.crear_solicitante(otra, dueno, "Ana")
+    r = _post(
+        cliente,
+        url,
+        {"titulo": "a", "lista": listas["Pendiente"].pk, "solicitante_externo": de_otra.pk},
+    )
+    assert r.status_code == 400 and "solicitante" in r.json()
+
+
+def test_el_miembro_que_sale_sigue_como_solicitante(pizarra, dueno, crear_usuario, agregar_miembro):
+    luis = crear_usuario()
+    agregar_miembro(luis)
+    t = st.crear_actividad(pizarra, dueno, titulo="a", solicitada_por=luis.pk)
+    sp.salir(pizarra, luis)
+    t.refresh_from_db()
+    assert t.solicitada_por == luis
+    st.editar_actividad(t, dueno, titulo="b", solicitada_por=luis.pk)  # se puede conservar
+
+
+def test_gestionar_solicitantes(cliente, pizarra, dueno, listas):
+    r = _post(cliente, f"/pizarras/{pizarra.pk}/solicitantes/", {"nombre": "Dirección"})
+    assert r.status_code == 201
+    s = r.json()["solicitantes"][0]["id"]
+    t = st.crear_actividad(pizarra, dueno, titulo="a", solicitante_externo=s)
+    _post(cliente, f"/pizarras/{pizarra.pk}/solicitantes/", {"nombre": "Rectoría"})
+    r = _patch(cliente, f"/solicitantes/{s}/", {"nombre": "rectoría"})
+    assert r.status_code == 400 and "nombre" in r.json()
+    r = _patch(cliente, f"/solicitantes/{s}/", {"nombre": "Dirección general"})
+    assert r.json()["solicitantes"][0]["nombre"] == "Dirección general"
+    assert cliente.delete(f"{API}/solicitantes/{s}/").status_code == 200
+    t.refresh_from_db()
+    assert t.solicitante_externo is None  # la actividad se queda, sin solicitante
+
+
+def test_solicitante_ajeno_es_404_y_sin_permiso_es_403(
+    pizarra, dueno, client, crear_usuario, agregar_miembro
+):
+    s = sp.crear_solicitante(pizarra, dueno, "Dirección")
+    client.force_login(crear_usuario())
+    assert (
+        _post(client, f"/pizarras/{pizarra.pk}/solicitantes/", {"nombre": "x"}).status_code == 404
+    )
+    assert _patch(client, f"/solicitantes/{s.pk}/", {"nombre": "x"}).status_code == 404
+    assert client.delete(f"{API}/solicitantes/{s.pk}/").status_code == 404
+    luis = crear_usuario()
+    agregar_miembro(luis, crear=False, editar=False)
+    client.force_login(luis)
+    assert (
+        _post(client, f"/pizarras/{pizarra.pk}/solicitantes/", {"nombre": "x"}).status_code == 403
+    )
+    assert _patch(client, f"/solicitantes/{s.pk}/", {"nombre": "x"}).status_code == 403
+    assert client.delete(f"{API}/solicitantes/{s.pk}/").status_code == 403
+    sp.cambiar_permisos(pizarra, dueno, luis, editar=True)  # con «Editar» basta
+    assert _patch(client, f"/solicitantes/{s.pk}/", {"nombre": "Dir."}).status_code == 200

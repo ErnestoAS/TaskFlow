@@ -10,7 +10,7 @@ class Migration(migrations.Migration):
 
     dependencies = [
         ('pizarras', '0001_initial'),
-        ('tarjetas', '0002_initial'),
+        ('actividades', '0002_initial'),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
     ]
 
@@ -46,7 +46,7 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='cambioestatus',
             name='tarjeta',
-            field=models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='cambios_estatus', to='tarjetas.tarjeta', verbose_name='tarjeta'),
+            field=models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='cambios_estatus', to='actividades.tarjeta', verbose_name='tarjeta'),
         ),
         migrations.AddField(
             model_name='cambioestatus',

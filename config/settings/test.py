@@ -14,6 +14,7 @@ PASSWORD_HASHERS = ["django.contrib.auth.hashers.MD5PasswordHasher"]
 EMAIL_BACKEND = "django.core.mail.backends.locmem.EmailBackend"
 
 MEDIA_ROOT = BASE_DIR / "media-test"
+TASKFLOW_ADJUNTOS_ROOT = MEDIA_ROOT / "adjuntos"
 
 LOGGING["root"]["level"] = "WARNING"
 TASKFLOW_URL = "https://ejemplo.mx/taskflow"

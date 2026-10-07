@@ -27,7 +27,7 @@ export default defineConfig({
       manifest: {
         name: "TaskFlow",
         short_name: "TaskFlow",
-        description: "Organiza las actividades de tu equipo en tarjetas.",
+        description: "Organiza las actividades de tu equipo en pizarras con listas.",
         lang: "es-MX",
         start_url: "./",
         scope: "./",
@@ -45,10 +45,10 @@ export default defineConfig({
         navigateFallback: null,
         runtimeCaching: [
           {
-            // Sin conexión (§5): se ven las últimas pizarras y tarjetas cargadas. auth/csrf/ entra
+            // Sin conexión (§5): se ven las últimas pizarras y actividades cargadas. auth/csrf/ entra
             // para saber quién tenía la sesión; al salir se borra esta caché (sesion.ts).
             urlPattern: ({ url, request }) =>
-              request.method === "GET" && /\/api\/v1\/(auth\/csrf|yo|pizarras|tarjetas)\b/.test(url.pathname),
+              request.method === "GET" && /\/api\/v1\/(auth\/csrf|yo|pizarras|actividades)\b/.test(url.pathname),
             handler: "NetworkFirst",
             options: {
               cacheName: "taskflow-datos",

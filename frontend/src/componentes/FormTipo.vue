@@ -42,19 +42,19 @@ async function guardar() {
 </script>
 
 <template>
-  <Hoja :titulo="tipo ? 'Editar tipo' : 'Nuevo tipo de tarjeta'" @cerrar="emit('cerrar')">
+  <Hoja :titulo="tipo ? 'Editar tipo' : 'Nuevo tipo de actividad'" @cerrar="emit('cerrar')">
     <form novalidate @submit.prevent="guardar">
       <div class="campo">
-        <label for="f-tnombre">Nombre</label>
-        <input id="f-tnombre" v-model="form.nombre" type="text" maxlength="50" placeholder="Ej. Difusión" />
+        <label for="f-tnombre">Nombre <span class="obligatorio" aria-hidden="true">*</span></label>
+        <input id="f-tnombre" aria-required="true" v-model="form.nombre" type="text" maxlength="50" placeholder="Ej. Difusión" />
         <div v-if="errores.nombre" class="error">{{ errores.nombre }}</div>
       </div>
       <div class="campo">
-        <label for="f-tdesc">Descripción <span style="text-transform: none; font-weight: 400">(opcional)</span></label>
-        <textarea id="f-tdesc" v-model="form.descripcion" style="min-height: 70px" placeholder="Para qué tarjetas se usa" />
+        <label for="f-tdesc">Descripción</label>
+        <textarea id="f-tdesc" v-model="form.descripcion" style="min-height: 70px" placeholder="Para qué actividades se usa" />
       </div>
       <div class="campo">
-        <span class="etiqueta">Color</span>
+        <span class="etiqueta">Color <span class="obligatorio" aria-hidden="true">*</span></span>
         <div class="muestras" role="group" aria-label="Colores sugeridos">
           <button
             v-for="m in MUESTRAS"
@@ -67,7 +67,6 @@ async function guardar() {
           />
           <input v-model="form.color" type="color" aria-label="Otro color" />
         </div>
-        <div class="ayuda">Elige uno sugerido u otro con el selector.</div>
         <div v-if="errores.color" class="error">{{ errores.color }}</div>
       </div>
       <div class="campo">

@@ -9,7 +9,7 @@
  *  - Navy (--tf-primary): identidad, navegación, estructura.  Petróleo (--tf-accent): progreso,
  *    seleccionado, indicadores. Para texto en petróleo, --tf-accent-text.
  *  - Sin coral ni naranja fuera de lo semántico (2026-10-01): el rojo y el ámbar quedan SOLO para
- *    peligro, vencido, urgente y advertencias, para que no parezca que algo está mal.
+ *    peligro, vencido y advertencias, para que no parezca que algo está mal.
  *  - Botón principal y «+»: navy con texto blanco (--tf-btn, --tf-on-btn).
  *  - Sobre la barra lateral navy, los indicadores usan --tf-accent-on-dark (cian claro).
  *  - Badges: punto con el color base, texto con la variante *-text y fondo *-soft.
@@ -52,12 +52,7 @@
   --tf-warning:#d97706; --tf-warning-text:#b45309; --tf-warning-soft:#fffbeb;
   --tf-info:#3b82f6;    --tf-info-text:#1d4ed8;    --tf-info-soft:#eff6ff;
 
-  /* Prioridades. Baja y media en grises (media es la de omisión: neutra, no llama la atención);
-     alta ámbar y urgente rojo, que sí son alertas. */
-  --tf-priority-low:#cbd5e1;    --tf-priority-low-text:#64748b;    --tf-priority-low-soft:#f8fafc;
-  --tf-priority-medium:#64748b; --tf-priority-medium-text:#334155; --tf-priority-medium-soft:#e2e8f0;
-  --tf-priority-high:#d97706;   --tf-priority-high-text:#b45309;   --tf-priority-high-soft:#fffbeb;
-  --tf-priority-urgent:#dc2626; --tf-priority-urgent-text:#b91c1c; --tf-priority-urgent-soft:#fef2f2;
+  /* Sin variables de prioridad desde la Etapa 3.8 (2026-10-06): se quitó el campo. */
 
   /* Avatares: escala navy/pizarra, sin colores extra */
   --av1:#172554; --av2:#1e3a8a; --av3:#334155; --av4:#475569; --av5:#0f3f6e; --av6:#3b4a6b;

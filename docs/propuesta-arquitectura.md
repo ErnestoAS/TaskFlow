@@ -14,6 +14,11 @@
 > **Ajuste del 2026-10-06 (implementado, sin desplegar):** la pizarra nace **sin listas**, se
 > **quitan las listas de cierre** y «Lo que llega a [lista] cuenta como terminado» pasa a ser
 > **una sola lista por tarjeta**, bajo su checklist (§4.4, §4.6, §11).
+> **Etapa 3.8 decidida e implementada el 2026-10-06, sin desplegar (§4.7):** «tarjeta» pasa a
+> **«actividad»** en todo el sistema, se **quita la prioridad**, «Fecha de inicio» pasa a
+> **«Solicitada el»** (opcional) y «Fecha límite» a **«Vence el»**, **solicitante** por actividad,
+> **adjuntos**, «Mover a … al completar» la checklist, formulario único de alta y edición, filtro
+> por varios tipos y ajustes de la interfaz (§4.4–§4.7, §5–§7, §11).
 > **Fecha:** 2026-10-06
 > **Alcance:** describe el funcionamiento general y el esquema. Lo pendiente de decidir está en
 > [§10](#10-preguntas-abiertas); los ajustes hechos al implementar, en [§11](#11-notas-de-implementación).
@@ -22,16 +27,18 @@
 
 ## 1. Resumen
 
-**TaskFlow** es un gestor de tarjetas para organizar actividades. Las tarjetas viven en
-**pizarras** (de un evento, un área o un equipo) y, dentro de cada pizarra, en **listas** con nombre
-libre que se ordenan como trabaje cada equipo («Pendiente», «Esperando compra», «Finalizada»…). Cada
-tarjeta representa una actividad, puede asignarse a una o más personas y llevar una checklist.
+**TaskFlow** es un gestor de actividades al estilo de un tablero de tarjetas. Las actividades
+viven en **pizarras** (de un evento, un área o un equipo) y, dentro de cada pizarra, en **listas**
+con nombre libre que se ordenan como trabaje cada equipo («Pendiente», «Esperando compra»,
+«Finalizada»…). Cada actividad se ve como una tarjeta en el tablero, puede asignarse a una o más
+personas, decir quién la solicitó, llevar una checklist y archivos adjuntos. *(Hasta la Etapa 3.8,
+2026-10-06, se llamaban «tarjetas»; §4.7.)*
 
 | Frente | Usuarios | Tecnología | Ruta | Estado |
 | --- | --- | --- | --- | --- |
 | Administración del sistema | Superadministrador | Django admin | `/django-admin/` | ✅ en producción |
 | Portada de instalación | Cualquiera | Plantilla de Django | `/` | ✅ en producción |
-| Aplicación (pizarras de tarjetas) | Usuarios con cuenta | PWA: Vue 3 + Vite (§5) | `/app/` | ✅ en producción |
+| Aplicación (pizarras de actividades) | Usuarios con cuenta | PWA: Vue 3 + Vite (§5) | `/app/` | ✅ en producción |
 | API de la PWA | La PWA (misma sesión) | Django REST Framework (§6) | `/api/v1/` | ✅ en producción |
 
 Las rutas son relativas a `https://taskflow.rourendev.com`. El código funciona también bajo una
@@ -49,11 +56,14 @@ tiene sitios públicos ni unidades, así que esas piezas solo agregarían comple
 ```
 apps/
 ├── core/        TimeStampedModel, /healthz/, portada (/), entrega de la PWA (/app/), `migrate`
-│                con el paso previo que pasa la app `proyectos` a `pizarras` (§11, 2026-10-05)
+│                con el paso previo que renombra apps (`proyectos` → `pizarras`, 2026-10-05;
+│                `tarjetas` → `actividades`, Etapa 3.8; §11)
 ├── usuarios/    Usuario (AUTH_USER_MODEL), CodigoCorreo + servicios (verificar, recuperar)
-├── pizarras/    Pizarra, MiembroPizarra, Invitacion, Lista, TipoTarjeta + servicios (reglas)
-│                (hasta 2026-10-05: `proyectos/`, con Proyecto y MiembroProyecto)
-├── tarjetas/    Tarjeta, Movimiento (historial), ElementoChecklist + servicios (reglas)
+├── pizarras/    Pizarra, MiembroPizarra, Invitacion, Lista, TipoActividad, Solicitante
+│                + servicios (reglas) (hasta 2026-10-05: `proyectos/`, con Proyecto y
+│                MiembroProyecto; `TipoActividad` era `TipoTarjeta` hasta la Etapa 3.8)
+├── actividades/ Actividad, Movimiento (historial), ElementoChecklist, Adjunto + servicios
+│                (reglas) (hasta la Etapa 3.8: `tarjetas/`, con `Tarjeta`)
 └── api/         /api/v1/: vistas finas que llaman a los servicios; sin reglas propias
 frontend/        PWA (Vue + Vite). `npm run build` la deja en pwa/app/ (no se versiona)
 static/          tema.css (paleta), fuentes.css + fonts/ (Inter), portada.css/js, marca/
@@ -70,17 +80,23 @@ erDiagram
     USUARIO ||--o{ MIEMBRO_PIZARRA : "pertenece (rol dueno o miembro)"
     PIZARRA ||--o{ INVITACION : "invita por correo"
     PIZARRA ||--o{ LISTA : "ordena en columnas"
-    PIZARRA ||--o{ TIPO_TARJETA : "define"
-    PIZARRA ||--o{ TARJETA : "agrupa"
-    LISTA ||--o{ TARJETA : "contiene (en una posición)"
-    USUARIO }o--o{ TARJETA : "asignados (solo miembros)"
-    USUARIO ||--o{ TARJETA : "crea (creada_por)"
-    TIPO_TARJETA }o--o{ TARJETA : "tipos (uno o más)"
-    TARJETA ||--o{ MOVIMIENTO : "historial"
+    PIZARRA ||--o{ TIPO_ACTIVIDAD : "define"
+    PIZARRA ||--o{ SOLICITANTE : "registra (externos)"
+    PIZARRA ||--o{ ACTIVIDAD : "agrupa"
+    LISTA ||--o{ ACTIVIDAD : "contiene (en una posición)"
+    USUARIO }o--o{ ACTIVIDAD : "asignados (solo miembros)"
+    USUARIO ||--o{ ACTIVIDAD : "crea (creada_por)"
+    USUARIO |o--o{ ACTIVIDAD : "la solicitó (solicitada_por, miembro)"
+    SOLICITANTE |o--o{ ACTIVIDAD : "la solicitó (solicitante_externo)"
+    TIPO_ACTIVIDAD }o--o{ ACTIVIDAD : "tipos (uno o más)"
+    ACTIVIDAD ||--o{ MOVIMIENTO : "historial"
     USUARIO ||--o{ MOVIMIENTO : "hizo el movimiento"
-    TARJETA ||--o{ ELEMENTO_CHECKLIST : "checklist"
-    ELEMENTO_CHECKLIST |o--o| TARJETA : "se convirtió en (tarjeta_creada)"
-    LISTA |o--o{ TARJETA : "su checklist cuenta como terminado al llegar (lista_terminado)"
+    ACTIVIDAD ||--o{ ELEMENTO_CHECKLIST : "checklist"
+    ELEMENTO_CHECKLIST |o--o| ACTIVIDAD : "se convirtió en (actividad_creada)"
+    LISTA |o--o{ ACTIVIDAD : "su checklist cuenta como terminado al llegar (lista_terminado)"
+    LISTA |o--o{ ACTIVIDAD : "se mueve ahí al completar la checklist (lista_al_completar)"
+    ACTIVIDAD ||--o{ ADJUNTO : "archivos"
+    USUARIO |o--o{ ADJUNTO : "lo subió"
     USUARIO ||--o{ CODIGO_CORREO : "verificar o recuperar"
 ```
 
@@ -133,77 +149,105 @@ por hora). *Pendiente:* limpiar los viejos con un comando periódico si la tabla
 El correo sale con `transaction.on_commit` (plantillas en
 `apps/usuarios/templates/usuarios/correos/`).
 
-### 4.4 `tarjetas` *(esquema actual: v3, 2026-10-05)*
+### 4.4 `actividades` *(esquema v4: Etapa 3.8, decidido e implementado 2026-10-06, sin desplegar; antes app `tarjetas`, v3 del 2026-10-05)*
 
-#### `Tarjeta`
+#### `Actividad` *(hasta la Etapa 3.8, `Tarjeta`)*
 
 | Campo | Tipo | Notas |
 | --- | --- | --- |
-| `pizarra` | FK `Pizarra`, obligatoria, `CASCADE` | Eliminar la pizarra borra sus tarjetas. |
-| `lista` | FK `Lista`, obligatoria, **`RESTRICT`** | Debe ser de la misma pizarra (servicio). `RESTRICT` y no `PROTECT`: una lista con tarjetas no se puede borrar sola (§4.6), pero sí junto con su pizarra; `PROTECT` lo impediría también ahí. |
-| `posicion` | Entero | Orden manual dentro de la lista (0 arriba). Una tarjeta nueva va al final. Al mover, el servicio renumera las listas afectadas: son pocas tarjetas por lista y no hace falta un orden fraccionario. Índice `(lista, posicion)`. |
-| `titulo` | Texto (200), obligatorio | |
+| `pizarra` | FK `Pizarra`, obligatoria, `CASCADE` | Eliminar la pizarra borra sus actividades. |
+| `lista` | FK `Lista`, obligatoria, **`RESTRICT`** | Debe ser de la misma pizarra (servicio). `RESTRICT` y no `PROTECT`: una lista con actividades no se puede borrar sola (§4.6), pero sí junto con su pizarra; `PROTECT` lo impediría también ahí. |
+| `posicion` | Entero | Orden manual dentro de la lista (0 arriba). Una actividad nueva va al final, o **arriba** si se crea con el «+» del encabezado de la lista (§4.7). Al mover, el servicio renumera las listas afectadas: son pocas actividades por lista y no hace falta un orden fraccionario. Índice `(lista, posicion)`. |
+| `titulo` | Texto (200), obligatorio | Lo único obligatorio al capturar (además de la lista donde vive). |
 | `descripcion` | Texto largo, **opcional** *(2026-10-05)* | Muchas actividades se explican con el título; exigirla solo provocaba textos de relleno. |
-| `prioridad` | `baja` · `media` · `alta` · `urgente` | Por omisión `media`. Fija para todas las pizarras (a diferencia de los tipos), decidida el 2026-10-01 al adoptar la identidad visual (`docs/identidad-visual.md`). `CheckConstraint` `tarjeta_prioridad_valida`. |
-| `fecha_inicio` | Fecha, obligatoria; por omisión hoy en `America/Mexico_City` *(2026-10-05)* | **Cuándo empezó o se encargó**, que no siempre es cuándo se capturó (`creado_en`): si piden algo el lunes y se anota el jueves, se pone el lunes. Solo fecha: la hora casi nunca se sabe. En la interfaz, «Fecha de inicio». |
-| `fecha_fin` | Fecha, **opcional** | En la interfaz, **«Fecha límite»**. Muchas actividades no tienen fecha comprometida; un valor inventado ensuciaría los vencimientos. No puede ser anterior a `fecha_inicio` (servicio y `CheckConstraint` `tarjeta_fechas_en_orden`). |
+| ~~`prioridad`~~ | — | **Se quita en la Etapa 3.8** (Ernesto, 2026-10-06), con sus datos: quien la necesite crea un tipo o una lista «Urgente» (§4.7, §9). |
+| `fecha_solicitud` *(antes `fecha_inicio`)* | Fecha, **opcional** *(2026-10-06; antes obligatoria con hoy por omisión)* | **Cuándo se solicitó la actividad**, que no siempre es cuándo se capturó (`creado_en`, que se guarda solo): si piden algo el lunes y se anota el jueves, se pone el lunes. Opcional y vacía por omisión porque, si se llenara con hoy, no se distinguiría de la fecha de captura y diría algo que nadie afirmó. Solo fecha: la hora casi nunca se sabe. En la interfaz, **«Solicitada el»**. |
+| `fecha_fin` | Fecha, **opcional** | En la interfaz, **«Vence el»** *(2026-10-06; antes «Fecha límite»)*. Muchas actividades no tienen fecha comprometida; un valor inventado ensuciaría los vencimientos. Si las dos fechas están, no puede ser anterior a `fecha_solicitud` (servicio y `CheckConstraint` `actividad_fechas_en_orden`, que deja pasar las nulas). |
 | `asignados` | M2M a `Usuario`, opcional | Solo miembros de la pizarra (servicio). |
-| `tipos` | M2M a `TipoTarjeta`, opcional | Solo tipos de la misma pizarra (servicio). |
-| `creada_por` | FK a `Usuario`, opcional | `SET_NULL`: borrar una cuenta no debe borrar las tarjetas que creó. |
-| `lista_terminado` *(2026-10-06)* | FK `Lista`, nula, `SET_NULL` | «**Lo que llega a [lista] cuenta como terminado**» para los elementos de **su** checklist que se convirtieron en tarjetas: cada uno está hecho cuando su tarjeta está en esa lista. Una por tarjeta (no por elemento ni por lista de la pizarra). Debe ser de la misma pizarra y **distinta de la lista donde está la tarjeta al elegirla** (servicio): sus tarjetas hijas nacen ahí y se darían por hechas al crearlas. Nula = palomeo manual (también si esa lista se elimina). Ver §4.6. |
+| `tipos` | M2M a `TipoActividad`, opcional | Solo tipos de la misma pizarra (servicio). |
+| `solicitada_por` *(2026-10-06)* | FK `Usuario`, nula, `SET_NULL` | Quién la solicitó, **si es miembro** de la pizarra (servicio, al elegirlo). Si después sale de la pizarra se conserva: la actividad sigue diciendo quién la pidió. |
+| `solicitante_externo` *(2026-10-06)* | FK `Solicitante`, nula, `SET_NULL` | Quién la solicitó, **si no es miembro** (catálogo de la pizarra, §4.5). Misma pizarra (servicio). **A lo más uno** de `solicitada_por` y `solicitante_externo` (`CheckConstraint` `actividad_un_solicitante`); los dos nulos = sin solicitante. Por qué dos FK y no una, en §9. |
+| `creada_por` | FK a `Usuario`, opcional | `SET_NULL`: borrar una cuenta no debe borrar las actividades que creó. |
+| `lista_terminado` *(2026-10-06)* | FK `Lista`, nula, `SET_NULL` | «**Lo que llega a [lista] cuenta como terminado**» para los elementos de **su** checklist que se convirtieron en actividades: cada uno está hecho cuando su actividad está en esa lista. Una por actividad (no por elemento ni por lista de la pizarra). Debe ser de la misma pizarra y **distinta de la lista donde está la actividad al elegirla** (servicio): sus hijas nacen ahí y se darían por hechas al crearlas. Nula = palomeo manual (también si esa lista se elimina). Ver §4.6. |
+| `lista_al_completar` *(2026-10-06)* | FK `Lista`, nula, `SET_NULL` | «**Mover a [lista] al completar**»: cuando su checklist **pasa de incompleta a completa**, la actividad se mueve sola al final de esa lista (con `mover_actividad`, así que queda en el historial a nombre de quien palomeó el último elemento). Misma pizarra (servicio). Nula = no se mueve. Despalomear después **no la regresa**. Ver §4.7. |
 
-Orden por omisión: `posicion`. **Vencida** = fecha límite pasada, **en cualquier lista** (sin listas
-de cierre desde 2026-10-06, §4.6).
+Orden por omisión: `posicion`. **Vencida** = `fecha_fin` pasada, **en cualquier lista** (sin
+listas de cierre desde 2026-10-06, §4.6).
 
 #### `Movimiento` — historial *(reemplaza a `CambioEstatus`, 2026-10-05)*
 
 | Campo | Tipo | Notas |
 | --- | --- | --- |
-| `tarjeta` | FK, `CASCADE` | Si se elimina la tarjeta, su historial se va con ella. |
+| `actividad` | FK, `CASCADE` | Si se elimina la actividad, su historial se va con ella. |
 | `lista_anterior`, `lista_nueva` | Texto (50) | El **nombre** de la lista en ese momento, no una FK: las listas se renombran y se eliminan, y el historial debe seguir diciendo lo que pasó. `lista_anterior` vacía = la creación. |
-| `nota` | Texto (300) | Un evento que no es un movimiento: «convirtió «…» de la checklist en tarjeta» / «la creó desde la checklist de «…»». |
+| `nota` | Texto (300) | Un evento que no es un movimiento: «convirtió «…» de la checklist en actividad» / «la creó desde la checklist de «…»». |
 | `usuario` | FK `Usuario`, `SET_NULL` | Si se borra la cuenta, la entrada sigue y se muestra «Usuario eliminado». |
 | `fecha` | Fecha y hora, `default=timezone.now` | No `auto_now_add`, para que la migración copie las fechas del historial anterior. UTC en la base, `America/Mexico_City` en pantalla. |
 
 Solo se agregan filas, en la **misma transacción** que el cambio, desde los servicios
-(`crear_tarjeta`, `mover_tarjeta`, `convertir_elemento`) y el admin, para que ningún cambio de
+(`crear_actividad`, `mover_actividad`, `convertir_elemento`) y el admin, para que ningún cambio de
 lista quede sin rastro. Reordenar dentro de la misma lista **no** se registra (sería ruido).
-Índice `(tarjeta, -fecha)`.
+Índice `(actividad, -fecha)`.
 
 #### `ElementoChecklist` *(2026-10-05)*
 
 | Campo | Tipo | Notas |
 | --- | --- | --- |
-| `tarjeta` | FK, `CASCADE`, `related_name="checklist"` | Una checklist por tarjeta. |
-| `texto` | Texto (200) | |
-| `hecho` | Booleano | Solo cuenta si se palomea a mano: si el elemento se convirtió en tarjeta y **su tarjeta** tiene `lista_terminado`, está hecho cuando `tarjeta_creada.lista == tarjeta.lista_terminado` y `hecho` se ignora. Al quitar esa lista (o eliminarse), cada elemento conserva en `hecho` el estado que tenía. |
+| `actividad` | FK, `CASCADE`, `related_name="checklist"` | Una checklist por actividad. |
+| `texto` | Texto (**400**) *(2026-10-06; antes 200)* | Ernesto pidió el doble porque hay pasos que necesitan una explicación. Al convertir uno más largo que el título (200), el título se corta en el último espacio antes de 200 y **el resto** va a la descripción (`partir_titulo`, §4.7). **Convertido, dice lo mismo que el título de su actividad** *(2026-10-06)*: toma el título al convertir y lo sigue al editarlo; por su lado ya no se edita. |
+| `hecho` | Booleano | Solo cuenta si se palomea a mano: si el elemento se convirtió en actividad y **su actividad** tiene `lista_terminado`, está hecho cuando `actividad_creada.lista == actividad.lista_terminado` y `hecho` se ignora. Al quitar esa lista (o eliminarse), cada elemento conserva en `hecho` el estado que tenía. |
 | `posicion` | Entero | Orden manual (se arrastra por la manija). |
-| `tarjeta_creada` | **`OneToOneField`** a `Tarjeta`, nula, `SET_NULL`, `related_name="elemento_origen"` | La tarjeta en que se convirtió. El enlace vive en un solo lado y la tarjeta nueva lo lee por la relación inversa: dos FK, una en cada lado, podrían quedar desincronizadas. `OneToOne` porque un elemento se convierte en una sola tarjeta y una tarjeta viene de un solo elemento. Debe ser de la misma pizarra (servicio). |
+| `actividad_creada` | **`OneToOneField`** a `Actividad`, nula, `SET_NULL`, `related_name="elemento_origen"` | La actividad en que se convirtió. El enlace vive en un solo lado y la actividad nueva lo lee por la relación inversa: dos FK, una en cada lado, podrían quedar desincronizadas. `OneToOne` porque un elemento se convierte en una sola actividad y una actividad viene de un solo elemento. Debe ser de la misma pizarra (servicio). |
+
+#### `Adjunto` *(2026-10-06)*
+
+| Campo | Tipo | Notas |
+| --- | --- | --- |
+| `actividad` | FK, `CASCADE`, `related_name="adjuntos"` | Al borrar la actividad (o su pizarra) se borran las filas **y los archivos del disco** (señal `post_delete` con `transaction.on_commit`, para no borrar un archivo si la transacción se revierte). |
+| `archivo` | `FileField`, `upload_to="adjuntos/<pizarra>/<uuid4>"` | El nombre en disco es aleatorio: el original puede traer caracteres raros o repetirse, y no debe poder adivinarse. Fuera de `MEDIA_URL`: se descarga **solo por la API**, que revisa que el usuario sea miembro (§7). |
+| `nombre` | Texto (255) | Nombre original, para mostrarlo y para la descarga. |
+| `tamano` | Entero (bytes) | El del archivo guardado (ya comprimido). De aquí sale el espacio usado por la pizarra (`Sum`), sin recorrer el disco. |
+| `tipo` | Texto (100) | Tipo MIME detectado al subir. Decide si se muestra en línea (imágenes y PDF) o se descarga. |
+| `subido_por` | FK `Usuario`, nula, `SET_NULL` | |
+| `creado_en` | Fecha y hora | `TimeStampedModel`. |
+
+Reglas (`apps/actividades/servicios.py`): cualquier tipo de archivo; **10 MB por archivo** y **500 MB
+por pizarra** (`TASKFLOW_ADJUNTO_MAX_MB`, `TASKFLOW_ADJUNTOS_PIZARRA_MB`); adjuntar y quitar =
+permiso «Editar»; pizarra archivada, solo descarga. **Compresión:** las imágenes (JPEG, PNG, WebP)
+se reducen en el navegador antes de subir (lado mayor 2000 px, JPEG o WebP de calidad 0.8; si
+sale más grande, se sube el original), así el límite cuenta sobre lo ya reducido y no se gasta
+ancho de banda del teléfono. Los **PDF de más de 1 MB** se comprimen en el servidor con
+Ghostscript (`-dPDFSETTINGS=/ebook`) y se guarda el más chico de los dos. El resto se guarda tal
+cual. Ver §4.7 y §9.
 
 ### 4.5 Pizarras y miembros *(Etapa 2 — decidido e implementado el 2026-10-01 como «proyectos»; renombrado y ampliado el 2026-10-05)*
 
-Código: `apps/pizarras/` (`Pizarra`, `MiembroPizarra`, `Invitacion`, `Lista`, `TipoTarjeta`) y
-`apps/tarjetas/` (`Tarjeta`, `Movimiento`, `ElementoChecklist`). **Las reglas viven en
+Código: `apps/pizarras/` (`Pizarra`, `MiembroPizarra`, `Invitacion`, `Lista`, `TipoActividad`,
+`Solicitante`) y `apps/actividades/` (`Actividad`, `Movimiento`, `ElementoChecklist`, `Adjunto`). **Las reglas viven en
 `servicios.py` de cada app** (no en los modelos ni en las vistas): `PermisoDenegado` cuando el
 usuario no puede (no es miembro, no es dueño, le falta el permiso o la pizarra está archivada) y
 `ValidationError` cuando los datos son inválidos. La API (`apps/api/`, §6) solo traduce peticiones
 a esas funciones.
 
-Reglas decididas (Ernesto, 2026-10-01; con los nombres y permisos de 2026-10-05):
+Reglas decididas (Ernesto, 2026-10-01; con los nombres y permisos de 2026-10-05 y la Etapa 3.8):
 
-- Cualquier usuario puede **crear pizarras**; las **tarjetas pertenecen a una pizarra**.
+- Cualquier usuario puede **crear pizarras**; las **actividades pertenecen a una pizarra**.
 - Un usuario puede pertenecer a **una o varias** pizarras.
 - Solo el **dueño** invita gente a su pizarra (y quita personas o cancela invitaciones).
-- **Todos los miembros ven todas las tarjetas** de la pizarra; quien no es miembro no ve la pizarra.
-- Las tarjetas pueden quedar **sin asignar**.
-- **Crear, editar, mover y eliminar** tarjetas, y **gestionar listas** y **gestionar tipos**, son
+- **Todos los miembros ven todas las actividades** de la pizarra; quien no es miembro no ve la pizarra.
+- Las actividades pueden quedar **sin asignar** y **sin solicitante**.
+- **Crear, editar, mover y eliminar** actividades, y **gestionar listas** y **gestionar tipos**, son
   permisos que el **dueño asigna a cada miembro**; el dueño siempre puede todo. Quien acepta una
   invitación entra con crear, editar y mover (sin eliminar ni gestionar).
 - Las invitaciones se pueden **reenviar** y **no vencen**.
 - Si la cuenta del dueño se desactiva sin haber transferido, un **administrador** transfiere la
   pizarra desde el admin de Django.
-- Cada pizarra tiene **tipos de tarjeta** (nombre, descripción opcional y color configurable). Una
-  tarjeta puede tener **uno o más** tipos.
+- Cada pizarra tiene **tipos de actividad** (nombre, descripción opcional y color configurable). Una
+  actividad puede tener **uno o más** tipos.
+- Cada pizarra tiene un **catálogo de solicitantes externos** *(2026-10-06)*; una actividad dice
+  quién la solicitó (un miembro, uno del catálogo o nadie). Los agrega desde el combo, y los renombra
+  o elimina en «Miembros y ajustes», quien tenga «Crear» o «Editar»: es un dato de captura, no una
+  configuración de la pizarra.
 - La pizarra se puede **transferir** a otro miembro (un solo dueño a la vez), **archivar** y
   **eliminar**.
 
@@ -212,8 +256,9 @@ Reglas decididas (Ernesto, 2026-10-01; con los nombres y permisos de 2026-10-05)
 | `Pizarra` | `nombre`, `creado_por` (FK `Usuario`, `PROTECT`), `archivada_en` (fecha, nula), fechas | Quien la crea queda como miembro con rol `dueno`, y la pizarra nace **sin listas** *(2026-10-06; antes traía «Pendiente», «En curso» y «Finalizada»)*: cada quien agrega las suyas. Archivada = solo lectura para todos; nulo = activa. Fecha y no booleano para saber desde cuándo. |
 | `MiembroPizarra` | `pizarra` (FK, `CASCADE`), `usuario` (FK, `CASCADE`), `rol` (`dueno` · `miembro`), `puede_crear` (por omisión `True`), `puede_editar` (`True`), `puede_mover` (`True`), `puede_eliminar` (`False`), `puede_gestionar_listas` (`False`), `puede_gestionar_tipos` (`False`), `unido_en` | `UniqueConstraint(pizarra, usuario)` y **un solo dueño por pizarra** (`pizarra_un_solo_dueno`, condicional). Los permisos son columnas y no un sistema genérico porque son seis, fijos, y el dueño los marca por persona; para el dueño se ignoran. «Gestionar listas» va aparte de «Gestionar tipos» porque reorganizar el tablero afecta a todos más que agregar una etiqueta. Transferir = cambiar los dos roles en una transacción. |
 | `Invitacion` | `pizarra` (FK), `correo`, `invitada_por` (FK `Usuario`), `token` (único), `estado` (`pendiente` · `aceptada` · `cancelada`), `creada_en`, `enviada_en` (último envío), `veces_enviada`, `respondida_en`, `aceptada_por` | **Sin vencimiento** (decidido). **Reenviar** manda otra vez el mismo enlace y actualiza `enviada_en`; `veces_enviada` pone un tope. Una pendiente por pizarra y correo (`UniqueConstraint` condicional). Se invita por correo porque la persona puede no tener cuenta todavía. |
-| `Lista` *(2026-10-05)* | `pizarra` (FK, `CASCADE`), `nombre` (50), `posicion` (entero), fechas | `UniqueConstraint(pizarra, Lower(nombre))`: en «Mover a» dos listas con el mismo nombre serían indistinguibles. Orden por `posicion`. Sin color: se distinguen por su nombre, y la paleta reserva los colores para alertas y tipos. **Sin `es_cierre`** *(quitado 2026-10-06)*: ninguna lista significa «terminado» por sí misma; eso lo elige cada tarjeta para su checklist (`Tarjeta.lista_terminado`, §4.6). Solo se elimina vacía (`Tarjeta.lista` es `RESTRICT`). |
-| `TipoTarjeta` | `pizarra` (FK, `CASCADE`), `nombre` (50), `descripcion` (opcional), `color` (7, `#rrggbb`), fechas | `UniqueConstraint(pizarra, Lower(nombre))`. `color` validado con `RegexValidator(^#[0-9a-f]{6}$)` y `CheckConstraint`, guardado en minúsculas: es el único color que viene del usuario. Eliminar un tipo lo quita de las tarjetas (el M2M se borra solo) sin borrarlas. |
+| `Lista` *(2026-10-05)* | `pizarra` (FK, `CASCADE`), `nombre` (50), `posicion` (entero), fechas | `UniqueConstraint(pizarra, Lower(nombre))`: en «Mover a» dos listas con el mismo nombre serían indistinguibles. Orden por `posicion`. Sin color: se distinguen por su nombre, y la paleta reserva los colores para alertas y tipos. **Sin `es_cierre`** *(quitado 2026-10-06)*: ninguna lista significa «terminado» por sí misma; eso lo elige cada actividad para su checklist (`Actividad.lista_terminado`, §4.6). Solo se elimina vacía (`Actividad.lista` es `RESTRICT`). |
+| `TipoActividad` *(hasta la Etapa 3.8, `TipoTarjeta`)* | `pizarra` (FK, `CASCADE`), `nombre` (50), `descripcion` (opcional), `color` (7, `#rrggbb`), fechas | `UniqueConstraint(pizarra, Lower(nombre))`. `color` validado con `RegexValidator(^#[0-9a-f]{6}$)` y `CheckConstraint`, guardado en minúsculas: es el único color que viene del usuario. Eliminar un tipo lo quita de las actividades (el M2M se borra solo) sin borrarlas. |
+| `Solicitante` *(2026-10-06)* | `pizarra` (FK, `CASCADE`), `nombre` (100), fechas | Personas **que no son miembros** y piden actividades (un director, otra área). Solo el nombre: se captura al vuelo desde el combo y más datos lo harían lento. `UniqueConstraint(pizarra, Lower(nombre))`: escribir «juan pérez» reutiliza a «Juan Pérez». Por pizarra, no por usuario, porque todos los miembros comparten las actividades. Eliminarlo deja sus actividades sin solicitante (`SET_NULL`), sin borrarlas. Los miembros no se copian aquí: se eligen directo (`Actividad.solicitada_por`). |
 
 Migraciones: `tarjetas.0003`–`0005` (2026-10-01) pasaron las tarjetas que ya existían a un
 proyecto **«Tarjetas anteriores»** y sembraron su historial; `pizarras.0002`–`0003` y
@@ -236,6 +281,10 @@ Decisiones tomadas al implementar (2026-10-01):
   registro del contenedor.
 
 ### 4.6 Listas en lugar de estatus *(decidido 2026-10-02 a 2026-10-05 · implementado y en producción 2026-10-05, `90939ed`)*
+
+*Se conserva como se decidió, con la palabra «tarjeta»; desde la Etapa 3.8 son «actividades»,
+`Tarjeta.*` es `Actividad.*`, «Agregar tarjeta» y el botón flotante cambiaron, y la prioridad ya no
+existe (§4.7).*
 
 **Qué cambia.** Ernesto pidió (2026-10-02) que las tarjetas se manejen como en Trello y quitar los
 estatus. Cada pizarra tiene **sus propias listas** (columnas con nombre libre: «Ideas»,
@@ -357,11 +406,95 @@ Cómo quedó (2026-10-05):
   solo en táctil (`delayOnTouchOnly`), arrastre propio (`forceFallback`) para que la tarjeta
   levantada se vea igual en todos lados, y desplazamiento automático en los bordes.
 
+### 4.7 Etapa 3.8: actividades, solicitantes y adjuntos *(decidido e implementado 2026-10-06, sin desplegar)*
+
+Ernesto revisó la Etapa 3.7 en uso y pidió (2026-10-06) una lista de cambios. Esquema resultante en
+§4.4 y §4.5; pantallas en §5; API en §6. Se implementa en este orden, cada parte revisable por
+separado: (1) renombre y prioridad, (2) fechas, formulario y botones, (3) checklist y (4) filtros y
+solicitantes y (5) adjuntos (**implementados 2026-10-06, sin desplegar**).
+
+- **«Tarjeta» pasa a «Actividad» en todo el sistema** *(implementado 2026-10-06)*: interfaz («Nueva actividad», «Mis
+  actividades», «Agregar actividad», «Se creó la actividad.»), correos, portada, modelos
+  (`Actividad`, `TipoActividad`; campos `actividad`, `actividad_creada`), app `apps/actividades/`
+  (etiqueta `actividades`), API (`/api/v1/actividades/…`, `yo/actividades/`) y rutas de la PWA
+  (`#/mis-actividades`; `#/mis-tarjetas` redirige). Motivo: Ernesto organiza **actividades**; la
+  tarjeta es solo cómo se ven en el tablero. Pidió renombrar también la base y el código, como con
+  «pizarra», para que todo cuadre. Lo visual sigue llamándose tarjeta donde es la forma y no el
+  dato: la clase CSS del componente pasa a `.actividad` igual, para no tener dos nombres. Las notas
+  del historial ya guardadas («…en tarjeta») las reescribe la migración. Etapas e historia de este
+  documento conservan la palabra «tarjeta» donde cuentan lo que pasó.
+- **Sin prioridad** *(implementado 2026-10-06)*: se quitan el campo, sus datos (sin convertirlos; Ernesto lo eligió así), el
+  badge, el selector, el indicador lateral rojo de «urgente» y las variables `--tf-priority-*`.
+  Motivo: con tipos y listas libres, quien necesite «Urgente» lo crea como tipo o como lista; un
+  campo fijo duplicaba eso y obligaba a todas las pizarras a la misma escala.
+- **Fechas** *(implementado 2026-10-06)*: «Fecha de inicio» pasa a **«Solicitada el»** (`fecha_solicitud`), **opcional** y
+  vacía por omisión, porque la fecha de captura ya se guarda sola (`creado_en`) y llenarla con hoy
+  repetía ese dato. «Fecha límite» pasa a **«Vence el»** (se descartó «Vence en», que no se lee
+  bien con una fecha). Las fechas existentes de `fecha_inicio` se conservan.
+- **Obligatorios con `*`** *(implementado 2026-10-06)*: se quitan todos los «(opcional)» de la app y los campos obligatorios
+  llevan un asterisco (clase `.obligatorio`). En una actividad solo son obligatorios el **título**
+  y la **lista** (que ya viene elegida si se crea desde una lista).
+- **Sin textos de ayuda** *(implementado 2026-10-06)* en la app («Toca una lista para moverla…», «Ordenarla dentro de la misma
+  lista no se registra.», «Con 🔗 conviertes…», «Se agrega al final de la lista.», etc.): Ernesto
+  prefiere una pantalla limpia y, más adelante, un manual o tutoriales aparte. Se conservan los
+  estados vacíos («Sin descripción», «Sin asignar»), los errores y los avisos de solo lectura.
+- **Detalle sin «Pizarra: … · Creada por … el …»** *(implementado 2026-10-06)*: el historial ya dice quién la creó y cuándo
+  («X la creó en … · fecha y hora»).
+- **Un solo formulario de alta y edición** *(implementado 2026-10-06; solicitante y adjuntos, cuando existan)* con los mismos campos en el mismo orden: título*,
+  lista*, descripción, solicitada por, tipos, solicitada el, vence el, asignados, checklist (con
+  «Mover a … al completar» y «Lo que llega a … cuenta como terminado») y adjuntos. Antes la lista
+  solo se elegía al crear y la checklist solo existía en el detalle. Al **crear**, la checklist y
+  los archivos se juntan en el formulario y se guardan con la actividad; al **editar**, se guardan
+  al momento, como en el detalle. Cambiar la lista al editar la mueve al final de la nueva (con
+  `mover_actividad`; requiere también el permiso «Mover»). El detalle sigue siendo de solo lectura
+  con acciones directas (mover, palomear) y «Editar» arriba: se descartó editar campo por campo en
+  el detalle (§9).
+- **Agregar actividad** *(implementado 2026-10-06)*: en computadora, un **«+» en el encabezado de cada lista** (la agrega
+  **arriba**) y **«Agregar actividad» fijo al pie** (al final); la lista se desplaza por dentro, así
+  que los dos quedan a la vista aunque crezca. En teléfono, un **botón flotante «Agregar
+  actividad»** que crea en la lista de la pestaña abierta. Motivo: con listas largas había que
+  bajar hasta el final para agregar.
+- **Checklist** *(implementado 2026-10-06)*:
+  - **Editar el texto en su lugar**: se toca el texto y se vuelve un campo; Enter o salir guarda,
+    Esc cancela (permiso «Editar»; ya existía en la API).
+  - **Elementos de hasta 400 caracteres** (antes 200). Al convertir uno más largo que el título,
+    el título se corta en el último espacio antes de 200 (corte duro si no hay espacio en el
+    último 40 %) y **el resto** va a la descripción *(Ernesto, 2026-10-06; antes la descripción
+    repetía el texto completo)*. Lo hace la PWA al prellenar el formulario y el servidor si la
+    conversión llega sin título.
+  - **El elemento convertido sigue el título de su actividad** *(Ernesto, 2026-10-06)*: al
+    convertir toma su título, y editar el título de la actividad cambia el elemento en la
+    checklist de la madre. Su texto ya no se edita por su lado (la API responde 400): así el
+    elemento y la actividad nunca dicen cosas distintas.
+  - **Copiar**: un ícono junto al título de la checklist copia su contenido como texto, una línea
+    por elemento, `✓` hecho y `•` pendiente. Sirve para pegarlo en un correo o un chat.
+  - **«Mover a [lista] al completar»** junto a «Checklist · n/m»: combo con las listas de la
+    pizarra y «ninguna» (por omisión). Cuando la checklist pasa de incompleta a completa (palomeo a
+    mano, palomeo automático por una actividad enlazada o al quitar el último pendiente), la
+    actividad se mueve al final de esa lista si no estaba ya ahí. Despalomear después no la
+    regresa: devolverla sola sorprendería y podría deshacer un movimiento hecho a mano. Puede
+    encadenarse (la hija llega a su lista, se palomea en la madre, la madre se completa y se mueve),
+    y es lo deseado. Se guarda al elegir (permiso «Editar»); el movimiento automático no exige
+    «Mover» a quien palomea, porque lo decidió quien eligió la lista.
+- **Filtro por varios tipos** *(implementado 2026-10-06)*: en el tablero se eligen uno o varios tipos y salen las actividades
+  con **cualquiera** de ellos. Se agrega el filtro **«Solicitada por»**.
+- **Solicitada por** *(implementado 2026-10-06)*: opcional, una persona por actividad: un **miembro** de la pizarra o un
+  **externo** del catálogo de la pizarra (`Solicitante`, solo nombre). En el formulario, un combo
+  con búsqueda que muestra miembros y externos; si se escribe un nombre que no existe, ofrece
+  «Agregar «…»» y lo crea al guardar. El catálogo se administra (renombrar, eliminar) en «Miembros y
+  ajustes». Agregar, renombrar y eliminar externos = permiso «Crear» o «Editar».
+- **Adjuntos** *(implementado 2026-10-06)*: cualquier tipo de archivo, 10 MB por archivo y 500 MB por pizarra, en el disco de
+  `srv-01` (volumen `media`). Imágenes reducidas en el navegador y PDF de más de 1 MB comprimidos
+  con Ghostscript en el servidor (§4.4). Se descargan por la API con revisión de permisos (§7).
+  Adjuntar y quitar = «Editar». Se borran del disco con su actividad o su pizarra.
+
 ## 5. Vistas de la aplicación
 
 *Aprobadas el 2026-10-01* con las maquetas `docs/_mockups/app-v2.html` y
 `docs/_mockups/instalacion-v2.html`, y el 2026-10-05 con `docs/_mockups/app-v3.html` (pizarras,
-listas, checklist). Paleta y componentes en `docs/identidad-visual.md`.
+listas, checklist), con los ajustes de la Etapa 3.8 (§4.7, 2026-10-06). Paleta y
+componentes en `docs/identidad-visual.md`. **Sin textos de ayuda** en pantalla desde la Etapa 3.8;
+los campos obligatorios llevan `*`.
 
 ### 5.1 Portada de instalación — `/`
 
@@ -377,32 +510,34 @@ Código en `frontend/`. Rutas con `#` (decisión en §9):
 
 | Ruta | Pantalla | Notas |
 | --- | --- | --- |
-| `#/entrar`, `#/registro` | Acceso | Sin armazón. `?siguiente=` regresa a donde iba. Registro: nombre, primer apellido, segundo apellido (opcional), correo y contraseña; al enviarlo pasa a `#/verificar`. Entrar con una cuenta sin confirmar también pasa ahí. Enlace «¿Olvidaste tu contraseña?». |
+| `#/entrar`, `#/registro` | Acceso | Sin armazón. `?siguiente=` regresa a donde iba. Registro: nombre*, primer apellido*, segundo apellido, correo* y contraseña*; al enviarlo pasa a `#/verificar`. Entrar con una cuenta sin confirmar también pasa ahí. Enlace «¿Olvidaste tu contraseña?». |
 | `#/verificar?correo=` | Confirmar correo | Código de 6 dígitos (`autocomplete="one-time-code"` para que el teléfono lo sugiera) y «Reenviar código», habilitado tras 60 s, lo mismo que exige el servidor. Al confirmar, entra. |
 | `#/recuperar` | Recuperar contraseña | Paso 1: correo. Paso 2: código y contraseña nueva; al guardar, entra. El paso 2 aparece siempre, exista o no la cuenta (§7). |
 | `#/invitacion/<token>` | Aceptar invitación | Pública. Ver §7. |
-| `#/pizarras` | Mis pizarras | Activas con un resumen de una línea (tarjetas · listas · tuyas), miembros y vencidas; archivadas aparte. Aviso de instalación. (`#/proyectos…` redirige aquí.) |
-| `#/pizarras/<id>` | Tablero | Listas en fila (§4.6). Teléfono: pestañas por lista y «Filtrar»; arrastrar manteniendo presionada. Computadora (≥ 900 px): columnas, «Solo mías» y tipos a la vista; arrastrar con el mouse. «Agregar tarjeta» en cada lista, «Agregar lista» al final, «⋯» por lista. Sin listas (pizarra nueva), un aviso que invita a agregar la primera. Banner de solo lectura si está archivada. |
-| `#/pizarras/<id>/ajustes` | Miembros y ajustes | Invitar, reenviar/cancelar, seis permisos por miembro, «Hacer dueño», quitar, tipos, renombrar, archivar/restaurar, eliminar, salir. |
-| `#/mis-tarjetas` | Mis tarjetas | Asignadas a mí en mis pizarras activas, en cualquier lista (sin listas de cierre desde 2026-10-06), con pizarra y lista; vencidas primero, luego por fecha límite. |
+| `#/pizarras` | Mis pizarras | Activas con un resumen de una línea (actividades · listas · tuyas), miembros y vencidas; archivadas aparte. Aviso de instalación. (`#/proyectos…` redirige aquí.) |
+| `#/pizarras/<id>` | Tablero | Listas en fila (§4.6). Teléfono: pestañas por lista, «Filtrar» y botón flotante «Agregar actividad» (en la lista abierta); arrastrar manteniendo presionada. Computadora (≥ 900 px): columnas que se desplazan por dentro, con «+» en el encabezado (agrega arriba) y «Agregar actividad» fijo al pie; «Solo mías», tipos (uno o varios) y «Solicitada por» a la vista; arrastrar con el mouse. «Agregar lista» al final, «⋯» por lista. Sin listas (pizarra nueva), un aviso que invita a agregar la primera. Banner de solo lectura si está archivada. |
+| `#/pizarras/<id>/ajustes` | Miembros y ajustes | Invitar, reenviar/cancelar, seis permisos por miembro, «Hacer dueño», quitar, tipos, solicitantes externos (renombrar, eliminar), espacio usado por los adjuntos, renombrar, archivar/restaurar, eliminar, salir. |
+| `#/mis-actividades` | Mis actividades | (`#/mis-tarjetas` redirige.) Asignadas a mí en mis pizarras activas, en cualquier lista (sin listas de cierre desde 2026-10-06), con pizarra y lista; vencidas primero, luego por fecha límite y, a igual fecha, las capturadas antes (hasta la Etapa 3.8 desempataba la prioridad). |
 | `#/perfil` | Perfil | Nombre y apellidos, contraseña, instalar, cerrar sesión. |
 
-- **Detalle de tarjeta** en hoja inferior (teléfono) o panel lateral (computadora): arriba,
+- **Detalle de actividad** en hoja inferior (teléfono) o panel lateral (computadora): arriba,
   bajo el título, «Editar» y «Eliminar» *(movidos 2026-10-06: al final quedaban debajo del
   historial, que crece con cada movimiento, y había que desplazarse cada vez más para alcanzarlos;
   se descartó unir detalle y edición en una sola vista porque el detalle ya tiene acciones
   directas —mover de lista, palomear la checklist— y un formulario siempre abierto invita a
   cambios accidentales)*; luego «Viene de»
-  (si nació de una checklist), lista (cambiarla con un toque; queda al final), prioridad, tipos,
-  descripción, fecha de inicio y fecha límite, checklist, asignados, historial (quién, de qué lista
-  a cuál, fecha y hora) y «Creada por … el …». Lo que el usuario no tiene permitido no aparece o
-  queda deshabilitado, con una nota que remite al dueño. El mismo panel tiene el formulario de
-  alta/edición y el de convertir un elemento de la checklist en tarjeta.
-- **Orden** dentro de cada lista: manual (arrastrando); una tarjeta nueva va al final.
+  (si nació de una checklist), lista (cambiarla con un toque; queda al final), solicitada por,
+  tipos, descripción, «Solicitada el» y «Vence el», checklist (con copiar, edición del texto en su
+  lugar y «Mover a … al completar»), adjuntos, asignados e historial (quién, de qué lista a cuál,
+  fecha y hora). *(Etapa 3.8: sin prioridad ni «Creada por … el …», que ya dice el historial.)*
+  Lo que el usuario no tiene permitido no aparece o queda deshabilitado, con una nota que remite
+  al dueño. El mismo panel tiene **un solo formulario** para alta, edición y convertir un elemento
+  de la checklist en actividad, con los mismos campos (§4.7).
+- **Orden** dentro de cada lista: manual (arrastrando); una actividad nueva va al final, o arriba con el «+» del encabezado.
 - **Confirmaciones** en un diálogo propio que nombra lo afectado y la consecuencia (nunca
-  `window.confirm`); **avisos** breves en pasado («Se creó la tarjeta.»).
+  `window.confirm`); **avisos** breves en pasado («Se creó la actividad.»).
 - **Sin conexión:** el service worker (Workbox, `registerType: "prompt"`) guarda la app y, con
-  `NetworkFirst`, las últimas respuestas `GET` de `auth/csrf`, `yo`, `pizarras` y `tarjetas`; se ve
+  `NetworkFirst`, las últimas respuestas `GET` de `auth/csrf`, `yo`, `pizarras` y `actividades` (no los adjuntos); se ve
   lo último cargado. Las escrituras requieren conexión. Al cerrar sesión se borra esa caché.
   **Versión nueva** *(cambiado 2026-10-02)*: la app la busca al abrirse, al volver al frente y cada
   hora; al encontrarla avisa «TaskFlow se actualizará en 15 s. Guarda lo que estés escribiendo.»
@@ -427,21 +562,24 @@ a un servicio de `apps/*/servicios.py`; la API no tiene reglas propias. Salida a
 | `POST auth/verificar/` · `auth/verificar/reenviar/` | Confirmar con `{correo, codigo}` (abre la sesión y devuelve el usuario) · reenviar con `{correo}`. |
 | `POST auth/recuperar/` · `auth/recuperar/confirmar/` | Pedir el código con `{correo}` (siempre `{ok: true}`) · `{correo, codigo, password}` cambia la contraseña, verifica el correo y abre la sesión. |
 | `GET, PATCH yo/` · `POST yo/password/` | Mi cuenta (`nombre_pila`, `primer_apellido`, `segundo_apellido`; contraseña). |
-| `GET yo/tarjetas/` | Mis tarjetas asignadas, en cualquier lista, de pizarras activas. |
-| `GET, POST pizarras/` | Mis pizarras (resumen con `conteos: {tarjetas, listas, mias, vencidas}` y mis permisos) · crear (nace sin listas, 2026-10-06). |
-| `GET, PATCH, DELETE pizarras/<id>/` | Detalle (miembros, listas con `n_tarjetas`, tipos, invitaciones si soy dueño) · renombrar · eliminar. |
+| `GET yo/actividades/` | Mis actividades asignadas, en cualquier lista, de pizarras activas. |
+| `GET, POST pizarras/` | Mis pizarras (resumen con `conteos: {actividades, listas, mias, vencidas}` y mis permisos) · crear (nace sin listas, 2026-10-06). |
+| `GET, PATCH, DELETE pizarras/<id>/` | Detalle (miembros, listas con `n_actividades`, tipos, solicitantes, espacio de adjuntos usado y disponible, invitaciones si soy dueño) · renombrar · eliminar. |
 | `POST pizarras/<id>/{archivar,restaurar,salir,transferir}/` | Acciones de la pizarra. |
 | `PATCH, DELETE pizarras/<id>/miembros/<usuario>/` | Permisos de un miembro (`crear`, `editar`, `mover`, `eliminar`, `gestionar_listas`, `gestionar_tipos`) · quitarlo. |
 | `POST pizarras/<id>/invitaciones/` · `…/<inv>/{reenviar,cancelar}/` | Invitaciones. |
 | `POST pizarras/<id>/listas/` · `POST …/listas/orden/` | Crear lista `{nombre}` (al final) · ordenar `{ids: […]}` (todas). Devuelven la pizarra. |
 | `PATCH, DELETE listas/<id>/` | `{nombre}` · eliminar (solo vacía). Devuelven la pizarra. |
-| `POST pizarras/<id>/tipos/` · `PATCH, DELETE …/tipos/<tipo>/` | Tipos de tarjeta. |
-| `GET, POST pizarras/<id>/tarjetas/` | Tarjetas de la pizarra (por lista y posición) · crear (`lista`, `fecha_inicio`; descripción opcional). |
-| `GET, PATCH, DELETE tarjetas/<id>/` | Detalle con checklist, historial, `viene_de` y `lista_terminado` (id o `null`) · editar (también `lista_terminado`: id de otra lista de la pizarra o `null`) · eliminar. |
-| `POST tarjetas/<id>/mover/` | `{lista, posicion}` (sin posición, al final). Cambiar de lista queda en el historial. |
-| `POST tarjetas/<id>/checklist/` · `POST …/checklist/orden/` | Agregar elemento `{texto}` · ordenar `{ids}`. Devuelven la tarjeta. |
-| `PATCH, DELETE checklist/<id>/` | `{texto, hecho}` · quitar. Devuelven la tarjeta. |
-| `POST checklist/<id>/convertir/` | Crea la tarjeta enlazada (campos de alta de tarjeta; cuándo se palomea lo dice `lista_terminado` de la tarjeta original). Devuelve `{tarjeta, nueva}`. |
+| `POST pizarras/<id>/tipos/` · `PATCH, DELETE …/tipos/<tipo>/` | Tipos de actividad. |
+| `POST pizarras/<id>/solicitantes/` · `PATCH, DELETE solicitantes/<id>/` | Solicitantes externos `{nombre}` (si ya existe con otras mayúsculas, devuelve ese) · renombrar · eliminar (sus actividades quedan sin solicitante). Devuelven la pizarra. *(Etapa 3.8)* |
+| `GET, POST pizarras/<id>/actividades/` | Actividades de la pizarra (por lista y posición) · crear: `titulo` y `lista` obligatorios; opcionales `descripcion`, `fecha_solicitud`, `fecha_fin`, `tipos`, `asignados`, `solicitada_por` (id de miembro) **o** `solicitante_externo` (id) **o** `solicitante_nuevo` (nombre: lo crea o reutiliza), `checklist` (lista de textos), `lista_terminado`, `lista_al_completar` y `arriba` (`true` = posición 0). |
+| `GET, PATCH, DELETE actividades/<id>/` | Detalle con checklist, adjuntos, historial, `viene_de`, `solicitante` (`{tipo: "miembro" o "externo", id, nombre}` o `null`), `lista_terminado` y `lista_al_completar` (id o `null`) · editar (los mismos campos que al crear salvo `checklist` y `arriba`; una `lista` distinta la mueve al final de la nueva) · eliminar. |
+| `POST actividades/<id>/mover/` | `{lista, posicion}` (sin posición, al final). Cambiar de lista queda en el historial. |
+| `POST actividades/<id>/checklist/` · `POST …/checklist/orden/` | Agregar elemento `{texto}` (hasta 400) · ordenar `{ids}`. Devuelven la actividad. |
+| `PATCH, DELETE checklist/<id>/` | `{texto, hecho}` · quitar. Devuelven la actividad (ya movida si se completó y tiene `lista_al_completar`). |
+| `POST checklist/<id>/convertir/` | Crea la actividad enlazada (campos de alta de actividad; cuándo se palomea lo dice `lista_terminado` de la actividad original). Devuelve `{actividad, nueva}`. |
+| `POST actividades/<id>/adjuntos/` | Multipart, campo `archivo`. 400 si pasa de 10 MB o del espacio de la pizarra. Devuelve la actividad. *(Etapa 3.8)* |
+| `GET adjuntos/<id>/` · `DELETE adjuntos/<id>/` | Descarga (imágenes y PDF en línea, lo demás como descarga) · quitar (devuelve la actividad). *(Etapa 3.8)* |
 | `GET invitaciones/<token>/` | Pública: pizarra, correo, quién invitó, estado y si ya hay cuenta. |
 | `POST invitaciones/<token>/aceptar/` · `…/registro/` | Aceptar con sesión · crear cuenta con el correo invitado (ya verificada) y aceptar. Devuelven `{pizarra}`. |
 
@@ -469,9 +607,16 @@ límite `acceso`.
 - **Invitaciones:** solo la cuenta con el correo invitado puede aceptarla. Sin cuenta, la crea desde
   el enlace con ese correo (no se puede cambiar) y queda dentro de la pizarra. Con sesión de otra
   cuenta, se le pide salir y entrar con la correcta.
-- **Lo ajeno responde 404, no 403**, para no revelar que una pizarra, lista, tarjeta o elemento de
-  checklist existe. Las reglas (dueño, permisos, archivada) las aplican los servicios y responden
+- **Lo ajeno responde 404, no 403**, para no revelar que una pizarra, lista, actividad, elemento de
+  checklist, solicitante o adjunto existe. Las reglas (dueño, permisos, archivada) las aplican los servicios y responden
   403.
+- **Adjuntos** *(Etapa 3.8)*: no se publican en `MEDIA_URL` (nginx no sirve el
+  volumen `media`); se entregan por `GET adjuntos/<id>/` con `FileResponse`, solo a miembros de la
+  pizarra (404 si no). Imágenes (JPEG, PNG, WebP, GIF) y PDF van `inline`; todo lo demás, incluidos
+  SVG y HTML, como `attachment`, para que un archivo subido no pueda ejecutar código en el dominio
+  de TaskFlow. Siempre con `X-Content-Type-Options: nosniff` y `Content-Security-Policy: sandbox`.
+  El nombre en disco es aleatorio y el original solo se usa en `Content-Disposition` (lo escapa
+  Django). El tope por archivo lo revisa el servicio antes de guardar (§4.4).
 - Admin de Django en `/django-admin/` (`is_staff`).
 - Producción: `https://taskflow.rourendev.com/` (§9). HTTPS lo termina el nginx del servidor con un
   certificado propio de Let's Encrypt; Django confía en `X-Forwarded-Proto`
@@ -484,7 +629,7 @@ límite `acceso`.
   actividades-uaz.
 - Visibilidad (§4.5): un usuario ve solo las pizarras de las que es miembro y todas sus tarjetas.
   Cada endpoint tiene prueba de que un no miembro no puede leer ni modificar
-  (`apps/api/tests/test_api.py`).
+  (`apps/api/tests/test_api.py`), incluidos los de solicitantes y adjuntos (también la descarga).
 
 ## 8. Plan por etapas
 
@@ -498,7 +643,8 @@ límite `acceso`.
 | 3.5 | Correo verificado con código, recuperar contraseña y apellidos separados (§4.3, §7) | ✅ 2026-10-02 · en producción 2026-10-02 |
 | 3.6 | «Proyecto» → «Pizarra» en todo el sistema; listas libres en lugar de estatus, listas de cierre, arrastrar y soltar, historial de movimientos, checklist con tarjetas enlazadas, descripción opcional y fecha de inicio (§4.4–§4.6) | ✅ 2026-10-05 · en producción `90939ed` |
 | 3.7 | Ajustes de uso: pizarra nueva sin listas, sin listas de cierre, «Lo que llega a … cuenta como terminado» una por tarjeta bajo su checklist, «Editar» y «Eliminar» arriba del detalle (§4.4–§4.6, §5) | ✅ 2026-10-06 · **sin desplegar** |
-| 4 | Por definir: avisos por correo de asignación o vencimiento, búsqueda, comentarios en tarjetas | — |
+| 3.8 | «Tarjeta» → «Actividad» en todo el sistema, sin prioridad, «Solicitada el» y «Vence el», solicitantes, adjuntos, formulario único, checklist editable con copiar y «Mover a … al completar», filtro por varios tipos, «+» y «Agregar actividad» fijos, sin textos de ayuda (§4.7) | ✅ 2026-10-06 · **sin desplegar** |
+| 4 | Por definir: avisos por correo de asignación o vencimiento, búsqueda, comentarios en actividades, manual de usuario o tutoriales (en lugar de los textos de ayuda quitados en la 3.8) | — |
 
 ## 9. Decisiones de diseño
 
@@ -604,7 +750,48 @@ límite `acceso`.
   `static/css/fuentes.css`, los mismos que la portada; no hay una segunda copia de los colores.
 - **Sin nginx interno** (2026-10-01), a diferencia de mi-campus: no hay archivos privados que
   entregar con `X-Accel-Redirect` y WhiteNoise sirve los estáticos. `web` se publica directo en
-  `127.0.0.1:8082`.
+  `127.0.0.1:8082`. *Revisado el 2026-10-06 (Etapa 3.8):* los adjuntos sí son archivos privados,
+  pero se siguen sin nginx interno: con 10 MB por archivo y pocos usuarios, entregarlos con
+  `FileResponse` desde gunicorn basta. Si las descargas llegaran a ocupar los workers, el paso
+  siguiente es `X-Accel-Redirect` en el nginx del servidor, sin cambiar la API.
+- **«Tarjeta» pasa a «Actividad» también en el código y la base** (2026-10-06, Ernesto): igual
+  que con «pizarra», se descartó cambiar solo la interfaz porque deja dos nombres para lo mismo.
+  La etiqueta de la app (`tarjetas` → `actividades`) se cambia con el mismo paso previo de
+  `migrate` de `apps.core` (generalizado para más de una app).
+- **Sin prioridad** (2026-10-06, Ernesto): tipos y listas libres ya expresan urgencia como cada
+  pizarra quiera. Se descartaron **conservarla oculta** (datos que nadie ve) y **convertir «Alta» y
+  «Urgente» en tipos** al migrar (Ernesto prefirió borrarla sin más).
+- **«Solicitada el» opcional y vacía** (2026-10-06, Ernesto): con hoy por omisión repetía
+  `creado_en`. Se descartó conservar el nombre «Fecha de inicio» porque lo que se quiere registrar
+  es cuándo lo pidieron, no cuándo se empezó.
+- **Formulario único de alta y edición; detalle de solo lectura** (2026-10-06, Ernesto): crear y
+  editar muestran los mismos campos. Se descartó **editar cada campo en el detalle** (como Trello):
+  más trabajo y, como ya se anotó en §5, un formulario siempre abierto invita a cambios
+  accidentales.
+- **Solicitante: dos FK (`solicitada_por` a `Usuario` y `solicitante_externo` a `Solicitante`)**
+  (2026-10-06): los miembros ya existen como usuarios y copiarlos al catálogo los dejaría
+  desactualizados al cambiar su nombre o salir. Se descartaron **un `Solicitante` con FK opcional a
+  `Usuario`** (una fila por miembro que hay que crear y sincronizar) y **texto libre sin catálogo**
+  (cada quien escribiría distinto el mismo nombre y no se podría filtrar). Un solo solicitante por
+  actividad y solo el nombre, porque se captura al vuelo; catálogo por pizarra porque las
+  actividades se comparten entre sus miembros.
+- **«Mover a … al completar» no regresa al despalomear** (2026-10-06, Ernesto): devolverla sola
+  sorprendería y podría deshacer un movimiento hecho a mano después.
+- **Elementos de 400 caracteres con el título en 200** (2026-10-06, Ernesto): al convertir, título
+  recortado y el resto en la descripción. Se descartó subir el título a 400, que en el
+  tablero haría tarjetas enormes.
+- **El elemento convertido muestra el título de su actividad, guardado en `texto`** (2026-10-06):
+  se copia al convertir y al editar el título. Se descartó leerlo siempre de la actividad enlazada
+  (sin copia) porque el historial, «copiar» y el palomeo manual ya trabajan con `texto`, y al
+  quitar el enlace (eliminar la hija) el elemento debe conservar un texto propio.
+- **Adjuntos en el disco de `srv-01`, con tope y compresión** (2026-10-06, Ernesto): 10 MB por
+  archivo y 500 MB por pizarra para no llenar el disco de 40 GB que comparten las apps. Se
+  descartó **Hetzner Object Storage** por ahora (costo aparte y otra pieza que configurar); si el
+  espacio no alcanza, se cambia el `STORAGES` sin tocar la API. Imágenes comprimidas en el
+  navegador (ahorra datos del teléfono y el servidor no gasta CPU) y PDF con Ghostscript en el
+  servidor (el navegador no puede); Office y demás no se comprimen porque ya vienen comprimidos
+  (son ZIP). Cualquier tipo de archivo, a pedido de Ernesto; la seguridad se resuelve al
+  entregarlos (§7), no prohibiendo tipos.
 
 ## 10. Preguntas abiertas
 
@@ -784,3 +971,164 @@ límite `acceso`.
     con Playwright a 390 px y 1280 px: pizarra nueva vacía con su aviso, agregar listas, convertir
     un elemento, el combo sin la lista de la tarjeta, palomeo automático al mover la tarjeta hija
     y la hoja de la lista sin «Lista de cierre».
+- (2026-10-06) **Cambio al esquema aprobado (implementado el mismo día, sin desplegar): Etapa 3.8.**
+  Contradice lo aprobado en §1 y §4.4 (`Tarjeta`, `prioridad` con su `CheckConstraint`,
+  `fecha_inicio` obligatoria con hoy por omisión, checklist de 200 caracteres), §4.5
+  (`TipoTarjeta`), §4.6 (detalle con «Creada por», «Agregar tarjeta» solo al pie, sin botón
+  flotante, la prioridad como badge), §5 (detalle de solo lectura distinto del formulario de alta,
+  textos de ayuda, «(opcional)», filtro por un tipo), §6 (`tarjetas/…`, `yo/tarjetas/`,
+  `fecha_inicio`) y §9 («Sin nginx interno»: ahora hay archivos privados), además de la tabla de
+  badges de CLAUDE.md (prioridad). Motivo: observaciones de Ernesto tras usar la Etapa 3.7 (§4.7).
+  Modelos nuevos: `Solicitante` y `Adjunto` (§4.4, §4.5). Al desplegar hacen falta Ghostscript en
+  la imagen y que el respaldo incluya el volumen `media` (docs/operacion.md); la vuelta atrás
+  pierde los adjuntos, los solicitantes y la prioridad (ya borrada), así que es **restaurar el
+  respaldo**.
+- (2026-10-06) **Etapa 3.8, parte 1 implementada (sin desplegar): renombre y prioridad.**
+  - **App:** `apps/tarjetas` → `apps/actividades` (etiqueta `actividades`). Como con `pizarras`,
+    las migraciones viejas se editaron solo en la etiqueta (`("actividades", "0007_…")`,
+    `to="actividades.tarjeta"`, `get_model("actividades", "Tarjeta")`); su contenido y sus nombres
+    de archivo no cambiaron (`django_migrations` los guarda por nombre). El `migrate` de
+    `apps.core` se generalizó a una lista `RENOMBRES`; para `tarjetas` renombra **todas las tablas
+    con el prefijo** `tarjetas_` (también las M2M), sin lista fija.
+  - **Migraciones:** `pizarras.0005` (`RenameModel` de `TipoTarjeta`) y `actividades.0012`
+    (quita `prioridad` con su restricción, `RenameModel` de `Tarjeta`, `RenameField` de
+    `tarjeta` y `tarjeta_creada`, y renombra la restricción de fechas y los dos índices) se
+    escribieron a mano porque `makemigrations` no detecta renombres sin preguntar;
+    `actividades.0013` reescribe las notas del historial, aparte por la restricción de PostgreSQL
+    de `0007`–`0009`; `pizarras.0006` y `actividades.0014` (nombres para mostrar y `related_name`)
+    las generó `makemigrations`. Probado sobre la base de desarrollo, que seguía **antes de la
+    Etapa 3.6** (con `proyectos` y `tarjetas`): pasó por los dos renombres y todas las migraciones.
+    Ida y vuelta con datos en `apps/actividades/tests/test_migraciones.py`.
+  - **API:** las claves cambian igual que las rutas (`actividad`, `n_actividades`,
+    `conteos.actividades`, el elemento de checklist trae `actividad` y convertir devuelve
+    `{actividad, nueva}`); como la PWA se actualiza sola en 15 s (§9), no se dejaron alias de las
+    rutas viejas de la API. La clase CSS `.tarjeta` pasó a `.actividad`; `.tarjeta-blanca` (un
+    recuadro genérico) y `data-tarjeta-plat` de la portada (las tarjetas de cada plataforma) no son
+    actividades y se quedaron.
+  - Pruebas: 118.
+- (2026-10-06) **Etapa 3.8, parte 2 implementada (sin desplegar): fechas, formulario único, ayudas,
+  asteriscos y botones de agregar.**
+  - **`actividades.0015`** (a mano: `RenameField` de `fecha_inicio`) deja `fecha_solicitud` nula
+    y sin valor por omisión, y rehace `actividad_fechas_en_orden` para que deje pasar una fecha de
+    solicitud vacía. Las fechas existentes se conservan. Al revertir, las vacías toman el día de
+    captura (como hacía `0008`); probado en la prueba de ida y vuelta.
+  - **Servicios:** `crear_actividad` recibe `checklist` (textos, con el permiso «Crear»: es parte
+    de la captura, no una edición) y `arriba` (corre las demás una posición); `editar_actividad`
+    acepta `lista` y, si cambia, llama a `mover_actividad` **después** de guardar los demás campos
+    (si no, el `save()` pisaría la lista nueva con la vieja), con el permiso «Mover».
+  - **PWA:** el formulario es el mismo para alta, edición y conversión. Al editar, la checklist es
+    el componente del detalle (`Checklist` con `sinConvertir`, porque convertir abre otro
+    formulario y se perderían los cambios); como ahora vive dentro de un `<form>`, su «Agregar»
+    dejó de ser un formulario propio (no se anidan) y sus botones son `type="button"`. Clases
+    nuevas: `.obligatorio` (asterisco, sin color de alerta) y `.btn-flotante`; `.opcional` se
+    quitó. En computadora cada lista tiene `max-height` y su cuerpo se desplaza (con
+    `flex-shrink:0` en las actividades, que si no se aplastaban en lugar de desplazarse).
+  - **Ayudas que se quedaron** por no ser instrucciones: los estados vacíos, el aviso de pizarra
+    sin listas, los de solo lectura y permisos, y «Tiene N actividades: muévelas o elimínalas
+    antes» bajo el botón deshabilitado de eliminar una lista (dice por qué no se puede). Se
+    quitaron también las de registro y recuperación («Al menos 8 caracteres…», «Vence en 15
+    minutos»): el servidor sigue explicando el error si la contraseña no sirve.
+  - Pruebas: 121. PWA probada con Playwright a 390 px y 1280 px (y 1280 × 560 para el desplazamiento
+    de las listas): asteriscos, sin «opcional» ni ayudas, alta con «+» arriba y checklist, edición
+    con la checklist y cambio de lista (queda en el historial), botón flotante en teléfono.
+- (2026-10-06) **Etapa 3.8, parte 3 implementada (sin desplegar): checklist.**
+  - **`actividades.0016`** (generada): `ElementoChecklist.texto` a 400 y `Actividad.lista_al_completar`.
+  - **«Mover a … al completar»:** `_al_completar(actividad, usuario)` es un `contextmanager` que mide
+    si la checklist estaba completa antes del cambio y, si al terminar lo está, mueve la actividad
+    con `_mover` (sin pedir «Mover»). Envuelve todo lo que puede completar una checklist:
+    `editar_elemento` (palomear), `quitar_elemento` (el último pendiente), `convertir_elemento` (la
+    hija puede nacer en la lista de terminado), `editar_actividad` (cambiar `lista_terminado`) y
+    `_mover` de una actividad que viene de una checklist (la cascada: mover a la hija completa a la
+    madre, que se mueve a su vez, y así hacia arriba; no hay ciclos porque convertir siempre crea
+    una actividad nueva). `mover_actividad` quedó como la puerta con permiso de `_mover`.
+  - **Error encontrado en el recorrido:** convertir un elemento de más de ~260 caracteres daba
+    error 500, porque la nota del historial («convirtió «…» de la checklist en actividad») tiene
+    300. La cita se recorta a 200 con «…» (`_cita`).
+  - **PWA:** el texto se edita en un `textarea` (Enter guarda; los textos no llevan saltos de
+    línea); los elementos convertidos no se editan en su lugar, porque tocarlos abre su actividad.
+    Copiar usa `navigator.clipboard` y, si el navegador no lo permite, un `textarea` oculto con
+    `execCommand("copy")`. Al palomear o quitar, si la respuesta trae otra lista, avisa «Se
+    completó la checklist y se movió a «…»». Al editar la actividad, el formulario no manda
+    `lista_al_completar` (la checklist ya la guardó al momento y se pisaría con el valor viejo).
+    Ícono nuevo `copiar`; clases nuevas `.checklist-cab`, `.al-completar`, `.elemento`,
+    `.texto.editable` y `.editar-texto`. Títulos y descripciones cortan palabras largas
+    (`overflow-wrap:anywhere`): uno sin espacios se salía de la tarjeta.
+  - Pruebas: 129 (400 caracteres, al completar una vez y sin regresar, sin permiso «Mover»,
+    elegir la lista con la checklist ya completa no mueve, quitar el último pendiente, cascada por
+    actividades enlazadas, lista de otra pizarra, la nota del historial con un elemento largo y la
+    respuesta de la API ya movida). PWA probada con Playwright a 390 px y 1280 px: corregir un
+    elemento en el alta, editar en su lugar en el detalle, copiar (con el portapapeles), convertir
+    un elemento de 300 caracteres (título de 200 y descripción completa) y completar la checklist
+    (se mueve, avisa y queda en el historial).
+  - **Ajuste del mismo día (Ernesto):** al convertir, la descripción recibe solo **el resto** del
+    texto (antes, el texto completo) y el corte respeta palabras (`partir_titulo` en el servicio,
+    `partirTitulo` en la PWA); el servidor también lo aplica si la conversión llega sin título,
+    que antes daba error 500 con un elemento de más de 200 caracteres. `_validar_titulo` ahora
+    rechaza más de 200 con un mensaje, en lugar de llegar a la base. El elemento convertido sigue
+    el título de su actividad (§4.7). Pruebas: 133.
+- (2026-10-06) **Etapa 3.8, parte 4 implementada (sin desplegar): solicitantes y filtros.**
+  - **Migraciones** (generadas): `pizarras.0007` crea `Solicitante`; `actividades.0017` agrega
+    `solicitada_por`, `solicitante_externo` y la restricción `actividad_un_solicitante`.
+  - **Servicios:** `crear_solicitante` reutiliza uno con el mismo nombre sin distinguir
+    mayúsculas y junta espacios («Juan  Pérez» = «Juan Pérez»); `renombrar_solicitante` y
+    `eliminar_solicitante`; los tres piden «Crear» o «Editar» (`exigir_crear_o_editar`). En
+    actividades, `_solicitante` resuelve los tres campos de entrada (`solicitada_por`,
+    `solicitante_externo`, `solicitante_nuevo`; a lo más uno, error en `solicitante`). Si llega
+    cualquiera de los tres al editar, se reemplaza el solicitante (la PWA manda siempre los tres).
+    Un miembro que ya era el solicitante se puede conservar aunque haya salido.
+  - **API:** la actividad trae `solicitante` (`{tipo, id, nombre}` o `null`); la pizarra,
+    `solicitantes` con `n_actividades`. Endpoints `POST pizarras/<id>/solicitantes/` y
+    `PATCH, DELETE solicitantes/<id>/`, que devuelven la pizarra.
+  - **PWA:** combo propio `ElegirSolicitante.vue` (sin librería): busca sin mayúsculas ni acentos
+    («lopez» encuentra a «López»), agrupa «Miembros de la pizarra» y «Otras personas», y ofrece
+    «Agregar «…»» solo si lo escrito no coincide con nadie (así no se duplican nombres con otro
+    acento); al salir sin elegir vuelve lo que estaba y el ✕ lo deja sin solicitante. Atributos
+    ARIA de combobox. En «Miembros y ajustes», sección «Solicitantes» con nuevo, editar y eliminar
+    (`FormSolicitante.vue`). En el tablero, los tipos se eligen varios (chips que se alternan en
+    computadora; casillas en la hoja «Filtrar» del teléfono) y «Solicitada por» es un `select` con
+    los miembros y los externos. Clases nuevas: `.combo`, `.combo-lista`, `.combo-grupo`,
+    `.combo-opcion`, `.filtro-solicitante` y `.persona-texto`.
+  - Pruebas: 138 (miembro, externo o nuevo; reutilizar con otras mayúsculas; uno solo; solo de la
+    pizarra; el miembro que sale sigue como solicitante; renombrar sin repetir y eliminar sin borrar
+    actividades; 404 a quien no es miembro y 403 sin «Crear» ni «Editar»). PWA probada con
+    Playwright a 390 px y 1280 px: agregar un solicitante en Ajustes, uno nuevo desde el combo, elegir
+    un miembro con el teclado buscando sin acento, filtrar por dos tipos y por solicitante.
+- (2026-10-06) **Etapa 3.8, parte 5 implementada (sin desplegar): adjuntos.** Con esto la Etapa
+  3.8 queda completa.
+  - **`actividades.0018`** (generada) crea `Adjunto`. `apps/actividades/almacen.py` tiene el
+    almacén (`AlmacenAdjuntos`: un `FileSystemStorage` que lee `TASKFLOW_ADJUNTOS_ROOT` en cada
+    uso, para que las pruebas lo cambien, y cuyo `url()` falla a propósito), la ruta aleatoria
+    (`<pizarra>/<uuid4><ext>`, la extensión solo si es `[a-z0-9]{1,8}`) y `comprimir_pdf`.
+    `TASKFLOW_ADJUNTOS_ROOT` es por omisión `MEDIA_ROOT/adjuntos`: queda dentro del volumen
+    `media`, que ya respaldan `taskflow desplegar` y `respaldo-diario.sh`. Se arma con `Path()` y
+    no con `env.path()`, que devuelve un `environ.Path` que no admite `/` con texto (mismo error
+    que `PWA_DIR`, 2026-10-01).
+  - **Servicios:** `adjuntar` revisa el tamaño, detecta el tipo por la extensión (`mimetypes`; el
+    que manda el navegador no se usa), comprime el PDF si pasa de
+    `TASKFLOW_PDF_COMPRIMIR_DESDE_MB` (y se queda con el más chico) y revisa el tope de la pizarra
+    con la pizarra bloqueada (`select_for_update`), sobre el tamaño ya comprimido. `quitar_adjunto`
+    borra la fila; el archivo lo borra una señal `post_delete` con `transaction.on_commit`, que
+    también corre al borrar la actividad o la pizarra (CASCADE).
+  - **API:** `POST actividades/<id>/adjuntos/` declara su propio `MultiPartParser` (la API solo
+    acepta JSON); `GET, DELETE adjuntos/<id>/` descarga con `FileResponse` y los encabezados de
+    §7, o quita. La actividad trae `n_adjuntos` (clip en la tarjeta) y, en el detalle,
+    `adjuntos`; la pizarra, `adjuntos_espacio` (usado, límite y máximo por archivo).
+  - **Docker y servidor:** Ghostscript en las etapas `base` (desarrollo) y `production` de la
+    imagen (`apt-get`); el `timeout` de gunicorn sube de 60 a 90 s porque comprimir un PDF puede
+    tardar hasta 60. En `docker/nginx/taskflow.conf`, `client_max_body_size` pasa de 10m a 12m:
+    un archivo de 10 MB más el envoltorio multipart no cabía. Ese archivo se instala a mano en el
+    servidor (docs/operacion.md, «Pasos propios»).
+  - **PWA:** `frontend/src/adjuntos.ts` reduce JPEG, PNG y WebP con un `canvas` (lado mayor 2000 px,
+    JPEG o WebP a 0.8; WebP para PNG porque puede traer transparencia; si sale más grande, el
+    original). Componente `Adjuntos.vue` en el detalle y en el formulario de edición (se guarda al
+    momento); en el alta, los archivos se juntan y se suben después de crear la actividad (si uno
+    falla, la actividad se queda y se avisa cuál). `subir()` y `rutaApi()` en `api.ts` (la
+    descarga es un enlace que funciona también bajo `/taskflow/`). Ajustes muestra el espacio
+    usado con la barra `.avance`. Clases nuevas: `.adjuntos`, `.espacio-adjuntos`; ícono `clip`.
+  - Pruebas: 147 (subir y descargar con `inline`, `nosniff` y `sandbox`; HTML, SVG y XLSX como
+    descarga; límite por archivo y por pizarra; quitar y eliminar la actividad borran el archivo
+    del disco; 404 a quien no es miembro, 403 sin «Editar» y en pizarra archivada, que sí
+    descarga; PDF comprimido solo si sale más chico; Ghostscript real con un PDF mínimo). Imagen
+    de producción construida y `healthy`. PWA probada con Playwright a 390 px y 1280 px: un PNG
+    de 11 MB se subió como WebP de 1.5 MB, descarga en línea y como archivo, adjuntar en el
+    detalle, quitar con confirmación, clip en la tarjeta y espacio en Ajustes.

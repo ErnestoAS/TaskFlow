@@ -15,10 +15,10 @@ urlpatterns = [
     path("auth/recuperar/confirmar/", v.recuperar_confirmar, name="recuperar_confirmar"),
     path("yo/", v.yo, name="yo"),
     path("yo/password/", v.cambiar_password, name="cambiar_password"),
-    path("yo/tarjetas/", v.mis_tarjetas, name="mis_tarjetas"),
+    path("yo/actividades/", v.mis_actividades, name="mis_actividades"),
     path("pizarras/", v.pizarras, name="pizarras"),
     path("pizarras/<int:pk>/", v.pizarra, name="pizarra"),
-    # Acciones explícitas (no un <str:accion> genérico, que se comería /tarjetas/, /tipos/…).
+    # Acciones explícitas (no un <str:accion> genérico, que se comería /actividades/, /tipos/…).
     *[
         path(f"pizarras/<int:pk>/{accion}/", v.pizarra_accion, {"accion": accion}, name=accion)
         for accion in ("archivar", "restaurar", "salir", "transferir")
@@ -35,11 +35,15 @@ urlpatterns = [
     path("listas/<int:pk>/", v.lista, name="lista"),
     path("pizarras/<int:pk>/tipos/", v.tipos, name="tipos"),
     path("pizarras/<int:pk>/tipos/<int:tipo_id>/", v.tipo, name="tipo"),
-    path("pizarras/<int:pk>/tarjetas/", v.tarjetas, name="tarjetas"),
-    path("tarjetas/<int:pk>/", v.tarjeta, name="tarjeta"),
-    path("tarjetas/<int:pk>/mover/", v.tarjeta_mover, name="tarjeta_mover"),
-    path("tarjetas/<int:pk>/checklist/", v.checklist, name="checklist"),
-    path("tarjetas/<int:pk>/checklist/orden/", v.checklist_orden, name="checklist_orden"),
+    path("pizarras/<int:pk>/solicitantes/", v.solicitantes, name="solicitantes"),
+    path("solicitantes/<int:pk>/", v.solicitante, name="solicitante"),
+    path("pizarras/<int:pk>/actividades/", v.actividades, name="actividades"),
+    path("actividades/<int:pk>/", v.actividad, name="actividad"),
+    path("actividades/<int:pk>/mover/", v.actividad_mover, name="actividad_mover"),
+    path("actividades/<int:pk>/checklist/", v.checklist, name="checklist"),
+    path("actividades/<int:pk>/checklist/orden/", v.checklist_orden, name="checklist_orden"),
+    path("actividades/<int:pk>/adjuntos/", v.adjuntos, name="adjuntos"),
+    path("adjuntos/<int:pk>/", v.adjunto, name="adjunto"),
     path("checklist/<int:pk>/", v.elemento, name="elemento"),
     path("checklist/<int:pk>/convertir/", v.elemento_convertir, name="elemento_convertir"),
     path("invitaciones/<str:token>/", v.invitacion_publica, name="invitacion"),

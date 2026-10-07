@@ -77,8 +77,8 @@ async function cambiar() {
         <p class="intro">Escribe el correo de tu cuenta y te enviaremos un código para poner una contraseña nueva.</p>
         <div v-if="errorGeneral" class="error-general" role="alert">{{ errorGeneral }}</div>
         <div class="campo">
-          <label for="correo">Correo</label>
-          <input id="correo" v-model="form.correo" type="email" autocomplete="username" inputmode="email" />
+          <label for="correo">Correo <span class="obligatorio" aria-hidden="true">*</span></label>
+          <input id="correo" aria-required="true" v-model="form.correo" type="email" autocomplete="username" inputmode="email" />
           <div v-if="errores.correo" class="error">{{ errores.correo }}</div>
         </div>
         <button type="submit" class="btn btn-primario btn-bloque" :disabled="ocupado">
@@ -93,9 +93,9 @@ async function cambiar() {
         </p>
         <div v-if="errorGeneral" class="error-general" role="alert">{{ errorGeneral }}</div>
         <div class="campo">
-          <label for="codigo">Código</label>
+          <label for="codigo">Código <span class="obligatorio" aria-hidden="true">*</span></label>
           <input
-            id="codigo"
+            id="codigo" aria-required="true"
             v-model="form.codigo"
             type="text"
             inputmode="numeric"
@@ -105,10 +105,9 @@ async function cambiar() {
           <div v-if="errores.codigo" class="error">{{ errores.codigo }}</div>
         </div>
         <div class="campo">
-          <label for="password">Contraseña nueva</label>
-          <input id="password" v-model="form.password" type="password" autocomplete="new-password" />
+          <label for="password">Contraseña nueva <span class="obligatorio" aria-hidden="true">*</span></label>
+          <input id="password" aria-required="true" v-model="form.password" type="password" autocomplete="new-password" />
           <div v-if="errores.password" class="error">{{ errores.password }}</div>
-          <div v-else class="ayuda">Al menos 8 caracteres, que no sea solo números ni muy común.</div>
         </div>
         <div class="fila-botones">
           <button type="button" class="btn btn-secundario" :disabled="espera > 0 || ocupado" @click="pedirCodigo">

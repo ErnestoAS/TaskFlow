@@ -13,8 +13,8 @@ from django.db import migrations, models
 
 
 def a_la_tarjeta(apps, schema_editor):
-    Elemento = apps.get_model("tarjetas", "ElementoChecklist")
-    Tarjeta = apps.get_model("tarjetas", "Tarjeta")
+    Elemento = apps.get_model("actividades", "ElementoChecklist")
+    Tarjeta = apps.get_model("actividades", "Tarjeta")
     por_tarjeta: dict[int, Counter] = {}
     elementos = Elemento.objects.filter(
         tarjeta_creada__isnull=False, lista_terminado__isnull=False
@@ -27,7 +27,7 @@ def a_la_tarjeta(apps, schema_editor):
 
 
 def al_elemento(apps, schema_editor):
-    Elemento = apps.get_model("tarjetas", "ElementoChecklist")
+    Elemento = apps.get_model("actividades", "ElementoChecklist")
     for e in Elemento.objects.filter(
         tarjeta_creada__isnull=False, tarjeta__lista_terminado__isnull=False
     ).select_related("tarjeta"):
@@ -38,7 +38,7 @@ def al_elemento(apps, schema_editor):
 class Migration(migrations.Migration):
     dependencies = [
         ("pizarras", "0003_listas_y_permisos"),
-        ("tarjetas", "0009_sin_estatus"),
+        ("actividades", "0009_sin_estatus"),
     ]
 
     operations = [
