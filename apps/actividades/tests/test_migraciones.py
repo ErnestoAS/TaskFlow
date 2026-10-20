@@ -111,3 +111,31 @@ def test_tarjeta_pasa_a_actividad_sin_prioridad_y_con_notas_nuevas(crear_usuario
         assert Movimiento.objects.get(pk=nota.pk).nota.endswith("en tarjeta")
     finally:
         _migrar()
+
+
+@pytest.mark.django_db(transaction=True)
+def test_el_historial_recibe_pizarra_y_titulo_y_sobrevive_a_la_actividad(crear_usuario):
+    """`actividades.0020` (2026-10-20), ida y vuelta."""
+    usuario = crear_usuario()
+    antes = [("actividades", "0019_comentarios")]
+    apps = _migrar(antes)
+    Pizarra = apps.get_model("pizarras", "Pizarra")
+    Lista = apps.get_model("pizarras", "Lista")
+    Actividad = apps.get_model("actividades", "Actividad")
+    Movimiento = apps.get_model("actividades", "Movimiento")
+    p = Pizarra.objects.create(nombre="Feria", creado_por_id=usuario.pk)
+    lista = Lista.objects.create(pizarra=p, nombre="Pendiente", posicion=0)
+    a = Actividad.objects.create(pizarra=p, lista=lista, titulo="Rentar salón")
+    m = Movimiento.objects.create(actividad=a, lista_nueva="Pendiente")
+    try:
+        apps = _migrar()
+        Movimiento = apps.get_model("actividades", "Movimiento")
+        nuevo = Movimiento.objects.get(pk=m.pk)
+        assert (nuevo.pizarra_id, nuevo.titulo) == (p.pk, "Rentar salón")
+        apps.get_model("actividades", "Actividad").objects.filter(pk=a.pk).delete()
+        assert Movimiento.objects.get(pk=m.pk).actividad_id is None
+        # Y de vuelta: sin actividad no cabe en el esquema anterior, así que se borra.
+        apps = _migrar(antes)
+        assert not apps.get_model("actividades", "Movimiento").objects.filter(pk=m.pk).exists()
+    finally:
+        _migrar()

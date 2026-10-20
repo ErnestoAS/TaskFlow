@@ -84,7 +84,10 @@ async function eliminar() {
       <span class="etiqueta">Eliminar</span>
       <button class="btn btn-chico btn-peligro" :disabled="ocupado || nActividades > 0" @click="eliminar">Eliminar lista</button>
       <!-- No es ayuda: dice por qué el botón está deshabilitado. -->
-      <div v-if="nActividades" class="ayuda">Tiene {{ plural(nActividades, "actividad") }}: muévelas o elimínalas antes.</div>
+      <div v-if="nActividades" class="ayuda">
+        Tiene {{ plural(nActividades, "actividad") }}: {{ nActividades === 1 ? "muévela o elimínala" : "muévelas o elimínalas" }}
+        antes.
+      </div>
     </div>
   </Hoja>
 </template>

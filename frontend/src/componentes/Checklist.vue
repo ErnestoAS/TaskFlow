@@ -5,11 +5,12 @@
   Si hay alguno, debajo va «Lo que llega a [lista] cuenta como terminado» (2026-10-06): una lista
   para toda la checklist, distinta de la de esta actividad; con ella, los convertidos se palomean
   solos. «Ninguna» = a mano.
-  También va dentro del formulario de edición (Etapa 3.8), con `sinConvertir`: convertir abre otro
-  formulario. Por eso agregar no es un <form> (no se anidan) sino Enter o el botón.
+  Va dentro del formulario de la actividad (Etapa 3.8; vista única desde 2026-10-20). Por eso
+  agregar no es un <form> (no se anidan) sino Enter o el botón.
   Etapa 3.8: el texto de un elemento se edita tocándolo (Enter o salir guarda, Esc cancela; los
   convertidos no, porque tocarlos abre su actividad), hasta 400 caracteres; un ícono copia la
   checklist como texto, y junto al título va «Al completar, mover a [lista]».
+  Los palomeados se muestran al final (2026-10-20).
 -->
 <script setup lang="ts">
 import { computed, ref } from "vue";
@@ -21,16 +22,23 @@ import { avisar } from "../ui";
 import { copiarTexto, MAX_TEXTO_ELEMENTO, textoChecklist } from "../utilidades";
 import Icono from "./Icono.vue";
 
-const props = defineProps<{ actividad: Actividad; pizarra: PizarraDetalle; sinConvertir?: boolean }>();
+const props = defineProps<{ actividad: Actividad; pizarra: PizarraDetalle }>();
 const emit = defineEmits<{
   actualizada: [t: Actividad];
   convertir: [e: ElementoChecklist];
   abrir: [id: number];
 }>();
 
-const elementos = computed(() => props.actividad.checklist ?? []);
+/**
+ * Los pendientes arriba y los palomeados al final (2026-10-20), cada grupo en su orden manual: al
+ * palomear uno baja, y al despalomearlo regresa a su lugar. El orden guardado no cambia (`sort` es
+ * estable). También vale para los que se palomean solos.
+ */
+const elementos = computed(() =>
+  [...(props.actividad.checklist ?? [])].sort((a, b) => Number(a.hecho) - Number(b.hecho)),
+);
 const puedeEditar = computed(() => props.pizarra.permisos.editar);
-const puedeCrear = computed(() => props.pizarra.permisos.crear && !props.sinConvertir);
+const puedeCrear = computed(() => props.pizarra.permisos.crear);
 const hechos = computed(() => elementos.value.filter((e) => e.hecho).length);
 const completa = computed(() => elementos.value.length > 0 && hechos.value === elementos.value.length);
 

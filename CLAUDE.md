@@ -37,7 +37,12 @@ cuentan como terminadas. Sin prioridad desde la Etapa 3.8 (se usa un tipo o una 
   «Pasos propios» en docs/operacion.md antes de desplegar. **Etapa 3.8 implementada (2026-10-06),
   sin desplegar:** «tarjeta» → «actividad» en todo el sistema, sin prioridad, solicitantes, adjuntos,
   formulario único y ajustes de checklist e interfaz (§4.7 de la propuesta). Al desplegar hay que
-  actualizar a mano el sitio de nginx del servidor (`client_max_body_size 12m`).
+  actualizar a mano el sitio de nginx del servidor (`client_max_body_size 12m`). **Etapa 3.9
+  (2026-10-20), sin desplegar:** actividad en una sola vista (sin «Editar»), buscador en el tablero
+  y en «Mis actividades», comentarios (`Comentario`), historial de la pizarra (el historial ya no
+  se borra con la actividad), barra lateral contraíble, plantillas de listas al crear una pizarra
+  y la raíz que manda a la app con sesión abierta, y «Cumplida» en las actividades con fecha de
+  vencimiento; con migraciones (`actividades.0019`–`0021`).
 - **Las reglas de negocio viven en `apps/<app>/servicios.py`.** Toda acción (también la API)
   pasa por esas funciones; nunca cambiar `Actividad.lista` (ni su `posicion`) directamente, sino con
   `actividades.servicios.mover_actividad`, para que quede en el historial (`Movimiento`).
@@ -109,10 +114,10 @@ mecanismos propios; usar los que aquí se documentan y agregar aquí los nuevos 
 - Logo en `static/img/marca/` (SVG navy y blanco); conserva su color propio `--tf-logo`.
 - **Componentes de la PWA:** las clases de `frontend/src/estilos.css`, tomadas de las maquetas
   aprobadas `app-v2.html` y `app-v3.html` (`.btn-primario`, `.chip`, `.actividad` —la tarjeta de una actividad—, `.hoja`,
-  `.tablero`/`.lista`, `.pestanas-listas`, `.elegir-lista`, `.checklist`, `.btn-flotante`
+  `.tablero`/`.lista` (`.lista.de-lado`: la de al lado en teléfono, atenuada), `.pestanas-listas`, `.elegir-lista`, `.checklist`, `.btn-flotante`
   («Agregar actividad» en teléfono), `.checklist-cab`/`.al-completar` (título de la checklist con
   copiar y «Al completar, mover a»), `.combo` (lista con búsqueda: «Solicitada por»;
-  `ElegirSolicitante.vue`), `.filtro-solicitante`, `.adjuntos` (lista de archivos de una actividad; `Adjuntos.vue`), `.obligatorio` (el `*` de los campos obligatorios; nunca
+  `ElegirSolicitante.vue`), `.filtro-solicitante`, `.adjuntos` (lista de archivos de una actividad; `Adjuntos.vue`), `.fila-botones.fija` («Cancelar»/«Guardar» fijos al pie de la hoja de una actividad), `.buscador` (buscar actividades por texto; `Buscador.vue`), `.nuevo-comentario`/`.linea-tiempo` (sección «Actividad»: comentarios e historial; `LineaTiempo.vue`), `.historial-pizarra` (historial de toda la pizarra; `HistorialPizarra.vue`), `.opciones-filtro` (opciones con casilla o radio en una hoja; `.copiar-de`, el combo de «Las listas de otra pizarra»), `.menu-contraido` (barra lateral contraída, en `.armazon`), `.obligatorio` (el `*` de los campos obligatorios; nunca
   «(opcional)»), …). **Sin
   Bootstrap** (decidido 2026-10-01): la maqueta aprobada ya define cada componente con los `--tf-*`
   y Bootstrap solo agregaría peso y estilos que habría que deshacer. Un componente nuevo se agrega
@@ -158,7 +163,8 @@ Patrón único: **punto** con el color base, **texto** con la variante `-text` y
 |---|---|
 | Nombre de una lista (`.chip.nombre-lista`) | `--tf-primary-soft` / `--tf-primary`: neutro, las listas no tienen color |
 | Checklist completa (`.chip.avance-checklist.completo`), ícono de «Lo que llega a … cuenta como terminado» (`.lista-terminado`) | `--tf-success*` (verde) |
-| Vencida (fecha límite pasada, en cualquier lista) | `--tf-danger*` |
+| Vencida (fecha límite pasada, en cualquier lista, y sin marcar como cumplida) | `--tf-danger*` |
+| Cumplida (`.chip.cumplida`, «Cumplida el 18 oct»; la casilla, `.marcar-cumplida`) | `--tf-success*` (verde) |
 | Vence hoy / mañana | `--tf-warning*` |
 | Tipo de actividad | color del usuario (`--tipo` en línea, mezclado con `color-mix()`) |
 
@@ -251,7 +257,7 @@ abajo se conserva la palabra «tarjeta» donde se cuenta lo que se decidió ento
   está en esa lista. Ya no se pregunta al convertir ni hay botón de bandera por elemento.
 - **Mover:** arrastrar y soltar en computadora y en teléfono (en teléfono, **mantener presionada**
   para levantarla; cerca del borde pasa sola a la lista de al lado). En el detalle, botones con las
-  listas para cambiarla de lista con un toque (queda al final). Sin selector de posición: el orden
+  listas para cambiarla de lista con un toque (queda al final; **arriba desde 2026-10-20**). Sin selector de posición: el orden
   se cambia arrastrando. Orden manual dentro de cada lista; una tarjeta nueva va al final.
 - **Historial de movimientos** (de qué lista a cuál, con el nombre de entonces); ordenar dentro de
   una lista no se registra.

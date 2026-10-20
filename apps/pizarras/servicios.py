@@ -81,14 +81,61 @@ def exigir_permiso(pizarra: Pizarra, usuario, permiso: str) -> MiembroPizarra:
 # ---------------------------------------------------------------------------------------------
 
 
+# Con qué listas puede empezar una pizarra (2026-10-20). Fijas en el código: son pocas y cambian
+# poco; quien quiere otras copia las de una pizarra suya (`plantilla="copiar"`).
+PLANTILLAS_LISTAS = {
+    "basica": ("Pendiente", "En curso", "Finalizada"),
+    "con_revision": ("Pendiente", "En curso", "En revisión", "Finalizada"),
+    "vacia": (),
+}
+
+
+def _nombres_de_plantilla(usuario, plantilla, copiar_de=None) -> list[str]:
+    """Los nombres de las listas, en orden. `copiar` toma los de otra pizarra de `usuario`."""
+    if plantilla == "copiar":
+        origen = (
+            Pizarra.objects.de_usuario(usuario).filter(pk=copiar_de).first()
+            if str(copiar_de or "").isdigit()
+            else None
+        )
+        if origen is None:
+            raise ValidationError({"copiar_de": "Elige una de tus pizarras."})
+        return list(origen.listas.order_by("posicion").values_list("nombre", flat=True))
+    if plantilla not in PLANTILLAS_LISTAS:
+        raise ValidationError({"plantilla": "Elige con qué listas empezar."})
+    return list(PLANTILLAS_LISTAS[plantilla])
+
+
+def _crear_listas(pizarra: Pizarra, nombres: list[str]) -> None:
+    Lista.objects.bulk_create(
+        Lista(pizarra=pizarra, nombre=nombre, posicion=i) for i, nombre in enumerate(nombres)
+    )
+
+
 @transaction.atomic
-def crear_pizarra(usuario, nombre: str) -> Pizarra:
-    """La crea sin listas (2026-10-06): cada quien arma las suyas desde el tablero."""
+def crear_pizarra(usuario, nombre: str, plantilla: str = "vacia", copiar_de=None) -> Pizarra:
+    """
+    Sin `plantilla`, la crea sin listas (2026-10-06): cada quien arma las suyas. Con una de
+    `PLANTILLAS_LISTAS` o `copiar` (los nombres y el orden de las listas de otra pizarra suya, sin
+    actividades), empieza con esas listas (2026-10-20).
+    """
     nombre = (nombre or "").strip()
     if not nombre:
         raise ValidationError({"nombre": "Escribe un nombre."})
+    nombres = _nombres_de_plantilla(usuario, plantilla, copiar_de)
     pizarra = Pizarra.objects.create(nombre=nombre, creado_por=usuario)
     MiembroPizarra.objects.create(pizarra=pizarra, usuario=usuario, rol=MiembroPizarra.Rol.DUENO)
+    _crear_listas(pizarra, nombres)
+    return pizarra
+
+
+@transaction.atomic
+def usar_plantilla(pizarra: Pizarra, por, plantilla: str, copiar_de=None) -> Pizarra:
+    """Para una pizarra que sigue sin listas (la nueva vacía, o las creadas antes de 2026-10-20)."""
+    exigir_permiso(pizarra, por, "gestionar_listas")
+    if pizarra.listas.exists():
+        raise ValidationError({"plantilla": "La pizarra ya tiene listas."})
+    _crear_listas(pizarra, _nombres_de_plantilla(por, plantilla, copiar_de))
     return pizarra
 
 
@@ -366,9 +413,12 @@ def eliminar_lista(lista: Lista, por) -> None:
     exigir_permiso(lista.pizarra, por, "gestionar_listas")
     n = lista.actividades.count()
     if n:
-        raise ValidationError(
-            f"La lista tiene {n} actividad{'s' if n != 1 else ''}: muévelas o elimínalas antes."
+        cuantas = (
+            "1 actividad: muévela o elimínala"
+            if n == 1
+            else f"{n} actividades: muévelas o elimínalas"
         )
+        raise ValidationError(f"La lista tiene {cuantas} antes.")
     from apps.actividades.models import ElementoChecklist
 
     # Las checklists que se marcaban al llegar aquí pasan a palomeo manual (SET_NULL) con el

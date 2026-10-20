@@ -60,6 +60,17 @@ def adjunto(a):
     }
 
 
+def comentario(c):
+    """Texto plano: la PWA lo pinta escapado (§7)."""
+    return {
+        "id": c.pk,
+        "texto": c.texto,
+        "autor": usuario(c.autor),
+        "creado_en": c.creado_en,
+        "editado_en": c.editado_en,
+    }
+
+
 def lista(lst, n_actividades=None):
     datos = {
         "id": lst.pk,
@@ -78,7 +89,10 @@ def conteos(p, yo) -> dict:
         "actividades": actividades.count(),
         "listas": p.listas.count(),
         "mias": actividades.filter(asignados=yo).count(),
-        "vencidas": actividades.filter(fecha_fin__lt=timezone.localdate()).count(),
+        # Las cumplidas no cuentan como vencidas (2026-10-20).
+        "vencidas": actividades.filter(
+            fecha_fin__lt=timezone.localdate(), cumplida_en__isnull=True
+        ).count(),
     }
 
 
@@ -146,6 +160,36 @@ def movimiento(m):
     }
 
 
+def entrada_historial(e):
+    """
+    Una entrada del historial de la pizarra (2026-10-20): un `Movimiento` o un `Comentario`. La
+    actividad trae su título actual; si se eliminó, `id` es `None` y el título es el de entonces.
+    """
+    from apps.actividades.models import Comentario
+
+    if isinstance(e, Comentario):
+        texto = e.texto if len(e.texto) <= 140 else e.texto[:139].rstrip() + "…"
+        return {
+            "tipo": "comentario",
+            "fecha": e.creado_en,
+            "usuario": usuario(e.autor),
+            "actividad": {"id": e.actividad_id, "titulo": e.actividad.titulo},
+            "de": None,
+            "a": None,
+            "nota": None,
+            "texto": texto,
+        }
+    return {
+        "tipo": "movimiento",
+        **movimiento(e),
+        "actividad": {
+            "id": e.actividad_id,
+            "titulo": e.actividad.titulo if e.actividad_id else e.titulo,
+        },
+        "texto": None,
+    }
+
+
 def elemento(e):
     hija = e.actividad_creada
     return {
@@ -193,6 +237,8 @@ def actividad(t, con_detalle=False):
         "solicitante": solicitante(t),
         "creada_por": usuario(t.creada_por),
         "creado_en": t.creado_en,
+        "cumplida_en": t.cumplida_en,
+        "cumplida_por": usuario(t.cumplida_por),
         "checklist_conteo": (
             {"hechos": sum(e.esta_hecho for e in elementos), "total": len(elementos)}
             if elementos
@@ -200,9 +246,14 @@ def actividad(t, con_detalle=False):
         ),
         "viene_de": _viene_de(t),
         "n_adjuntos": len(t.adjuntos.all()),
+        # Anotado en las consultas de la API (`_actividades`); si no, se cuenta aquí.
+        "n_comentarios": (
+            t.n_comentarios if hasattr(t, "n_comentarios") else t.comentarios.count()
+        ),
     }
     if con_detalle:
         datos["checklist"] = [elemento(e) for e in elementos]
         datos["historial"] = [movimiento(m) for m in t.movimientos.select_related("usuario")]
         datos["adjuntos"] = [adjunto(a) for a in t.adjuntos.all()]
+        datos["comentarios"] = [comentario(c) for c in t.comentarios.select_related("autor")]
     return datos

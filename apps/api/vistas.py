@@ -21,9 +21,11 @@ from django.contrib.auth import (
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
 from django.db import transaction
+from django.db.models import Count
 from django.http import FileResponse
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
+from django.utils.dateparse import parse_datetime
 from django.views.decorators.csrf import ensure_csrf_cookie
 from rest_framework import status
 from rest_framework.authentication import SessionAuthentication
@@ -41,7 +43,7 @@ from rest_framework.throttling import AnonRateThrottle
 
 from apps.actividades import servicios as st
 from apps.actividades.almacen import TIPOS_EN_LINEA
-from apps.actividades.models import Actividad, Adjunto, ElementoChecklist
+from apps.actividades.models import Actividad, Adjunto, Comentario, ElementoChecklist
 from apps.pizarras import servicios as sp
 from apps.pizarras.models import (
     PERMISOS,
@@ -81,18 +83,23 @@ def _pizarra(request, pk) -> Pizarra:
 
 
 def _actividades():
-    return Actividad.objects.select_related(
-        "pizarra",
-        "lista",
-        "creada_por",
-        "elemento_origen__actividad",
-        "solicitada_por",
-        "solicitante_externo",
-    ).prefetch_related(
-        "asignados",
-        "tipos",
-        "checklist__actividad_creada__lista",
-        "adjuntos__subido_por",
+    return (
+        Actividad.objects.annotate(n_comentarios=Count("comentarios", distinct=True))
+        .select_related(
+            "pizarra",
+            "lista",
+            "creada_por",
+            "cumplida_por",
+            "elemento_origen__actividad",
+            "solicitada_por",
+            "solicitante_externo",
+        )
+        .prefetch_related(
+            "asignados",
+            "tipos",
+            "checklist__actividad_creada__lista",
+            "adjuntos__subido_por",
+        )
     )
 
 
@@ -363,7 +370,12 @@ def mis_actividades(request):
 @api_view(["GET", "POST"])
 def pizarras(request):
     if request.method == "POST":
-        p = sp.crear_pizarra(request.user, request.data.get("nombre"))
+        p = sp.crear_pizarra(
+            request.user,
+            request.data.get("nombre"),
+            plantilla=request.data.get("plantilla") or "vacia",
+            copiar_de=request.data.get("copiar_de"),
+        )
         return Response(rep.pizarra_detalle(p, request.user), status=status.HTTP_201_CREATED)
     qs = Pizarra.objects.de_usuario(request.user).distinct().order_by("archivada_en", "nombre")
     return Response([rep.pizarra_resumen(p, request.user) for p in qs])
@@ -506,6 +518,16 @@ def listas_orden(request, pk):
     return Response(rep.pizarra_detalle(p, request.user))
 
 
+@api_view(["POST"])
+def listas_plantilla(request, pk):
+    """Listas de una plantilla en una pizarra que no tiene ninguna (2026-10-20)."""
+    p = _pizarra(request, pk)
+    sp.usar_plantilla(
+        p, request.user, request.data.get("plantilla"), copiar_de=request.data.get("copiar_de")
+    )
+    return Response(rep.pizarra_detalle(p, request.user))
+
+
 @api_view(["PATCH", "DELETE"])
 def lista(request, pk):
     lst = _lista(request, pk)
@@ -607,9 +629,17 @@ def actividad(request, pk):
 
 @api_view(["POST"])
 def actividad_mover(request, pk):
-    """Arrastrar o «Mover a»: `{lista, posicion}`; sin posición, al final de la lista."""
+    """Arrastrar o «Mover a»: `{lista, posicion}`; sin posición, arriba de la lista (2026-10-20)."""
     t = _actividad(request, pk)
     st.mover_actividad(t, request.user, request.data.get("lista"), request.data.get("posicion"))
+    return _detalle(request, pk)
+
+
+@api_view(["POST"])
+def actividad_cumplida(request, pk):
+    """«Cumplida» (2026-10-20): `{cumplida: true o false}`."""
+    t = _actividad(request, pk)
+    st.marcar_cumplida(t, request.user, request.data.get("cumplida") is True)
     return _detalle(request, pk)
 
 
@@ -652,6 +682,54 @@ def adjunto(request, pk):
     respuesta["Content-Security-Policy"] = "sandbox"
     respuesta["Cache-Control"] = "private, max-age=3600"
     return respuesta
+
+
+@api_view(["GET"])
+def historial(request, pk):
+    """Historial de la pizarra (2026-10-20, §5). `?antes=<fecha y hora>&persona=<id>`."""
+    p = _pizarra(request, pk)
+    antes = request.query_params.get("antes") or None
+    if antes is not None:
+        try:
+            antes = parse_datetime(antes)
+        except ValueError:
+            antes = None
+        if antes is None:
+            raise ValidationError({"antes": "Fecha y hora inválida."})
+        if timezone.is_naive(antes):
+            antes = timezone.make_aware(antes)
+    persona = request.query_params.get("persona") or None
+    if persona is not None and not persona.isdigit():
+        raise ValidationError({"persona": "Persona inválida."})
+    entradas, mas = st.historial_pizarra(
+        p, request.user, antes=antes, persona=int(persona) if persona else None
+    )
+    return Response({"entradas": [rep.entrada_historial(e) for e in entradas], "mas": mas})
+
+
+# ---------------------------------------------------------------------------------------------
+# Comentarios (2026-10-20, §4.4). Cada acción devuelve la actividad completa.
+# ---------------------------------------------------------------------------------------------
+
+
+@api_view(["POST"])
+def comentarios(request, pk):
+    t = _actividad(request, pk)
+    st.comentar(t, request.user, request.data.get("texto"))
+    return Response(rep.actividad(_actividad(request, pk), con_detalle=True), status=201)
+
+
+@api_view(["PATCH", "DELETE"])
+def comentario(request, pk):
+    visibles = Comentario.objects.select_related("actividad__pizarra").filter(
+        actividad__pizarra__miembros__usuario=request.user
+    )
+    c = get_object_or_404(visibles.distinct(), pk=pk)
+    if request.method == "DELETE":
+        st.eliminar_comentario(c, request.user)
+    else:
+        st.editar_comentario(c, request.user, request.data.get("texto"))
+    return _detalle(request, c.actividad_id)
 
 
 # ---------------------------------------------------------------------------------------------

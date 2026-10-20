@@ -1,14 +1,16 @@
 <!--
-  Detalle de una actividad y su formulario, en la misma hoja (§5). Modos:
-  - ver: lista (cambiarla con un toque), tipos, descripción, fechas, checklist,
-    asignados e historial; «Viene de» si nació de la checklist de otra actividad;
+  Una actividad en una sola vista (§5, 2026-10-20): al abrirla, quien tiene «Editar» ve el
+  formulario con todo («Eliminar» y «Viene de» arriba; comentarios e historial abajo, en
+  `LineaTiempo`), sin pasar por un detalle
+  aparte. Modos:
   - editar: alta (con `actividadId` null, en `listaInicial`; arriba con `arriba`) o edición;
+  - ver: solo lectura, para quien no tiene «Editar» (o la pizarra está archivada);
   - convertir: alta de una actividad enlazada a un elemento de la checklist (§4.6). Cuándo se
     palomea solo lo dice la checklist de la actividad original («Lo que llega a … cuenta como
     terminado»), no cada conversión.
-  Alta, edición y conversión usan el mismo formulario con los mismos campos (Etapa 3.8, §4.7). Al
-  crear, la checklist se junta en el formulario y va con la actividad; al editar, se guarda al
-  momento, como en el detalle. Cambiar la lista al editar la mueve al final de la nueva.
+  Alta, edición y conversión usan los mismos campos (Etapa 3.8, §4.7). Los campos se guardan con
+  «Guardar»; la lista (un toque la mueve arriba), la checklist y los adjuntos de una actividad que
+  ya existe se guardan al momento. Cerrar o convertir con cambios sin guardar pregunta antes.
   Lo que el usuario no puede hacer no se muestra o queda deshabilitado según los permisos que le
   dio el dueño (pizarra.permisos; todo en falso si la pizarra está archivada).
 -->
@@ -28,6 +30,7 @@ import Chips from "./Chips.vue";
 import ElegirSolicitante from "./ElegirSolicitante.vue";
 import Hoja from "./Hoja.vue";
 import Icono from "./Icono.vue";
+import LineaTiempo from "./LineaTiempo.vue";
 
 const props = defineProps<{
   pizarra: PizarraDetalle;
@@ -44,7 +47,7 @@ const emit = defineEmits<{
 }>();
 
 const actividad = ref<Actividad | null>(null);
-const modo = ref<"ver" | "editar" | "convertir">(props.actividadId ? "ver" : "editar");
+const modo = ref<"ver" | "editar" | "convertir">("editar");
 const elemento = ref<ElementoChecklist | null>(null);
 const cargando = ref(!!props.actividadId);
 const ocupado = ref(false);
@@ -54,8 +57,11 @@ const errorGeneral = ref("");
 const p = computed(() => props.pizarra);
 const puede = computed(() => p.value.permisos);
 const tiposDe = computed(() => p.value.tipos.filter((tp) => actividad.value?.tipos.includes(tp.id)));
-const historial = computed(() => actividad.value?.historial ?? []);
 const faltanPermisos = computed(() => !puede.value.mover || !puede.value.editar || !puede.value.eliminar);
+/** Lo que se ve de una actividad que ya existe: su formulario o, sin «Editar», solo lectura. */
+const modoBase = computed(() => (puede.value.editar ? "editar" : "ver"));
+/** Una actividad que ya existe, en su formulario (no en el alta ni al convertir). */
+const editando = computed(() => modo.value === "editar" && !!actividad.value);
 
 const form = reactive({
   titulo: "",
@@ -77,6 +83,21 @@ const entradaArchivos = ref<HTMLInputElement>();
 const editandoLocal = ref<number | null>(null);
 const vEnfocar = { mounted: (el: HTMLElement) => el.focus() };
 
+/** El formulario como quedó al llenarlo; si cambia, hay algo sin guardar. */
+const huella = () =>
+  JSON.stringify({
+    ...form,
+    // En una actividad que ya existe, la lista se cambia al momento, no con «Guardar».
+    lista: editando.value ? 0 : form.lista,
+    archivos: archivosNuevos.value.length,
+    nuevo: nuevoElemento.value.trim(),
+  });
+const huellaGuardada = ref("");
+const hayCambios = computed(() => huella() !== huellaGuardada.value);
+/** Comentario escrito y sin publicar: no lo guarda «Guardar», pero cerrar pregunta (2026-10-20). */
+const borradorComentario = ref("");
+const sinGuardar = computed(() => hayCambios.value || !!borradorComentario.value.trim());
+
 function llenarForm(t: Actividad | null) {
   form.titulo = t?.titulo ?? "";
   form.descripcion = t?.descripcion ?? "";
@@ -93,6 +114,7 @@ function llenarForm(t: Actividad | null) {
   archivosNuevos.value = [];
   errores.value = {};
   errorGeneral.value = "";
+  huellaGuardada.value = huella();
 }
 
 async function cargar() {
@@ -103,6 +125,8 @@ async function cargar() {
   cargando.value = true;
   try {
     actividad.value = await api<Actividad>(`actividades/${props.actividadId}/`);
+    modo.value = modoBase.value;
+    llenarForm(actividad.value);
   } catch (e) {
     avisar(mensajeDeError(e, "No se pudo abrir la actividad."));
     emit("cerrar");
@@ -112,14 +136,13 @@ async function cargar() {
 }
 watch(() => props.actividadId, cargar, { immediate: true });
 
-function editar() {
-  llenarForm(actividad.value);
-  modo.value = "editar";
-}
+const descartar = () => confirmar("Hay cambios sin guardar. ¿Descartarlos?", "Descartar");
 
 /** Formulario de actividad nueva, prellenado con el elemento y enlazado a él (§4.6). */
-function convertir(e: ElementoChecklist) {
+async function convertir(e: ElementoChecklist) {
   const t = actividad.value!;
+  if (sinGuardar.value && !(await descartar())) return;
+  borradorComentario.value = "";
   llenarForm(null);
   // Los elementos llegan a 400 caracteres y el título a 200: el resto va a la descripción.
   [form.titulo, form.descripcion] = partirTitulo(e.texto);
@@ -127,6 +150,14 @@ function convertir(e: ElementoChecklist) {
   form.asignados = t.asignados.map((u) => u.id);
   elemento.value = e;
   modo.value = "convertir";
+  huellaGuardada.value = huella();
+}
+
+/** Vuelve a la actividad original (después de convertir o al cancelar la conversión). */
+function volverAOriginal() {
+  elemento.value = null;
+  modo.value = modoBase.value;
+  llenarForm(actividad.value);
 }
 
 /** Formulario de alta: agrega a la checklist local (Enter no envía el formulario). */
@@ -194,16 +225,17 @@ async function guardar() {
   ocupado.value = true;
   try {
     const { checklist, lista_al_completar, ...todos } = datosForm();
-    // Al editar, «Al completar» lo guarda la checklist al momento (no se pisa con el valor viejo).
-    const datos = modo.value === "editar" && actividad.value ? todos : { ...todos, lista_al_completar };
+    // En una actividad que ya existe, la lista y «Al completar» se guardan al momento (no se
+    // pisan con el valor del formulario).
+    const { lista, ...sinLista } = todos;
+    const datos = editando.value ? sinLista : { ...todos, lista, lista_al_completar };
     if (modo.value === "convertir" && elemento.value) {
       const r = await api<{ actividad: Actividad; nueva: Actividad }>(`checklist/${elemento.value.id}/convertir/`, "POST", {
         ...datos,
         checklist,
       });
       actividad.value = r.actividad;
-      elemento.value = null;
-      modo.value = "ver";
+      volverAOriginal();
       avisar("Se creó la actividad desde la checklist.");
       emit("guardada", archivosNuevos.value.length ? await subirArchivosNuevos(r.nueva) : r.nueva);
       return;
@@ -218,7 +250,7 @@ async function guardar() {
     const nueva = !actividad.value;
     avisar(nueva ? "Se creó la actividad." : "Se guardaron los cambios.");
     actividad.value = nueva && archivosNuevos.value.length ? await subirArchivosNuevos(t) : t;
-    modo.value = "ver";
+    llenarForm(actividad.value);
     emit("guardada", actividad.value);
   } catch (e) {
     if (e instanceof ErrorApi && Object.keys(e.campos).length) errores.value = e.campos;
@@ -228,16 +260,35 @@ async function guardar() {
   }
 }
 
-/** Cambiar de lista con un toque: queda al final (el orden se cambia arrastrando en el tablero). */
+/** Cambiar de lista con un toque: queda arriba (2026-10-20; el orden se cambia arrastrando). */
 async function moverA(listaId: number) {
   const t = actividad.value;
   if (!t || t.lista === listaId || ocupado.value) return;
   ocupado.value = true;
   try {
     actividad.value = await api<Actividad>(`actividades/${t.id}/mover/`, "POST", { lista: listaId });
+    form.lista = listaId;
     emit("guardada", actividad.value);
     avisar(`Se movió a «${actividad.value.lista_nombre}».`);
   } catch (e) {
+    avisar(mensajeDeError(e));
+  } finally {
+    ocupado.value = false;
+  }
+}
+
+/** «Cumplida» (2026-10-20): se guarda al momento, sin tocar lo que haya sin guardar en el formulario. */
+async function alternarCumplida(ev: Event) {
+  const t = actividad.value;
+  const casilla = ev.target as HTMLInputElement;
+  if (!t) return;
+  ocupado.value = true;
+  try {
+    actividad.value = await api<Actividad>(`actividades/${t.id}/cumplida/`, "POST", { cumplida: casilla.checked });
+    emit("guardada", actividad.value);
+    avisar(casilla.checked ? "Se marcó como cumplida." : "Se volvió a abrir.");
+  } catch (e) {
+    casilla.checked = !casilla.checked;
     avisar(mensajeDeError(e));
   } finally {
     ocupado.value = false;
@@ -264,59 +315,62 @@ async function eliminar() {
   }
 }
 
-function cancelar() {
-  if (actividad.value) {
-    modo.value = "ver";
-    elemento.value = null;
-  } else emit("cerrar");
+/** Cerrar (o «Cancelar»): al convertir, regresa a la original; con cambios, pregunta antes. */
+async function cerrar() {
+  if (sinGuardar.value && !(await descartar())) return;
+  if (modo.value === "convertir") volverAOriginal();
+  else emit("cerrar");
 }
 
 const esYo = (id: number | undefined) => id === sesion.usuario?.id;
 const titulo = computed(() => {
   if (modo.value === "convertir") return "Nueva actividad";
-  if (modo.value === "editar") return actividad.value ? "Editar actividad" : "Nueva actividad";
-  return actividad.value?.titulo ?? "Actividad";
+  return actividad.value?.titulo ?? "Nueva actividad";
 });
 </script>
 
 <template>
-  <Hoja :titulo="titulo" @cerrar="emit('cerrar')">
+  <Hoja :titulo="titulo" @cerrar="cerrar">
     <div v-if="cargando" class="cargando" style="min-height: 120px">Cargando…</div>
 
-    <!-- Detalle -->
-    <template v-else-if="modo === 'ver' && actividad">
-      <!-- Arriba y no al final: el historial crece y las dejaría cada vez más lejos (2026-10-06). -->
-      <div v-if="puede.editar || puede.eliminar" class="acciones-detalle">
-        <button v-if="puede.editar" class="btn btn-chico btn-secundario" @click="editar">
-          <Icono nombre="lapiz" />Editar
-        </button>
-        <button v-if="puede.eliminar" class="btn btn-chico btn-peligro" @click="eliminar">
-          <Icono nombre="basura" />Eliminar
-        </button>
-      </div>
-      <div v-if="actividad.viene_de" class="viene-de">
-        <Icono nombre="enlace" />
-        <span
-          >Viene de la checklist de
-          <button @click="emit('abrir', actividad.viene_de.id)">{{ actividad.viene_de.titulo }}</button></span
-        >
-      </div>
-      <div class="campo">
-        <span class="etiqueta">Lista</span>
-        <div v-if="puede.mover" class="elegir-lista" role="radiogroup" aria-label="Mover a la lista">
-          <button
-            v-for="l in p.listas"
-            :key="l.id"
-            role="radio"
-            :aria-checked="actividad.lista === l.id"
-            :disabled="ocupado"
-            @click="moverA(l.id)"
-          >
-            <Icono v-if="actividad.lista === l.id" nombre="palomita" />{{ l.nombre }}
+    <template v-else>
+      <!-- De una actividad que ya existe (no al convertir). «Eliminar» arriba y no al final: el
+           historial crece y lo dejaría cada vez más lejos (2026-10-06). -->
+      <template v-if="actividad && modo !== 'convertir'">
+        <div v-if="puede.eliminar" class="acciones-detalle">
+          <button type="button" class="btn btn-chico btn-peligro" @click="eliminar">
+            <Icono nombre="basura" />Eliminar
           </button>
         </div>
-        <Chips v-else :lista="actividad.lista_nombre" />
-      </div>
+        <div v-if="actividad.viene_de" class="viene-de">
+          <Icono nombre="enlace" />
+          <span
+            >Viene de la checklist de
+            <button type="button" @click="emit('abrir', actividad.viene_de.id)">{{ actividad.viene_de.titulo }}</button></span
+          >
+        </div>
+        <!-- Un toque la mueve arriba de la lista (§4.6, 2026-10-20), sin esperar a «Guardar». -->
+        <div class="campo">
+          <span class="etiqueta">Lista</span>
+          <div v-if="puede.mover" class="elegir-lista" role="radiogroup" aria-label="Mover a la lista">
+            <button
+              v-for="l in p.listas"
+              :key="l.id"
+              type="button"
+              role="radio"
+              :aria-checked="actividad.lista === l.id"
+              :disabled="ocupado"
+              @click="moverA(l.id)"
+            >
+              <Icono v-if="actividad.lista === l.id" nombre="palomita" />{{ l.nombre }}
+            </button>
+          </div>
+          <Chips v-else :lista="actividad.lista_nombre" />
+        </div>
+      </template>
+
+    <!-- Solo lectura: sin permiso «Editar» o pizarra archivada -->
+    <template v-if="modo === 'ver' && actividad">
       <div class="campo">
         <span class="etiqueta">Solicitada por</span>
         <span v-if="actividad.solicitante" class="persona-texto">{{ actividad.solicitante.nombre }}</span>
@@ -364,25 +418,6 @@ const titulo = computed(() => {
           <span v-if="!actividad.asignados.length" class="ayuda" style="font-size: 14px">Sin asignar</span>
         </div>
       </div>
-      <div class="campo">
-        <span class="etiqueta">Historial · {{ historial.length }}</span>
-        <ul class="historial">
-          <li v-for="(h, i) in historial" :key="i">
-            {{ h.usuario?.nombre ?? "Usuario eliminado" }}{{ esYo(h.usuario?.id) ? " (tú)" : "" }}
-            <template v-if="h.nota">{{ h.nota }}</template>
-            <template v-else-if="h.de">la movió de <Chips :lista="h.de" /> a <Chips :lista="h.a ?? ''" /></template>
-            <template v-else>la creó en <Chips :lista="h.a ?? ''" /></template>
-            <span class="cuando">{{ fechaHora(h.fecha) }}</span>
-          </li>
-        </ul>
-      </div>
-      <!-- Sin «Pizarra: …» ni «Creada por … el …» (Etapa 3.8): el historial ya dice quién y cuándo. -->
-      <div v-if="p.archivada || (faltanPermisos && p.dueno)" class="meta">
-        <span v-if="p.archivada">Pizarra archivada: solo lectura.</span>
-        <span v-else-if="p.dueno"
-          >Lo que no ves disponible depende de los permisos que te dio el dueño ({{ p.dueno.nombre }}).</span
-        >
-      </div>
     </template>
 
     <!-- Alta / edición / conversión: los mismos campos (Etapa 3.8, §4.7) -->
@@ -404,15 +439,10 @@ const titulo = computed(() => {
         />
         <div v-if="errores.titulo" class="error">{{ errores.titulo }}</div>
       </div>
-      <div class="campo">
+      <!-- Al crear o convertir; en una que ya existe, la lista va arriba con sus botones. -->
+      <div v-if="!editando" class="campo">
         <label for="f-lista">Lista <span class="obligatorio" aria-hidden="true">*</span></label>
-        <!-- Al editar, cambiarla es moverla al final de la nueva: requiere «Mover». -->
-        <select
-          id="f-lista"
-          v-model="form.lista"
-          aria-required="true"
-          :disabled="modo === 'editar' && !!actividad && !puede.mover"
-        >
+        <select id="f-lista" v-model="form.lista" aria-required="true">
           <option v-for="l in p.listas" :key="l.id" :value="l.id">{{ l.nombre }}</option>
         </select>
         <div v-if="errores.lista" class="error">{{ errores.lista }}</div>
@@ -447,6 +477,16 @@ const titulo = computed(() => {
           <label for="f-fecha">Vence el</label>
           <input id="f-fecha" v-model="form.fecha_fin" type="date" />
           <div v-if="errores.fecha_fin" class="error">{{ errores.fecha_fin }}</div>
+          <!-- «Cumplida» (2026-10-20): solo con fecha de vencimiento ya guardada; al momento. -->
+          <div v-if="editando && actividad?.fecha_fin" class="marcar-cumplida">
+            <label>
+              <input type="checkbox" :checked="!!actividad.cumplida_en" :disabled="ocupado" @change="alternarCumplida" />
+              Cumplida
+            </label>
+            <small v-if="actividad.cumplida_en" class="ayuda"
+              >{{ actividad.cumplida_por?.nombre ?? "Usuario eliminado" }} · {{ fechaHora(actividad.cumplida_en) }}</small
+            >
+          </div>
         </div>
       </div>
       <div class="campo">
@@ -460,13 +500,14 @@ const titulo = computed(() => {
         </div>
         <div v-if="errores.asignados" class="error">{{ errores.asignados }}</div>
       </div>
-      <!-- Editar: la checklist de la actividad, que se guarda al momento (sin convertir: dejaría el formulario). -->
+      <!-- Editar: la checklist de la actividad, que se guarda al momento. Convertir un elemento
+           cambia el formulario por el de la actividad nueva (pregunta si hay cambios sin guardar). -->
       <Checklist
-        v-if="modo === 'editar' && actividad"
+        v-if="editando && actividad"
         :actividad="actividad"
         :pizarra="p"
-        sin-convertir
         @actualizada="checklistActualizada"
+        @convertir="convertir"
         @abrir="(id) => emit('abrir', id)"
       />
       <!-- Crear o convertir: la checklist se junta aquí y se guarda con la actividad. -->
@@ -535,7 +576,7 @@ const titulo = computed(() => {
         <div v-if="errores.texto" class="error">{{ errores.texto }}</div>
       </div>
       <!-- Editar: los adjuntos se guardan al momento; crear: se suben después de crear la actividad. -->
-      <Adjuntos v-if="modo === 'editar' && actividad" :actividad="actividad" :pizarra="p" @actualizada="checklistActualizada" />
+      <Adjuntos v-if="editando && actividad" :actividad="actividad" :pizarra="p" @actualizada="checklistActualizada" />
       <div v-else class="campo">
         <span class="etiqueta">Adjuntos<template v-if="archivosNuevos.length"> · {{ archivosNuevos.length }}</template></span>
         <ul v-if="archivosNuevos.length" class="adjuntos">
@@ -559,10 +600,32 @@ const titulo = computed(() => {
           <Icono nombre="clip" /> Adjuntar archivos
         </button>
       </div>
-      <div class="fila-botones">
-        <button type="button" class="btn btn-secundario" @click="cancelar">Cancelar</button>
-        <button type="submit" class="btn btn-primario" :disabled="ocupado">{{ ocupado ? "Guardando…" : "Guardar" }}</button>
+      <!-- Fija al pie de la hoja: con checklist, adjuntos e historial, «Guardar» quedaba lejos. -->
+      <div class="fila-botones fija">
+        <button type="button" class="btn btn-secundario" @click="cerrar">Cancelar</button>
+        <button type="submit" class="btn btn-primario" :disabled="ocupado || (editando && !hayCambios)">
+          {{ ocupado ? "Guardando…" : "Guardar" }}
+        </button>
       </div>
     </form>
+
+      <!-- De una actividad que ya existe, debajo de sus campos (no al convertir). -->
+      <template v-if="actividad && modo !== 'convertir'">
+        <!-- Comentarios e historial en una sola línea de tiempo (2026-10-20). -->
+        <LineaTiempo
+          v-model:borrador="borradorComentario"
+          :actividad="actividad"
+          :pizarra="p"
+          @actualizada="checklistActualizada"
+        />
+        <!-- Sin «Pizarra: …» ni «Creada por … el …» (Etapa 3.8): el historial ya dice quién y cuándo. -->
+        <div v-if="p.archivada || (faltanPermisos && p.dueno)" class="meta">
+          <span v-if="p.archivada">Pizarra archivada: solo lectura.</span>
+          <span v-else-if="p.dueno"
+            >Lo que no ves disponible depende de los permisos que te dio el dueño ({{ p.dueno.nombre }}).</span
+          >
+        </div>
+      </template>
+    </template>
   </Hoja>
 </template>

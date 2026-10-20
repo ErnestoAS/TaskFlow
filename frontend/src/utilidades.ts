@@ -54,7 +54,36 @@ export async function copiarTexto(texto: string): Promise<void> {
   if (!ok) throw new Error("No se pudo copiar.");
 }
 
-export const plural = (n: number, uno: string, varios = `${uno}s`) => `${n} ${n === 1 ? uno : varios}`;
+/** Sin mayúsculas ni acentos: «perez» encuentra a «Pérez». */
+export const normalizar = (s: string) =>
+  s
+    .normalize("NFD")
+    .replace(/\p{Diacritic}/gu, "")
+    .toLowerCase()
+    .replace(/\s+/g, " ")
+    .trim();
+
+/**
+ * Plantillas de listas para una pizarra nueva o vacía (2026-10-20). Las claves y los nombres son
+ * los de `PLANTILLAS_LISTAS` en apps/pizarras/servicios.py; «vacia» y «copiar» van aparte.
+ */
+export const PLANTILLAS_LISTAS: [string, string[]][] = [
+  ["basica", ["Pendiente", "En curso", "Finalizada"]],
+  ["con_revision", ["Pendiente", "En curso", "En revisión", "Finalizada"]],
+];
+
+/** Las palabras de una búsqueda (Buscador.vue), normalizadas. */
+export const palabrasDe = (busqueda: string) => normalizar(busqueda).split(" ").filter(Boolean);
+
+/** Si el título o la descripción tienen todas las palabras, en cualquier orden (§5). */
+export const coincide = (t: Pick<Actividad, "titulo" | "descripcion">, palabras: string[]) => {
+  if (!palabras.length) return true;
+  const texto = normalizar(`${t.titulo} ${t.descripcion}`);
+  return palabras.every((p) => texto.includes(p));
+};
+
+/** «-s» tras vocal y «-es» tras consonante («actividades», no «actividads»); si no, `varios`. */
+export const plural = (n: number, uno: string, varios = /[aeiouáéíóú]$/i.test(uno) ? `${uno}s` : `${uno}es`) => `${n} ${n === 1 ? uno : varios}`;
 
 const MESES = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];
 
@@ -87,11 +116,18 @@ export function fechaHora(iso: string): string {
   return `${f.getDate()} ${MESES[f.getMonth()]} ${f.getFullYear()} · ${hh}:${mm}`;
 }
 
-export type EstadoFecha = { clase: "vencida" | "por-vencer" | "fecha"; texto: string } | null;
+export type EstadoFecha = { clase: "vencida" | "por-vencer" | "fecha" | "cumplida"; texto: string } | null;
 
-/** Sin listas de cierre (2026-10-06): con fecha límite pasada sale vencida, esté en la lista que esté. */
-export function estadoFecha(t: Pick<Actividad, "fecha_fin">): EstadoFecha {
+/**
+ * Sin listas de cierre (2026-10-06): con fecha límite pasada sale vencida, esté en la lista que esté,
+ * salvo que se haya marcado como cumplida (2026-10-20): entonces «Cumplida el 18 oct».
+ */
+export function estadoFecha(t: Pick<Actividad, "fecha_fin" | "cumplida_en">): EstadoFecha {
   if (!t.fecha_fin) return null;
+  if (t.cumplida_en) {
+    const f = new Date(t.cumplida_en);
+    return { clase: "cumplida", texto: `Cumplida el ${f.getDate()} ${MESES[f.getMonth()]}` };
+  }
   const dias = diasHasta(t.fecha_fin);
   if (dias < 0) return { clase: "vencida", texto: `Vencida · ${fechaCorta(t.fecha_fin)}` };
   if (dias === 0) return { clase: "por-vencer", texto: "Vence hoy" };
@@ -99,4 +135,5 @@ export function estadoFecha(t: Pick<Actividad, "fecha_fin">): EstadoFecha {
   return { clase: "fecha", texto: fechaCorta(t.fecha_fin) };
 }
 
-export const esVencida = (t: Pick<Actividad, "fecha_fin">) => !!t.fecha_fin && diasHasta(t.fecha_fin) < 0;
+export const esVencida = (t: Pick<Actividad, "fecha_fin" | "cumplida_en">) =>
+  !!t.fecha_fin && !t.cumplida_en && diasHasta(t.fecha_fin) < 0;

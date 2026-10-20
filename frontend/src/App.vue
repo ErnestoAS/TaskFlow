@@ -1,5 +1,6 @@
 <!--
-  Armazón: barra lateral navy (computadora), navegación inferior (teléfono), avisos breves,
+  Armazón: barra lateral navy (computadora; se contrae a una franja de íconos, 2026-10-20),
+  navegación inferior (teléfono), avisos breves,
   confirmaciones y el aviso de versión nueva del service worker. Las pantallas de acceso
   (entrar, registro, invitación) van sin armazón.
 -->
@@ -28,6 +29,25 @@ const enPizarra = computed(() => route.name === "tablero" || route.name === "aju
 const pizarraActual = computed(() => (enPizarra.value ? Number(route.params.id) : null));
 const seccionActiva = computed(() => (enPizarra.value ? "pizarras" : String(route.name)));
 const activas = computed(() => misPizarras.lista.filter((p) => !p.archivada));
+
+// Barra lateral contraída (2026-10-20, solo computadora): preferencia de cada quien en su
+// navegador. Sin almacenamiento disponible, abre extendida.
+const CLAVE_MENU = "taskflow.menu-contraido";
+function leerMenu(): boolean {
+  try {
+    return localStorage.getItem(CLAVE_MENU) === "1";
+  } catch {
+    return false;
+  }
+}
+const menuContraido = ref(leerMenu());
+watch(menuContraido, (si) => {
+  try {
+    localStorage.setItem(CLAVE_MENU, si ? "1" : "0");
+  } catch {
+    /* se queda solo en esta sesión */
+  }
+});
 
 // La barra lateral necesita la lista de pizarras en cualquier pantalla.
 watch(
@@ -75,13 +95,16 @@ if (import.meta.env.PROD) {
 
 <template>
   <div v-if="!conArmazon"><RouterView /></div>
-  <div v-else class="armazon">
+  <div v-else class="armazon" :class="{ 'menu-contraido': menuContraido }">
     <nav class="nav-lateral" aria-label="Principal">
       <div class="marca-lateral"><Logo /><span>TaskFlow</span></div>
+      <!-- Contraída, el texto se oculta: el nombre va en aria-label y en el título (al pasar el mouse). -->
       <button
         v-for="[nombre, texto, icono] in SECCIONES"
         :key="nombre"
         :aria-current="!enPizarra && seccionActiva === nombre ? 'page' : undefined"
+        :aria-label="menuContraido ? texto : undefined"
+        :title="menuContraido ? texto : undefined"
         @click="router.push({ name: nombre })"
       >
         <Icono :nombre="icono" /><span>{{ texto }}</span>
@@ -93,12 +116,24 @@ if (import.meta.env.PROD) {
           v-for="p in activas"
           :key="p.id"
           :aria-current="pizarraActual === p.id ? 'page' : undefined"
+          :aria-label="menuContraido ? p.nombre : undefined"
+          :title="menuContraido ? p.nombre : undefined"
           @click="router.push({ name: 'tablero', params: { id: p.id } })"
         >
-          <svg width="8" height="8" viewBox="0 0 8 8" aria-hidden="true"><circle cx="4" cy="4" r="3" fill="currentColor" opacity=".6" /></svg>
+          <svg class="punto" width="8" height="8" viewBox="0 0 8 8" aria-hidden="true"><circle cx="4" cy="4" r="3" fill="currentColor" opacity=".6" /></svg>
+          <span class="inicial" aria-hidden="true">{{ p.nombre.trim().charAt(0).toUpperCase() }}</span>
           <span>{{ p.nombre }}</span>
         </button>
       </template>
+      <button
+        class="contraer"
+        :aria-label="menuContraido ? 'Extender el menú' : 'Contraer el menú'"
+        :aria-expanded="!menuContraido"
+        :title="menuContraido ? 'Extender el menú' : undefined"
+        @click="menuContraido = !menuContraido"
+      >
+        <Icono :nombre="menuContraido ? 'derecha' : 'izquierda'" /><span>Contraer</span>
+      </button>
     </nav>
 
     <div class="cuerpo">

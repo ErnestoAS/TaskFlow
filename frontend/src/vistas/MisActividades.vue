@@ -1,26 +1,31 @@
 <!--
   Actividades asignadas a mí en mis pizarras activas, en cualquier lista (§4.6), con la pizarra y la
-  lista de cada una. Vencidas arriba; luego por fecha límite.
+  lista de cada una. Vencidas arriba; luego por fecha límite. Buscador (2026-10-20) igual que en el
+  tablero: título o descripción, todas las palabras.
 -->
 <script setup lang="ts">
 import { computed, onMounted, ref } from "vue";
 
 import { api, mensajeDeError } from "../api";
+import Buscador from "../componentes/Buscador.vue";
 import Cabecera from "../componentes/Cabecera.vue";
 import Icono from "../componentes/Icono.vue";
 import PanelActividad from "../componentes/PanelActividad.vue";
 import ActividadItem from "../componentes/ActividadItem.vue";
 import type { PizarraDetalle, Actividad } from "../tipos";
 import { avisar } from "../ui";
-import { esVencida } from "../utilidades";
+import { coincide, esVencida, palabrasDe } from "../utilidades";
 
 const actividades = ref<Actividad[] | null>(null);
 // Detalle de cada pizarra (listas, tipos y permisos), pedido una vez por pizarra.
 const pizarras = ref<Record<number, PizarraDetalle>>({});
 const abierta = ref<{ id: number; pizarra: number } | null>(null);
+const busqueda = ref("");
 
-const vencidas = computed(() => (actividades.value ?? []).filter(esVencida));
-const resto = computed(() => (actividades.value ?? []).filter((t) => !esVencida(t)));
+const palabras = computed(() => palabrasDe(busqueda.value));
+const encontradas = computed(() => (actividades.value ?? []).filter((t) => coincide(t, palabras.value)));
+const vencidas = computed(() => encontradas.value.filter(esVencida));
+const resto = computed(() => encontradas.value.filter((t) => !esVencida(t)));
 
 async function cargarPizarra(id: number) {
   if (!pizarras.value[id]) pizarras.value[id] = await api<PizarraDetalle>(`pizarras/${id}/`);
@@ -56,6 +61,7 @@ const tiposDe = (t: Actividad) => pizarras.value[t.pizarra]?.tipos ?? [];
   <main class="contenido">
     <div v-if="!actividades" class="cargando">Cargando…</div>
     <template v-else>
+      <Buscador v-if="actividades.length" v-model="busqueda" />
       <template v-if="vencidas.length">
         <div class="seccion-titulo">Vencidas · {{ vencidas.length }}</div>
         <div class="mis-actividades">
@@ -80,7 +86,9 @@ const tiposDe = (t: Actividad) => pizarras.value[t.pizarra]?.tipos ?? [];
           @abrir="abierta = { id: t.id, pizarra: t.pizarra }"
         />
       </div>
-      <div v-if="!resto.length && !vencidas.length" class="vacio">No tienes actividades asignadas.</div>
+      <div v-if="!resto.length && !vencidas.length" class="vacio">
+        {{ palabras.length ? "Sin coincidencias." : "No tienes actividades asignadas." }}
+      </div>
       <div class="aviso" style="margin-top: 14px">
         <Icono nombre="info" />
         <span>Actividades asignadas a ti en tus pizarras activas, con la lista en la que están.</span>

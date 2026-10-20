@@ -14,12 +14,19 @@ from django.core.exceptions import ValidationError
 from django.core.files.base import ContentFile
 from django.db import transaction
 from django.db.models import F, Sum
+from django.utils import timezone
 
 from apps.pizarras.models import Lista, MiembroPizarra, Pizarra, Solicitante, TipoActividad
-from apps.pizarras.servicios import crear_solicitante, exigir_permiso
+from apps.pizarras.servicios import (
+    PermisoDenegado,
+    crear_solicitante,
+    exigir_activa,
+    exigir_miembro,
+    exigir_permiso,
+)
 
 from .almacen import comprimir_pdf
-from .models import Actividad, Adjunto, ElementoChecklist, Movimiento
+from .models import Actividad, Adjunto, Comentario, ElementoChecklist, Movimiento
 
 CAMPOS_EDITABLES = (
     "titulo",
@@ -150,9 +157,15 @@ def _lista_de(pizarra: Pizarra, lista) -> Lista:
 def registrar_movimiento(
     actividad: Actividad, usuario, anterior="", nueva="", nota=""
 ) -> Movimiento:
-    """Una fila del historial. `anterior=""` y sin nota = creación. También la usa el admin."""
+    """
+    Una fila del historial. `anterior=""` y sin nota = creación; `nueva=""` y sin nota =
+    eliminación. Guarda la pizarra y el título de ese momento (historial de la pizarra, §5).
+    También la usa el admin.
+    """
     return Movimiento.objects.create(
         actividad=actividad,
+        pizarra_id=actividad.pizarra_id,
+        titulo=actividad.titulo,
         usuario=usuario,
         lista_anterior=anterior or "",
         lista_nueva=nueva or "",
@@ -255,7 +268,7 @@ def crear_actividad(
 @transaction.atomic
 def editar_actividad(actividad: Actividad, usuario, **campos) -> Actividad:
     """
-    Edita los datos de la actividad. Una `lista` distinta la mueve al final de esa lista con
+    Edita los datos de la actividad. Una `lista` distinta la mueve arriba de esa lista con
     `mover_actividad` (pide también el permiso «Mover» y queda en el historial): el formulario de
     edición tiene los mismos campos que el de alta (§4.7). La posición solo cambia arrastrando.
     Si al cambiar `lista_terminado` la checklist queda completa, aplica `lista_al_completar`.
@@ -283,6 +296,8 @@ def _editar_actividad(actividad: Actividad, usuario, campos) -> None:
         actividad.fecha_solicitud = campos["fecha_solicitud"]
     if "fecha_fin" in campos:
         actividad.fecha_fin = campos["fecha_fin"]
+        if actividad.fecha_fin is None:  # sin fecha de vencimiento no hay «Cumplida» (2026-10-20)
+            actividad.cumplida_en = actividad.cumplida_por = None
     _validar_fechas(actividad.fecha_solicitud, actividad.fecha_fin)
     nueva_lista = None
     if campos.get("lista") is not None:
@@ -313,9 +328,9 @@ def _editar_actividad(actividad: Actividad, usuario, campos) -> None:
 @transaction.atomic
 def mover_actividad(actividad: Actividad, usuario, lista, posicion=None) -> Actividad:
     """
-    Pone la actividad en `lista` (de la misma pizarra) en `posicion` (0 = arriba; None = al final)
-    y renumera las listas afectadas. Cambiar de lista queda en el historial; reordenar dentro de
-    la misma lista no (sería ruido, §4.6).
+    Pone la actividad en `lista` (de la misma pizarra) en `posicion` (0 = arriba; None = también
+    arriba, desde 2026-10-20) y renumera las listas afectadas. Cambiar de lista queda en el
+    historial; reordenar dentro de la misma lista no (sería ruido, §4.6).
     """
     exigir_permiso(actividad.pizarra, usuario, "mover")
     return _mover(actividad, usuario, lista, posicion)
@@ -346,7 +361,9 @@ def _mover_sin_cascada(actividad: Actividad, usuario, lista, posicion) -> Activi
         Actividad.objects.select_for_update().filter(lista=destino).exclude(pk=actual.pk)
     )
     if posicion is None:
-        posicion = len(hermanas)
+        # Arriba (2026-10-20; antes al final): lo que acaba de llegar es lo que se busca, y ya no
+        # hay prioridad que el orden deba respetar. Arrastrar siempre manda su posición.
+        posicion = 0
     try:
         posicion = max(0, min(int(posicion), len(hermanas)))
     except (TypeError, ValueError) as e:
@@ -364,10 +381,33 @@ def _mover_sin_cascada(actividad: Actividad, usuario, lista, posicion) -> Activi
 
 
 @transaction.atomic
+def marcar_cumplida(actividad: Actividad, usuario, cumplida: bool) -> Actividad:
+    """
+    «Cumplida» (2026-10-20, §4.4): deja de salir vencida. Solo con fecha de vencimiento, porque
+    existe para quitar el «Vencida»; permiso «Editar». Marcar y desmarcar queda en el historial
+    (si no cambia nada, no deja fila).
+    """
+    exigir_permiso(actividad.pizarra, usuario, "editar")
+    if cumplida and not actividad.fecha_fin:
+        mensaje = "Solo se marcan como cumplidas las actividades con fecha de vencimiento."
+        raise ValidationError({"cumplida": mensaje})
+    if bool(cumplida) == bool(actividad.cumplida_en):
+        return actividad
+    actividad.cumplida_en = timezone.now() if cumplida else None
+    actividad.cumplida_por = usuario if cumplida else None
+    actividad.save(update_fields=["cumplida_en", "cumplida_por", "actualizado_en"])
+    nota = "la marcó como cumplida" if cumplida else "la volvió a abrir"
+    registrar_movimiento(actividad, usuario, nota=nota)
+    return actividad
+
+
+@transaction.atomic
 def eliminar_actividad(actividad: Actividad, usuario) -> None:
     """
-    Borra la actividad con su historial y su checklist (CASCADE). Si venía de la checklist de otra,
-    ese elemento vuelve a ser texto y conserva si estaba hecho.
+    Borra la actividad con su checklist, adjuntos y comentarios (CASCADE). Su historial se queda,
+    sin enlace, en el de la pizarra, con una última fila: quién la eliminó y de qué lista
+    (2026-10-20). Si venía de la checklist de otra, ese elemento vuelve a ser texto y conserva si
+    estaba hecho.
     """
     exigir_permiso(actividad.pizarra, usuario, "eliminar")
     origen = ElementoChecklist.objects.filter(actividad_creada=actividad).first()
@@ -375,6 +415,7 @@ def eliminar_actividad(actividad: Actividad, usuario) -> None:
         origen.hecho = _hecho_ahora(origen)
         origen.actividad_creada = None
         origen.save(update_fields=["hecho", "actividad_creada", "actualizado_en"])
+    registrar_movimiento(actividad, usuario, anterior=actividad.lista.nombre)
     lista_id = actividad.lista_id
     actividad.delete()
     _renumerar(lista_id)
@@ -421,7 +462,7 @@ def _checklist_completa(actividad_id) -> bool:
 def _al_completar(actividad_id, usuario):
     """
     «Mover a [lista] al completar» (§4.7): si dentro del bloque la checklist de la actividad pasa
-    de incompleta a completa, la mueve al final de su `lista_al_completar` (si no estaba ya ahí).
+    de incompleta a completa, la mueve arriba de su `lista_al_completar` (si no estaba ya ahí).
     Solo en esa transición: despalomear después no la regresa, y elegir la lista con la checklist
     ya completa no la mueve.
     """
@@ -651,3 +692,89 @@ def quitar_adjunto(adjunto: Adjunto, usuario) -> None:
     """Borra la fila y, al confirmar la transacción, el archivo (señal en `models.py`)."""
     exigir_permiso(adjunto.actividad.pizarra, usuario, "editar")
     adjunto.delete()
+
+
+# ---------------------------------------------------------------------------------------------
+# Comentarios (2026-10-20, §4.4): comenta cualquier miembro, sin permiso propio (comentar no
+# cambia la actividad); edita solo el autor; borra el autor o el dueño. Nada en una pizarra
+# archivada. No se registran en el historial.
+# ---------------------------------------------------------------------------------------------
+
+MAX_TEXTO_COMENTARIO = 2000
+
+
+def _validar_comentario(texto) -> str:
+    texto = (texto or "").strip()
+    if not texto:
+        raise ValidationError({"texto": "Escribe el comentario."})
+    if len(texto) > MAX_TEXTO_COMENTARIO:
+        raise ValidationError({"texto": f"Máximo {MAX_TEXTO_COMENTARIO} caracteres."})
+    return texto
+
+
+def comentar(actividad: Actividad, usuario, texto: str) -> Comentario:
+    exigir_miembro(actividad.pizarra, usuario)
+    exigir_activa(actividad.pizarra)
+    return Comentario.objects.create(
+        actividad=actividad, autor=usuario, texto=_validar_comentario(texto)
+    )
+
+
+def editar_comentario(comentario: Comentario, usuario, texto: str) -> Comentario:
+    """Solo el autor: nadie pone palabras en boca de otro (ni el dueño)."""
+    pizarra = comentario.actividad.pizarra
+    exigir_miembro(pizarra, usuario)
+    exigir_activa(pizarra)
+    if comentario.autor_id != usuario.pk:
+        raise PermisoDenegado("Solo quien escribió el comentario puede editarlo.")
+    texto = _validar_comentario(texto)
+    if texto != comentario.texto:
+        comentario.texto = texto
+        comentario.editado_en = timezone.now()
+        comentario.save(update_fields=["texto", "editado_en", "actualizado_en"])
+    return comentario
+
+
+HISTORIAL_POR_PAGINA = 50
+
+
+def historial_pizarra(pizarra: Pizarra, usuario, *, antes=None, persona=None):
+    """
+    Historial de la pizarra (2026-10-20, §5): sus movimientos (también los de actividades ya
+    eliminadas) y sus comentarios, más reciente primero. `antes` (fecha y hora) para la página
+    siguiente; `persona` (id de usuario) para ver solo lo suyo. Cualquier miembro, también con la
+    pizarra archivada. Devuelve `(entradas, hay_mas)`; cada entrada es un `Movimiento` o un
+    `Comentario`.
+    """
+    exigir_miembro(pizarra, usuario)
+    movimientos = Movimiento.objects.filter(pizarra=pizarra).select_related("usuario", "actividad")
+    comentarios = Comentario.objects.filter(actividad__pizarra=pizarra).select_related(
+        "autor", "actividad"
+    )
+    if antes is not None:
+        movimientos = movimientos.filter(fecha__lt=antes)
+        comentarios = comentarios.filter(creado_en__lt=antes)
+    if persona is not None:
+        movimientos = movimientos.filter(usuario_id=persona)
+        comentarios = comentarios.filter(autor_id=persona)
+    n = HISTORIAL_POR_PAGINA
+    # Una página de cada uno basta para armar la página mezclada (y saber si hay más).
+    entradas = sorted(
+        [
+            *movimientos.order_by("-fecha", "-id")[: n + 1],
+            *comentarios.order_by("-creado_en", "-id")[: n + 1],
+        ],
+        key=lambda e: e.fecha if isinstance(e, Movimiento) else e.creado_en,
+        reverse=True,
+    )
+    return entradas[:n], len(entradas) > n
+
+
+def eliminar_comentario(comentario: Comentario, usuario) -> None:
+    """El autor o el dueño de la pizarra (para limpiar)."""
+    pizarra = comentario.actividad.pizarra
+    m = exigir_miembro(pizarra, usuario)
+    exigir_activa(pizarra)
+    if comentario.autor_id != usuario.pk and not m.es_dueno:
+        raise PermisoDenegado("Solo quien escribió el comentario o el dueño puede eliminarlo.")
+    comentario.delete()

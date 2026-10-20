@@ -35,6 +35,7 @@ def test_mover_de_lista_en_el_admin_deja_rastro(admin, client, pizarra, dueno, l
         "fecha_fin": "",
         "creada_por": dueno.pk,
         **_formset("checklist"),
+        **_formset("comentarios"),
         **_formset("movimientos", 1, 1),
         "movimientos-0-id": t.movimientos.get().pk,
         "movimientos-0-actividad": t.pk,

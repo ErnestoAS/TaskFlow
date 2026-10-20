@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import Actividad, ElementoChecklist, Movimiento
+from .models import Actividad, Comentario, ElementoChecklist, Movimiento
 from .servicios import registrar_movimiento
 
 
@@ -9,6 +9,18 @@ class MovimientoInline(admin.TabularInline):
     extra = 0
     can_delete = False
     fields = ["fecha", "usuario", "lista_anterior", "lista_nueva", "nota"]
+    readonly_fields = fields
+
+    def has_add_permission(self, request, obj=None):
+        return False
+
+
+class ComentarioInline(admin.TabularInline):
+    """Solo para consultar o borrar (moderar): un comentario lo escribe una persona en la app."""
+
+    model = Comentario
+    extra = 0
+    fields = ["creado_en", "autor", "texto", "editado_en"]
     readonly_fields = fields
 
     def has_add_permission(self, request, obj=None):
@@ -47,7 +59,7 @@ class ActividadAdmin(admin.ModelAdmin):
         "creada_por",
     ]
     readonly_fields = ["creado_en", "actualizado_en"]
-    inlines = [ElementoChecklistInline, MovimientoInline]
+    inlines = [ElementoChecklistInline, ComentarioInline, MovimientoInline]
 
     def save_model(self, request, obj, form, change):
         # El admin también deja rastro en el historial (§4.6): ningún cambio de lista sin fila.

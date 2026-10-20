@@ -64,6 +64,13 @@ svg{flex-shrink:0}
 .chip.vencida{background:var(--tf-danger-soft);color:var(--tf-danger-text)}
 .chip.por-vencer{background:var(--tf-warning-soft);color:var(--tf-warning-text)}
 .chip.fecha{background:var(--tf-bg);color:var(--tf-text-muted);font-weight:500}
+/* «Cumplida el …» (2026-10-20): en lugar de vencida o por vencer. */
+.chip.cumplida{background:var(--tf-success-soft);color:var(--tf-success-text)}
+/* La casilla «Cumplida» bajo «Vence el» (PanelActividad.vue). */
+.marcar-cumplida{margin-top:8px}
+.marcar-cumplida label{display:flex;align-items:center;gap:8px;font-size:14px;cursor:pointer}
+.marcar-cumplida input{width:18px;height:18px;margin:0;accent-color:var(--tf-success)}
+.marcar-cumplida .ayuda{display:block;margin-top:2px}
 
 /* ---------- avatares ---------- */
 .avatares{display:flex}
@@ -88,11 +95,22 @@ svg{flex-shrink:0}
 .pestanas-listas .num{font-size:11px;font-weight:600;background:var(--tf-bg);color:var(--tf-text-muted);border-radius:99px;padding:1px 7px}
 .barra-tel{display:flex;align-items:center;gap:8px;margin:0 2px 10px;font-size:13px;color:var(--tf-text-muted)}
 .barra-tel .activos{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+/* Buscador de actividades (Buscador.vue): en teléfono, renglón propio a 16px (iOS no acerca la vista). */
+.buscador{position:relative;display:flex;align-items:center;margin:0 2px 10px;color:var(--tf-text-muted)}
+.buscador>svg{position:absolute;left:10px;pointer-events:none}
+.buscador input{width:100%;border:1px solid var(--tf-border);border-radius:var(--tf-radius-btn);padding:8px 34px;background:var(--tf-surface);font-size:16px;color:var(--tf-text);-webkit-appearance:none;appearance:none}
+.buscador input::-webkit-search-cancel-button{display:none}
+.buscador input:focus{outline:none;border-color:var(--tf-accent);box-shadow:0 0 0 3px var(--tf-accent-soft)}
+.buscador .btn-icono{position:absolute;right:4px}
+.filtros .buscador{margin:0;width:280px}
+.filtros .buscador input{font-size:13px;padding:5px 32px}
 .contador{background:var(--tf-primary);color:var(--tf-on-btn);border-radius:99px;font-size:11px;padding:0 6px;line-height:17px;margin-left:2px}
 .opciones-filtro{display:flex;flex-direction:column;gap:2px}
 .opciones-filtro label{display:flex;align-items:center;gap:10px;padding:9px 6px;border-radius:10px;cursor:pointer;font-size:14px}
 .opciones-filtro label:hover{background:var(--tf-bg)}
 .opciones-filtro input{width:18px;height:18px;accent-color:var(--tf-accent);margin:0}
+/* «Las listas de otra pizarra» en «Nueva pizarra» (FormPizarra.vue, 2026-10-20): bajo su opción. */
+.opciones-filtro .copiar-de{margin:0 0 6px 34px;width:calc(100% - 34px)}
 /* Las listas en fila; en teléfono, una por pantalla con imán al deslizar. */
 .tablero{display:flex;gap:12px;overflow-x:auto;align-items:flex-start;scroll-snap-type:x mandatory;margin:0 -14px;padding:0 14px 16px;scroll-padding:0 14px}
 .lista{flex:0 0 86%;scroll-snap-align:start;background:color-mix(in srgb,var(--tf-border) 55%,var(--tf-bg));border-radius:14px;padding:10px;display:flex;flex-direction:column;gap:8px}
@@ -281,20 +299,37 @@ label.persona:hover{background:var(--tf-bg)}
 .muestras button{width:30px;height:30px;border-radius:50%;border:2px solid var(--tf-surface);background:var(--tipo);box-shadow:0 0 0 1px var(--tf-border)}
 .muestras button[aria-pressed="true"]{box-shadow:0 0 0 2px var(--tf-primary)}
 .muestras input[type=color]{width:42px;height:34px;border:1px solid var(--tf-border);border-radius:8px;padding:2px;background:var(--tf-surface)}
-.historial{list-style:none;margin:0;padding:0 0 0 4px;display:flex;flex-direction:column}
-.historial li{position:relative;padding:0 0 14px 22px;font-size:13.5px;line-height:1.6}
-.historial li::before{content:"";position:absolute;left:4px;top:6px;width:9px;height:9px;border-radius:50%;background:var(--tf-surface);border:2px solid var(--tf-text-muted)}
-.historial li::after{content:"";position:absolute;left:9px;top:18px;bottom:0;width:1px;background:var(--tf-border)}
-.historial li:first-child::before{border-color:var(--tf-accent)}
-.historial li:last-child{padding-bottom:0}
-.historial li:last-child::after{display:none}
-.historial .cuando{display:block;font-size:12px;color:var(--tf-text-muted)}
-.historial .chip{font-size:11px;padding:1px 8px}
+/* Sección «Actividad» (LineaTiempo.vue, 2026-10-20; antes .historial): comentar y una sola línea
+   de tiempo con comentarios (avatar y burbuja) y movimientos (punto y texto chico). */
+.nuevo-comentario textarea,.linea-tiempo textarea{min-height:64px;font-size:14px}
+.nuevo-comentario .fila{display:flex;justify-content:flex-end;margin-top:6px}
+.linea-tiempo{list-style:none;margin:14px 0 0;padding:0;display:flex;flex-direction:column;gap:12px}
+.linea-tiempo>li{display:flex;gap:10px;align-items:flex-start}
+.linea-tiempo .lado{width:36px;flex-shrink:0;display:flex;justify-content:center}
+.linea-tiempo .punto-mov{width:9px;height:9px;margin-top:6px;border-radius:50%;background:var(--tf-surface);border:2px solid var(--tf-text-muted)}
+.linea-tiempo .cuerpo{flex:1;min-width:0}
+.linea-tiempo .movimiento .cuerpo{font-size:13px;line-height:1.6;color:var(--tf-text-muted)}
+.linea-tiempo .cuando{font-size:12px;color:var(--tf-text-muted)}
+.linea-tiempo .chip{font-size:11px;padding:1px 8px}
+.linea-tiempo .autor{font-size:13.5px;font-weight:600}
+.linea-tiempo .burbuja{margin:4px 0 0;padding:8px 11px;background:var(--tf-bg);border:1px solid var(--tf-border);border-radius:10px;font-size:14px;line-height:1.5;white-space:pre-wrap;overflow-wrap:anywhere}
+.linea-tiempo .acciones{display:flex;gap:6px;margin-top:6px}
+/* Historial de la pizarra (HistorialPizarra.vue, 2026-10-20): una entrada por renglón; si la
+   actividad existe, el renglón entero la abre. */
+.historial-pizarra{list-style:none;margin:0;padding:0;display:flex;flex-direction:column}
+.historial-pizarra .entrada{display:flex;flex-direction:column;gap:3px;width:100%;border:0;background:transparent;text-align:left;padding:9px 8px;border-radius:9px;font-size:13.5px;line-height:1.5;color:var(--tf-text)}
+.historial-pizarra button.entrada:hover{background:var(--tf-bg)}
+.historial-pizarra .entrada b{font-weight:600}
+.historial-pizarra .cita{color:var(--tf-text-muted);font-style:italic;overflow-wrap:anywhere}
+.historial-pizarra .cuando{font-size:12px;color:var(--tf-text-muted)}
+.historial-pizarra .chip{font-size:11px;padding:1px 8px}
 .meta{display:flex;flex-direction:column;gap:4px;font-size:12.5px;color:var(--tf-text-muted);border-top:1px solid var(--tf-border);padding-top:12px;margin-top:6px}
 .acciones-detalle{display:flex;gap:8px;margin:-4px 0 16px}
 .acciones-detalle .btn-peligro{margin-left:auto}
 .fila-botones{display:flex;gap:8px;margin-top:8px}
 .fila-botones .btn{flex:1}
+/* Al pie de la hoja mientras se desplaza el formulario de actividad; -22px compensa el relleno de .hoja. */
+.fila-botones.fija{position:sticky;bottom:-22px;z-index:1;margin:16px 0 8px;padding:10px 0 12px;background:var(--tf-surface);border-top:1px solid var(--tf-border)}
 
 /* ---------- miembros ---------- */
 .tarjeta-blanca{background:var(--tf-surface);border-radius:var(--tf-radius-card);border:1px solid var(--tf-border);box-shadow:var(--tf-shadow);padding:6px 12px}
@@ -314,7 +349,10 @@ label.persona:hover{background:var(--tf-bg)}
 .banner{display:flex;gap:10px;align-items:center;background:var(--tf-primary-soft);color:var(--tf-text);border-radius:12px;padding:10px 12px;font-size:13px;margin-bottom:12px}
 .banner span{flex:1}
 .pizarra.archivada{opacity:.75}
-.aviso{font-size:13px;color:var(--tf-text-muted);background:var(--tf-surface);border:1px solid var(--tf-border);border-radius:12px;padding:10px 12px;display:flex;gap:8px;align-items:flex-start}
+.aviso{font-size:13px;color:var(--tf-text-muted);background:var(--tf-surface);border:1px solid var(--tf-border);border-radius:12px;padding:10px 12px;display:flex;gap:8px;align-items:flex-start;flex-wrap:wrap}
+.aviso>span{flex:1 1 220px}
+/* Un botón en el aviso (pizarra sin listas): al lado si cabe; si no, abajo, alineado con el texto. */
+.aviso .btn{margin-left:26px;align-self:center}
 
 /* ---------- confirmación y toast ---------- */
 .modal{position:fixed;inset:0;background:var(--tf-veil);display:grid;place-items:center;z-index:20;padding:24px;animation:aparecer .12s}
@@ -351,12 +389,27 @@ label.persona:hover{background:var(--tf-bg)}
 .enlace-nav{text-decoration:none}
 
 /* Lo que solo va en computadora (filtros a la vista); en teléfono va en la hoja «Filtrar». */
-@media (max-width:899px){.solo-computadora{display:none!important}}
+@media (max-width:899px){
+  .solo-computadora{display:none!important}
+  /* El pedazo que se asoma de la lista de al lado: atenuado, y tocarlo la trae (Tablero.vue). */
+  .lista{transition:opacity .15s}
+  .lista.de-lado{opacity:.55}
+}
 
 /* ---------- computadora ---------- */
 @media (min-width:900px){
-  .armazon{display:grid;grid-template-columns:232px 1fr}
+  .armazon{display:grid;grid-template-columns:232px 1fr;transition:grid-template-columns .18s ease-out}
   .nav-lateral{display:flex;flex-direction:column;gap:2px;background:var(--tf-primary);padding:18px 12px;position:sticky;top:0;height:100vh;overflow:auto}
+  /* Barra contraída (App.vue, 2026-10-20): franja de íconos; las pizarras, con su inicial. */
+  .nav-lateral .inicial{display:none}
+  .nav-lateral .contraer{margin-top:auto;opacity:.8}
+  .armazon.menu-contraido{grid-template-columns:64px 1fr}
+  .menu-contraido .nav-lateral{padding:18px 10px;overflow-x:hidden}
+  .menu-contraido .nav-lateral button>span:not(.inicial),.menu-contraido .marca-lateral span,.menu-contraido .rotulo-nav,.menu-contraido .nav-lateral .punto{display:none}
+  .menu-contraido .marca-lateral{justify-content:center;padding:2px 0 18px}
+  .menu-contraido .nav-lateral button{justify-content:center;padding:9px 0}
+  .menu-contraido .nav-lateral button[aria-current="page"]::before{left:-10px}
+  .menu-contraido .nav-lateral .inicial{display:grid;place-items:center;width:26px;height:26px;border-radius:7px;background:rgba(255,255,255,.1);font-size:12px;font-weight:700}
   .cabecera{padding:14px 24px}
   .sello{display:none}
   .contenido{padding:20px 24px 24px}

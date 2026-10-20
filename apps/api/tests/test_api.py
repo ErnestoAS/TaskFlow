@@ -276,7 +276,11 @@ def test_listas_crear_renombrar_ordenar_y_eliminar(cliente, pizarra, listas):
 def test_lista_con_actividades_no_se_elimina(cliente, pizarra, dueno, listas):
     st.crear_actividad(pizarra, dueno, titulo="a")
     r = cliente.delete(f"{API}/listas/{listas['Pendiente'].pk}/")
-    assert r.status_code == 400 and "muévelas" in r.json()["detalle"]
+    assert r.status_code == 400
+    assert r.json()["detalle"] == "La lista tiene 1 actividad: muévela o elimínala antes."
+    st.crear_actividad(pizarra, dueno, titulo="b")
+    r = cliente.delete(f"{API}/listas/{listas['Pendiente'].pk}/")
+    assert r.json()["detalle"] == "La lista tiene 2 actividades: muévelas o elimínalas antes."
 
 
 def test_gestionar_listas_sin_permiso_es_403(

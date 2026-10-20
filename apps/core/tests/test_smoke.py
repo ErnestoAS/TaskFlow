@@ -21,6 +21,25 @@ def test_estaticos_con_prefijo(settings):
     assert static("admin/css/base.css").startswith("/taskflow/static/")
 
 
+def test_con_sesion_la_portada_manda_a_la_app(client, crear_usuario):
+    """Reporte de un usuario (2026-10-20): con la sesión abierta no tiene caso «Entrar»."""
+    assert client.get("/").status_code == 200  # sin sesión, la portada
+    client.force_login(crear_usuario())
+    r = client.get("/")
+    assert r.status_code == 302 and r["Location"] == "/app/"
+    # Perfil → «Instalar la app» sí quiere ver la portada.
+    assert client.get("/", {"portada": "1"}).status_code == 200
+    # Publicada bajo una ruta, la redirección no se sale de ella. El cliente de pruebas no fija el
+    # prefijo con SCRIPT_NAME (lo hace el servidor WSGI real), así que se fija a mano.
+    from django.urls import clear_script_prefix, set_script_prefix
+
+    set_script_prefix("/taskflow/")
+    try:
+        assert client.get("/")["Location"] == "/taskflow/app/"
+    finally:
+        clear_script_prefix()
+
+
 def test_portada_muestra_el_dominio_desde_el_que_se_abre(client, db):
     """La dirección de instalación sale de la petición, no de un dominio escrito en la plantilla."""
     html = client.get("/", HTTP_HOST="taskflow.ejemplo.mx").content.decode()

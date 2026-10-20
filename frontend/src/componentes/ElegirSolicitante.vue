@@ -8,6 +8,7 @@
 import { computed, ref, watch } from "vue";
 
 import type { EleccionSolicitante, PizarraDetalle } from "../tipos";
+import { normalizar } from "../utilidades";
 import Icono from "./Icono.vue";
 
 const props = defineProps<{ pizarra: PizarraDetalle; modelValue: EleccionSolicitante | null; id?: string }>();
@@ -21,15 +22,6 @@ watch(
   () => props.modelValue,
   (v) => (texto.value = v?.nombre ?? ""),
 );
-
-/** Sin mayúsculas ni acentos: «perez» encuentra a «Pérez». */
-const normal = (s: string) =>
-  s
-    .normalize("NFD")
-    .replace(/\p{Diacritic}/gu, "")
-    .toLowerCase()
-    .replace(/\s+/g, " ")
-    .trim();
 
 const conocidos = computed<EleccionSolicitante[]>(() => {
   const miembros: EleccionSolicitante[] = props.pizarra.miembros.map((m) => ({
@@ -50,9 +42,9 @@ const conocidos = computed<EleccionSolicitante[]>(() => {
 const opciones = computed<EleccionSolicitante[]>(() => {
   // Con el nombre elegido a la vista se muestran todos; al escribir, se filtra.
   const escrito = texto.value.replace(/\s+/g, " ").trim();
-  const q = escrito === (props.modelValue?.nombre ?? "") ? "" : normal(escrito);
-  const lista = conocidos.value.filter((o) => !q || normal(o.nombre).includes(q));
-  if (q && !conocidos.value.some((o) => normal(o.nombre) === q)) lista.push({ tipo: "nuevo", nombre: escrito });
+  const q = escrito === (props.modelValue?.nombre ?? "") ? "" : normalizar(escrito);
+  const lista = conocidos.value.filter((o) => !q || normalizar(o.nombre).includes(q));
+  if (q && !conocidos.value.some((o) => normalizar(o.nombre) === q)) lista.push({ tipo: "nuevo", nombre: escrito });
   return lista;
 });
 

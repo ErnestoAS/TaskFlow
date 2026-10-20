@@ -19,7 +19,11 @@
 > **«Solicitada el»** (opcional) y «Fecha límite» a **«Vence el»**, **solicitante** por actividad,
 > **adjuntos**, «Mover a … al completar» la checklist, formulario único de alta y edición, filtro
 > por varios tipos y ajustes de la interfaz (§4.4–§4.7, §5–§7, §11).
-> **Fecha:** 2026-10-06
+> **Etapa 3.9, 2026-10-20 (implementada, sin desplegar):** la actividad en **una sola vista**
+> editable (sin «Editar»), **buscador** en el tablero y en «Mis actividades», **comentarios**
+> (`Comentario`), **historial de la pizarra** (el de cada actividad ya no se borra al eliminarla)
+> y **barra lateral contraíble** (§4.4, §5–§7, §9, §11).
+> **Fecha:** 2026-10-20
 > **Alcance:** describe el funcionamiento general y el esquema. Lo pendiente de decidir está en
 > [§10](#10-preguntas-abiertas); los ajustes hechos al implementar, en [§11](#11-notas-de-implementación).
 
@@ -62,7 +66,7 @@ apps/
 ├── pizarras/    Pizarra, MiembroPizarra, Invitacion, Lista, TipoActividad, Solicitante
 │                + servicios (reglas) (hasta 2026-10-05: `proyectos/`, con Proyecto y
 │                MiembroProyecto; `TipoActividad` era `TipoTarjeta` hasta la Etapa 3.8)
-├── actividades/ Actividad, Movimiento (historial), ElementoChecklist, Adjunto + servicios
+├── actividades/ Actividad, Movimiento (historial), ElementoChecklist, Adjunto, Comentario + servicios
 │                (reglas) (hasta la Etapa 3.8: `tarjetas/`, con `Tarjeta`)
 └── api/         /api/v1/: vistas finas que llaman a los servicios; sin reglas propias
 frontend/        PWA (Vue + Vite). `npm run build` la deja en pwa/app/ (no se versiona)
@@ -89,7 +93,8 @@ erDiagram
     USUARIO |o--o{ ACTIVIDAD : "la solicitó (solicitada_por, miembro)"
     SOLICITANTE |o--o{ ACTIVIDAD : "la solicitó (solicitante_externo)"
     TIPO_ACTIVIDAD }o--o{ ACTIVIDAD : "tipos (uno o más)"
-    ACTIVIDAD ||--o{ MOVIMIENTO : "historial"
+    ACTIVIDAD |o--o{ MOVIMIENTO : "historial (se queda al eliminarla)"
+    PIZARRA ||--o{ MOVIMIENTO : "historial de la pizarra"
     USUARIO ||--o{ MOVIMIENTO : "hizo el movimiento"
     ACTIVIDAD ||--o{ ELEMENTO_CHECKLIST : "checklist"
     ELEMENTO_CHECKLIST |o--o| ACTIVIDAD : "se convirtió en (actividad_creada)"
@@ -97,6 +102,8 @@ erDiagram
     LISTA |o--o{ ACTIVIDAD : "se mueve ahí al completar la checklist (lista_al_completar)"
     ACTIVIDAD ||--o{ ADJUNTO : "archivos"
     USUARIO |o--o{ ADJUNTO : "lo subió"
+    ACTIVIDAD ||--o{ COMENTARIO : "comentarios"
+    USUARIO |o--o{ COMENTARIO : "lo escribió"
     USUARIO ||--o{ CODIGO_CORREO : "verificar o recuperar"
 ```
 
@@ -169,25 +176,31 @@ El correo sale con `transaction.on_commit` (plantillas en
 | `solicitante_externo` *(2026-10-06)* | FK `Solicitante`, nula, `SET_NULL` | Quién la solicitó, **si no es miembro** (catálogo de la pizarra, §4.5). Misma pizarra (servicio). **A lo más uno** de `solicitada_por` y `solicitante_externo` (`CheckConstraint` `actividad_un_solicitante`); los dos nulos = sin solicitante. Por qué dos FK y no una, en §9. |
 | `creada_por` | FK a `Usuario`, opcional | `SET_NULL`: borrar una cuenta no debe borrar las actividades que creó. |
 | `lista_terminado` *(2026-10-06)* | FK `Lista`, nula, `SET_NULL` | «**Lo que llega a [lista] cuenta como terminado**» para los elementos de **su** checklist que se convirtieron en actividades: cada uno está hecho cuando su actividad está en esa lista. Una por actividad (no por elemento ni por lista de la pizarra). Debe ser de la misma pizarra y **distinta de la lista donde está la actividad al elegirla** (servicio): sus hijas nacen ahí y se darían por hechas al crearlas. Nula = palomeo manual (también si esa lista se elimina). Ver §4.6. |
-| `lista_al_completar` *(2026-10-06)* | FK `Lista`, nula, `SET_NULL` | «**Mover a [lista] al completar**»: cuando su checklist **pasa de incompleta a completa**, la actividad se mueve sola al final de esa lista (con `mover_actividad`, así que queda en el historial a nombre de quien palomeó el último elemento). Misma pizarra (servicio). Nula = no se mueve. Despalomear después **no la regresa**. Ver §4.7. |
+| `lista_al_completar` *(2026-10-06)* | FK `Lista`, nula, `SET_NULL` | «**Mover a [lista] al completar**»: cuando su checklist **pasa de incompleta a completa**, la actividad se mueve sola **arriba** de esa lista *(2026-10-20; antes al final)* (con `mover_actividad`, así que queda en el historial a nombre de quien palomeó el último elemento). Misma pizarra (servicio). Nula = no se mueve. Despalomear después **no la regresa**. Ver §4.7. |
+| `cumplida_en` *(2026-10-20)* | Fecha y hora, nula | **«Cumplida»**: se marcó que la actividad se cumplió. **Solo con `fecha_fin`** (servicio): sirve para que deje de salir vencida. Nula = pendiente. Quitarle la fecha de vencimiento la desmarca. Ver §5 y §9. |
+| `cumplida_por` *(2026-10-20)* | FK `Usuario`, nula, `SET_NULL` | Quién la marcó. |
 
 Orden por omisión: `posicion`. **Vencida** = `fecha_fin` pasada, **en cualquier lista** (sin
-listas de cierre desde 2026-10-06, §4.6).
+listas de cierre desde 2026-10-06, §4.6) **y sin marcar como cumplida** *(2026-10-20)*.
 
 #### `Movimiento` — historial *(reemplaza a `CambioEstatus`, 2026-10-05)*
 
 | Campo | Tipo | Notas |
 | --- | --- | --- |
-| `actividad` | FK, `CASCADE` | Si se elimina la actividad, su historial se va con ella. |
-| `lista_anterior`, `lista_nueva` | Texto (50) | El **nombre** de la lista en ese momento, no una FK: las listas se renombran y se eliminan, y el historial debe seguir diciendo lo que pasó. `lista_anterior` vacía = la creación. |
+| `actividad` | FK, **nula, `SET_NULL`** *(2026-10-20; antes `CASCADE`)* | Al eliminar la actividad, su historial **se queda** en el de la pizarra (§5), sin enlace. Antes se iba con ella y no quedaba rastro de quién la borró. |
+| `pizarra` *(2026-10-20)* | FK `Pizarra`, `CASCADE`, `related_name="movimientos"` | Para leer el historial de toda la pizarra sin pasar por sus actividades (que pueden ya no existir). Lo pone `registrar_movimiento`; la migración `actividades.0020` lo rellenó en las filas que ya había. |
+| `titulo` *(2026-10-20)* | Texto (200) | El título de la actividad **en ese momento**: si se elimina, el historial de la pizarra sigue diciendo cuál era. Mientras exista, la API muestra su título actual. |
+| `lista_anterior`, `lista_nueva` | Texto (50) | El **nombre** de la lista en ese momento, no una FK: las listas se renombran y se eliminan, y el historial debe seguir diciendo lo que pasó. `lista_anterior` vacía = la creación; **`lista_nueva` vacía = la eliminación** *(2026-10-20)*, desde la lista donde estaba. |
 | `nota` | Texto (300) | Un evento que no es un movimiento: «convirtió «…» de la checklist en actividad» / «la creó desde la checklist de «…»». |
 | `usuario` | FK `Usuario`, `SET_NULL` | Si se borra la cuenta, la entrada sigue y se muestra «Usuario eliminado». |
 | `fecha` | Fecha y hora, `default=timezone.now` | No `auto_now_add`, para que la migración copie las fechas del historial anterior. UTC en la base, `America/Mexico_City` en pantalla. |
 
 Solo se agregan filas, en la **misma transacción** que el cambio, desde los servicios
-(`crear_actividad`, `mover_actividad`, `convertir_elemento`) y el admin, para que ningún cambio de
-lista quede sin rastro. Reordenar dentro de la misma lista **no** se registra (sería ruido).
-Índice `(actividad, -fecha)`.
+(`crear_actividad`, `mover_actividad`, `convertir_elemento`, `eliminar_actividad`) y el admin, para
+que ningún cambio de lista quede sin rastro. Reordenar dentro de la misma lista **no** se registra
+(sería ruido), ni las ediciones de los campos (*pendiente*, §9). Borrar una actividad desde el
+admin de Django no deja la fila de «eliminó» (no pasa por el servicio), pero su historial se
+queda. Índices `(actividad, -fecha)` y `(pizarra, -fecha)`.
 
 #### `ElementoChecklist` *(2026-10-05)*
 
@@ -220,10 +233,27 @@ ancho de banda del teléfono. Los **PDF de más de 1 MB** se comprimen en el ser
 Ghostscript (`-dPDFSETTINGS=/ebook`) y se guarda el más chico de los dos. El resto se guarda tal
 cual. Ver §4.7 y §9.
 
+#### `Comentario` *(Ernesto, 2026-10-20)*
+
+| Campo | Tipo | Notas |
+| --- | --- | --- |
+| `actividad` | FK, `CASCADE`, `related_name="comentarios"` | Se van con la actividad (y con su pizarra). |
+| `autor` | FK `Usuario`, nula, `SET_NULL` | Si se borra la cuenta, el comentario se queda y se muestra «Usuario eliminado», como en el historial: lo que se dijo sigue siendo parte de la conversación. Si la persona sale de la pizarra, sus comentarios también se quedan. |
+| `texto` | Texto largo | Obligatorio, **hasta 2000 caracteres** (servicio). Texto plano: la PWA lo pinta escapado y con los saltos de línea (`white-space: pre-wrap`); sin Markdown ni HTML. |
+| `editado_en` | Fecha y hora, nula | Nula = nunca se editó. La PWA muestra «(editado)». Campo aparte y no `actualizado_en` para no depender de que nada más toque la fila. |
+| `creado_en`, `actualizado_en` | Fecha y hora | `TimeStampedModel`. |
+
+Orden: más reciente primero (`-creado_en`, `-id`); índice `(actividad, -creado_en)`. Reglas
+(`apps/actividades/servicios.py`): **comenta cualquier miembro** de la pizarra, tenga o no
+permiso «Editar», porque comentar no cambia la actividad; **edita solo el autor**; **borra el
+autor o el dueño** de la pizarra (para limpiar). En una pizarra archivada nadie comenta, edita ni
+borra. Comentar **no** escribe en `Movimiento`: el historial sigue siendo de lo que le pasó a la
+actividad. Ver §5 y §9.
+
 ### 4.5 Pizarras y miembros *(Etapa 2 — decidido e implementado el 2026-10-01 como «proyectos»; renombrado y ampliado el 2026-10-05)*
 
 Código: `apps/pizarras/` (`Pizarra`, `MiembroPizarra`, `Invitacion`, `Lista`, `TipoActividad`,
-`Solicitante`) y `apps/actividades/` (`Actividad`, `Movimiento`, `ElementoChecklist`, `Adjunto`). **Las reglas viven en
+`Solicitante`) y `apps/actividades/` (`Actividad`, `Movimiento`, `ElementoChecklist`, `Adjunto`, `Comentario`). **Las reglas viven en
 `servicios.py` de cada app** (no en los modelos ni en las vistas): `PermisoDenegado` cuando el
 usuario no puede (no es miembro, no es dueño, le falta el permiso o la pizarra está archivada) y
 `ValidationError` cuando los datos son inválidos. La API (`apps/api/`, §6) solo traduce peticiones
@@ -253,7 +283,7 @@ Reglas decididas (Ernesto, 2026-10-01; con los nombres y permisos de 2026-10-05 
 
 | Modelo | Campos | Notas |
 | --- | --- | --- |
-| `Pizarra` | `nombre`, `creado_por` (FK `Usuario`, `PROTECT`), `archivada_en` (fecha, nula), fechas | Quien la crea queda como miembro con rol `dueno`, y la pizarra nace **sin listas** *(2026-10-06; antes traía «Pendiente», «En curso» y «Finalizada»)*: cada quien agrega las suyas. Archivada = solo lectura para todos; nulo = activa. Fecha y no booleano para saber desde cuándo. |
+| `Pizarra` | `nombre`, `creado_por` (FK `Usuario`, `PROTECT`), `archivada_en` (fecha, nula), fechas | Quien la crea queda como miembro con rol `dueno`, y la pizarra nace **sin listas** *(2026-10-06; antes traía «Pendiente», «En curso» y «Finalizada»)*: cada quien agrega las suyas. **Plantillas** *(2026-10-20)*: al crearla se puede elegir con qué listas empieza (`PLANTILLAS_LISTAS` en `servicios.py`: `basica` = Pendiente · En curso · Finalizada; `con_revision` = Pendiente · En curso · En revisión · Finalizada; `vacia`), o **copiar** los nombres y el orden de las listas de otra pizarra propia (`copiar`, sin sus actividades). La PWA propone `basica`; la API, sin `plantilla`, la crea vacía como antes. Una pizarra que sigue vacía puede usar una plantilla después (`usar_plantilla`, permiso «Gestionar listas»). Archivada = solo lectura para todos; nulo = activa. Fecha y no booleano para saber desde cuándo. |
 | `MiembroPizarra` | `pizarra` (FK, `CASCADE`), `usuario` (FK, `CASCADE`), `rol` (`dueno` · `miembro`), `puede_crear` (por omisión `True`), `puede_editar` (`True`), `puede_mover` (`True`), `puede_eliminar` (`False`), `puede_gestionar_listas` (`False`), `puede_gestionar_tipos` (`False`), `unido_en` | `UniqueConstraint(pizarra, usuario)` y **un solo dueño por pizarra** (`pizarra_un_solo_dueno`, condicional). Los permisos son columnas y no un sistema genérico porque son seis, fijos, y el dueño los marca por persona; para el dueño se ignoran. «Gestionar listas» va aparte de «Gestionar tipos» porque reorganizar el tablero afecta a todos más que agregar una etiqueta. Transferir = cambiar los dos roles en una transacción. |
 | `Invitacion` | `pizarra` (FK), `correo`, `invitada_por` (FK `Usuario`), `token` (único), `estado` (`pendiente` · `aceptada` · `cancelada`), `creada_en`, `enviada_en` (último envío), `veces_enviada`, `respondida_en`, `aceptada_por` | **Sin vencimiento** (decidido). **Reenviar** manda otra vez el mismo enlace y actualiza `enviada_en`; `veces_enviada` pone un tope. Una pendiente por pizarra y correo (`UniqueConstraint` condicional). Se invita por correo porque la persona puede no tener cuenta todavía. |
 | `Lista` *(2026-10-05)* | `pizarra` (FK, `CASCADE`), `nombre` (50), `posicion` (entero), fechas | `UniqueConstraint(pizarra, Lower(nombre))`: en «Mover a» dos listas con el mismo nombre serían indistinguibles. Orden por `posicion`. Sin color: se distinguen por su nombre, y la paleta reserva los colores para alertas y tipos. **Sin `es_cierre`** *(quitado 2026-10-06)*: ninguna lista significa «terminado» por sí misma; eso lo elige cada actividad para su checklist (`Actividad.lista_terminado`, §4.6). Solo se elimina vacía (`Actividad.lista` es `RESTRICT`). |
@@ -313,7 +343,12 @@ Decisiones (Ernesto, 2026-10-02):
   - **Una checklist por tarjeta** (no varias como Trello: casi nunca se usan y complican la
     pantalla). Elementos con texto y casilla; se agregan escribiendo y con Enter, y se reordenan
     arrastrando. En la tarjeta del tablero, un indicador «3/5» (verde al completarse); en el
-    detalle, barra de avance.
+    detalle, barra de avance. **Los palomeados se muestran al final** *(Ernesto, 2026-10-20)*:
+    al palomear uno baja, y al despalomearlo regresa a su lugar entre los pendientes. Es solo
+    cómo se muestra (la PWA ordena pendientes y luego hechos, cada grupo en su orden manual); se
+    descartó **mover `posicion` en el servidor al palomear**, porque los que se palomean solos
+    (al llegar su actividad a la lista de terminado) habrían necesitado reordenarse también al
+    mover actividades, y al despalomear no se sabría a qué lugar regresarlo.
   - **Convertir en tarjeta:** abre el formulario de tarjeta nueva prellenado (título = texto del
     elemento, misma pizarra y lista que la original, sus asignados, inicio hoy), editable antes de
     guardar. **Quedan enlazadas en los dos sentidos:** el elemento se vuelve un enlace a la tarjeta
@@ -445,10 +480,12 @@ solicitantes y (5) adjuntos (**implementados 2026-10-06, sin desplegar**).
   «Mover a … al completar» y «Lo que llega a … cuenta como terminado») y adjuntos. Antes la lista
   solo se elegía al crear y la checklist solo existía en el detalle. Al **crear**, la checklist y
   los archivos se juntan en el formulario y se guardan con la actividad; al **editar**, se guardan
-  al momento, como en el detalle. Cambiar la lista al editar la mueve al final de la nueva (con
+  al momento, como en el detalle. Cambiar la lista al editar la mueve al final de la nueva (arriba desde 2026-10-20) (con
   `mover_actividad`; requiere también el permiso «Mover»). El detalle sigue siendo de solo lectura
   con acciones directas (mover, palomear) y «Editar» arriba: se descartó editar campo por campo en
-  el detalle (§9).
+  el detalle (§9). *(2026-10-20: el detalle y la edición se unieron en una sola vista, §5 y §11;
+  en una actividad que ya existe, la lista se cambia con sus botones, al momento, y ya no va en el
+  `PATCH` del formulario.)*
 - **Agregar actividad** *(implementado 2026-10-06)*: en computadora, un **«+» en el encabezado de cada lista** (la agrega
   **arriba**) y **«Agregar actividad» fijo al pie** (al final); la lista se desplaza por dentro, así
   que los dos quedan a la vista aunque crezca. En teléfono, un **botón flotante «Agregar
@@ -471,7 +508,7 @@ solicitantes y (5) adjuntos (**implementados 2026-10-06, sin desplegar**).
   - **«Mover a [lista] al completar»** junto a «Checklist · n/m»: combo con las listas de la
     pizarra y «ninguna» (por omisión). Cuando la checklist pasa de incompleta a completa (palomeo a
     mano, palomeo automático por una actividad enlazada o al quitar el último pendiente), la
-    actividad se mueve al final de esa lista si no estaba ya ahí. Despalomear después no la
+    actividad se mueve al final de esa lista (arriba desde 2026-10-20) si no estaba ya ahí. Despalomear después no la
     regresa: devolverla sola sorprendería y podría deshacer un movimiento hecho a mano. Puede
     encadenarse (la hija llega a su lista, se palomea en la madre, la madre se completa y se mueve),
     y es lo deseado. Se guarda al elegir (permiso «Editar»); el movimiento automático no exige
@@ -504,6 +541,13 @@ de esa plataforma. Botones: **Abrir e instalar** (`/app/?instalar=1`: la PWA mue
 instalación aunque se haya descartado), **Crear mi cuenta** (`/app/#/registro`, solo si
 `TASKFLOW_REGISTRO_ABIERTO`) y **Entrar**.
 
+**Con la sesión abierta, `/` redirige a la app** (`/app/`) *(2026-10-20, a partir del reporte
+de un usuario)*: la portada ofrecía «Crear mi cuenta» y «Entrar» a quien ya estaba dentro, y
+«Entrar» solo lo llevaba a la app sin pedir nada. **Excepción:** `/?portada=1` muestra la portada
+igual; es el enlace de Perfil → «Instalar la app», que lleva a los pasos de instalación. Se
+descartó **cambiar los botones según la sesión** (por ejemplo «Ir a mis pizarras»): quien entra a
+la raíz con sesión quiere su tablero, no una página intermedia.
+
 ### 5.2 PWA — `/app/`
 
 Código en `frontend/`. Rutas con `#` (decisión en §9):
@@ -514,25 +558,56 @@ Código en `frontend/`. Rutas con `#` (decisión en §9):
 | `#/verificar?correo=` | Confirmar correo | Código de 6 dígitos (`autocomplete="one-time-code"` para que el teléfono lo sugiera) y «Reenviar código», habilitado tras 60 s, lo mismo que exige el servidor. Al confirmar, entra. |
 | `#/recuperar` | Recuperar contraseña | Paso 1: correo. Paso 2: código y contraseña nueva; al guardar, entra. El paso 2 aparece siempre, exista o no la cuenta (§7). |
 | `#/invitacion/<token>` | Aceptar invitación | Pública. Ver §7. |
-| `#/pizarras` | Mis pizarras | Activas con un resumen de una línea (actividades · listas · tuyas), miembros y vencidas; archivadas aparte. Aviso de instalación. (`#/proyectos…` redirige aquí.) |
-| `#/pizarras/<id>` | Tablero | Listas en fila (§4.6). Teléfono: pestañas por lista, «Filtrar» y botón flotante «Agregar actividad» (en la lista abierta); arrastrar manteniendo presionada. Computadora (≥ 900 px): columnas que se desplazan por dentro, con «+» en el encabezado (agrega arriba) y «Agregar actividad» fijo al pie; «Solo mías», tipos (uno o varios) y «Solicitada por» a la vista; arrastrar con el mouse. «Agregar lista» al final, «⋯» por lista. Sin listas (pizarra nueva), un aviso que invita a agregar la primera. Banner de solo lectura si está archivada. |
+| `#/pizarras` | Mis pizarras | Activas con un resumen de una línea (actividades · listas · tuyas), miembros y vencidas; archivadas aparte. Aviso de instalación. (`#/proyectos…` redirige aquí.) «Nueva pizarra» pide el nombre y **«Empezar con»** *(2026-10-20)*: Pendiente · En curso · Finalizada (marcada), Pendiente · En curso · En revisión · Finalizada, las listas de otra pizarra (solo si tienes alguna con listas) o sin listas. En el tablero de una pizarra sin listas, el aviso ofrece **«Usar Pendiente · En curso · Finalizada»** a quien puede gestionar listas. |
+| `#/pizarras/<id>` | Tablero | Listas en fila (§4.6). **Buscador** *(2026-10-20)*: filtra al escribir las actividades cuyo título o descripción contienen el texto (sin mayúsculas ni acentos; con varias palabras, todas, en cualquier orden), junto con los demás filtros; Escape o la ✕ lo borran. Teléfono: buscador a la vista, pestañas por lista, «Filtrar» y botón flotante «Agregar actividad» (en la lista abierta); arrastrar manteniendo presionada. El pedazo que se asoma de la lista de al lado se ve atenuado y **tocarlo lleva a esa lista** *(2026-10-20, Ernesto)*; ese toque no abre la actividad que haya debajo, porque lo que se quería era cambiar de lista. Computadora (≥ 900 px): columnas que se desplazan por dentro, con «+» en el encabezado (agrega arriba) y «Agregar actividad» fijo al pie; buscador, «Solo mías», tipos (uno o varios) y «Solicitada por» a la vista; arrastrar con el mouse. «Agregar lista» al final, «⋯» por lista. Sin listas (pizarra nueva), un aviso que invita a agregar la primera. Banner de solo lectura si está archivada. |
 | `#/pizarras/<id>/ajustes` | Miembros y ajustes | Invitar, reenviar/cancelar, seis permisos por miembro, «Hacer dueño», quitar, tipos, solicitantes externos (renombrar, eliminar), espacio usado por los adjuntos, renombrar, archivar/restaurar, eliminar, salir. |
-| `#/mis-actividades` | Mis actividades | (`#/mis-tarjetas` redirige.) Asignadas a mí en mis pizarras activas, en cualquier lista (sin listas de cierre desde 2026-10-06), con pizarra y lista; vencidas primero, luego por fecha límite y, a igual fecha, las capturadas antes (hasta la Etapa 3.8 desempataba la prioridad). |
+| `#/mis-actividades` | Mis actividades | (`#/mis-tarjetas` redirige.) Asignadas a mí en mis pizarras activas, en cualquier lista (sin listas de cierre desde 2026-10-06), con pizarra y lista; vencidas primero, luego por fecha límite y, a igual fecha, las capturadas antes (hasta la Etapa 3.8 desempataba la prioridad). Buscador arriba *(2026-10-20)*, igual que el del tablero (título o descripción, todas las palabras); los conteos de «Vencidas» y «Asignadas a mí» cuentan solo lo encontrado. |
 | `#/perfil` | Perfil | Nombre y apellidos, contraseña, instalar, cerrar sesión. |
 
-- **Detalle de actividad** en hoja inferior (teléfono) o panel lateral (computadora): arriba,
-  bajo el título, «Editar» y «Eliminar» *(movidos 2026-10-06: al final quedaban debajo del
-  historial, que crece con cada movimiento, y había que desplazarse cada vez más para alcanzarlos;
-  se descartó unir detalle y edición en una sola vista porque el detalle ya tiene acciones
-  directas —mover de lista, palomear la checklist— y un formulario siempre abierto invita a
-  cambios accidentales)*; luego «Viene de»
-  (si nació de una checklist), lista (cambiarla con un toque; queda al final), solicitada por,
-  tipos, descripción, «Solicitada el» y «Vence el», checklist (con copiar, edición del texto en su
-  lugar y «Mover a … al completar»), adjuntos, asignados e historial (quién, de qué lista a cuál,
-  fecha y hora). *(Etapa 3.8: sin prioridad ni «Creada por … el …», que ya dice el historial.)*
-  Lo que el usuario no tiene permitido no aparece o queda deshabilitado, con una nota que remite
-  al dueño. El mismo panel tiene **un solo formulario** para alta, edición y convertir un elemento
-  de la checklist en actividad, con los mismos campos (§4.7).
+- **Actividad en una sola vista** *(Ernesto, 2026-10-20; antes, un detalle de solo lectura con
+  botón «Editar» que abría el formulario)* en hoja inferior (teléfono) o panel lateral
+  (computadora). Al tocar una actividad, quien tiene el permiso «Editar» ve directamente **su
+  formulario con todo**: arriba, bajo el título, «Eliminar» *(arriba desde 2026-10-06: al final
+  quedaba debajo del historial, que crece con cada movimiento)*; luego «Viene de» (si nació de una
+  checklist), lista (botones: un toque la mueve **arriba** de esa lista, al momento; *2026-10-20, antes al final*), título, descripción,
+  solicitada por, tipos, «Solicitada el» y «Vence el», asignados, checklist (palomear, agregar,
+  editar el texto en su lugar, copiar, convertir y «Mover a … al completar», al momento) y
+  adjuntos (al momento); «Cancelar» y «Guardar» **fijos al pie de la hoja** (`.fila-botones.fija`;
+  «Guardar» se habilita cuando hay cambios) y, debajo de todo, la sección **«Actividad»**
+  *(2026-10-20; antes «Historial»)*: la caja «Escribe un comentario…» con su botón «Comentar»
+  (o Ctrl+Enter) y una sola línea de tiempo, más reciente arriba, con los **comentarios** (avatar,
+  nombre, fecha y hora, «(editado)», y «Editar»/«Eliminar» según §4.4) y los **movimientos** del
+  historial (quién, de qué lista a cuál, fecha y hora) en texto chico. El comentario se publica
+  al momento, sin «Guardar»; un comentario escrito y sin publicar también cuenta como cambio sin
+  guardar al cerrar. En el tablero, la tarjeta muestra cuántos comentarios tiene.
+- **«Cumplida»** *(Ernesto, 2026-10-20)*: si la actividad **tiene fecha de vencimiento** (ya
+  guardada), bajo «Vence el» va la casilla **«Cumplida»**, que se guarda al momento (permiso
+  «Editar») y muestra quién y cuándo. Una cumplida **no sale «Vencida» ni «Vence hoy/mañana»**:
+  su chip, en verde (`--tf-success*`), dice **«Cumplida el 18 oct»** (la fecha en que se marcó),
+  en el tablero, en el detalle y en «Mis actividades», donde se queda en su lugar de siempre (no
+  en «Vencidas»). Marcarla y desmarcarla queda en el historial («la marcó como cumplida» / «la
+  volvió a abrir»). Sin filtro para ocultarlas.
+- **Historial de la pizarra** *(Ernesto, 2026-10-20)*: botón **«Historial»** en la cabecera del
+  tablero (en teléfono, un ícono de reloj). Abre el panel lateral (en teléfono, la hoja) con lo
+  que pasó en toda la pizarra, más reciente arriba y **agrupado por día** («Hoy», «Ayer», «lunes 18
+  de octubre»): quién **creó**, **movió** (de qué lista a cuál), **eliminó** (de qué lista) o
+  **comentó** (con el inicio del texto) qué actividad, y las conversiones de la checklist.
+  Filtro **por persona**. Carga 50 y «Ver más». **Tocar una entrada abre esa actividad** (cierra
+  el historial); las eliminadas se muestran sin enlace. Lo ven todos los miembros, también en
+  una pizarra archivada.
+- **Barra lateral que se contrae** *(Ernesto, 2026-10-20; solo computadora)*: un botón al pie de
+  la barra navy la deja en una franja de íconos (64 px) y la vuelve a abrir. Contraída, las
+  secciones muestran solo su ícono y las pizarras la inicial de su nombre, con el nombre completo
+  al pasar el mouse. Se recuerda en el navegador (`localStorage`, por persona y dispositivo); si
+  no se puede leer, abre extendida. Los campos solo se guardan con «Guardar»; **cerrar** (X, Escape, tocar el
+  velo o «Cancelar») o **convertir** un elemento con cambios sin guardar pregunta «¿Descartarlos?».
+  Convertir cambia el formulario por el de la actividad nueva; al guardarla o cancelar, regresa al
+  de la original. Quien **no** tiene «Editar» (o si la pizarra está archivada) ve la misma hoja de
+  solo lectura, con las acciones que sí tenga (mover, palomear si aplica, convertir con «Crear»,
+  eliminar). *(Etapa 3.8: sin prioridad ni «Creada por … el …», que ya dice el historial.)* Lo que
+  el usuario no tiene permitido no aparece o queda deshabilitado, con una nota que remite al
+  dueño. Alta, edición y convertir un elemento de la checklist usan los mismos campos (§4.7); al
+  crear, la lista se elige con un selector.
 - **Orden** dentro de cada lista: manual (arrastrando); una actividad nueva va al final, o arriba con el «+» del encabezado.
 - **Confirmaciones** en un diálogo propio que nombra lo afectado y la consecuencia (nunca
   `window.confirm`); **avisos** breves en pasado («Se creó la actividad.»).
@@ -563,23 +638,28 @@ a un servicio de `apps/*/servicios.py`; la API no tiene reglas propias. Salida a
 | `POST auth/recuperar/` · `auth/recuperar/confirmar/` | Pedir el código con `{correo}` (siempre `{ok: true}`) · `{correo, codigo, password}` cambia la contraseña, verifica el correo y abre la sesión. |
 | `GET, PATCH yo/` · `POST yo/password/` | Mi cuenta (`nombre_pila`, `primer_apellido`, `segundo_apellido`; contraseña). |
 | `GET yo/actividades/` | Mis actividades asignadas, en cualquier lista, de pizarras activas. |
-| `GET, POST pizarras/` | Mis pizarras (resumen con `conteos: {actividades, listas, mias, vencidas}` y mis permisos) · crear (nace sin listas, 2026-10-06). |
+| `GET, POST pizarras/` | Mis pizarras (resumen con `conteos: {actividades, listas, mias, vencidas}` y mis permisos) · crear `{nombre, plantilla, copiar_de}`: `plantilla` = `basica` · `con_revision` · `vacia` (por omisión) · `copiar` (con `copiar_de`, id de una pizarra propia; 400 si no lo es) *(2026-10-20; antes siempre sin listas)*. |
 | `GET, PATCH, DELETE pizarras/<id>/` | Detalle (miembros, listas con `n_actividades`, tipos, solicitantes, espacio de adjuntos usado y disponible, invitaciones si soy dueño) · renombrar · eliminar. |
 | `POST pizarras/<id>/{archivar,restaurar,salir,transferir}/` | Acciones de la pizarra. |
 | `PATCH, DELETE pizarras/<id>/miembros/<usuario>/` | Permisos de un miembro (`crear`, `editar`, `mover`, `eliminar`, `gestionar_listas`, `gestionar_tipos`) · quitarlo. |
 | `POST pizarras/<id>/invitaciones/` · `…/<inv>/{reenviar,cancelar}/` | Invitaciones. |
 | `POST pizarras/<id>/listas/` · `POST …/listas/orden/` | Crear lista `{nombre}` (al final) · ordenar `{ids: […]}` (todas). Devuelven la pizarra. |
 | `PATCH, DELETE listas/<id>/` | `{nombre}` · eliminar (solo vacía). Devuelven la pizarra. |
+| `POST pizarras/<id>/listas/plantilla/` | `{plantilla, copiar_de}` (como al crear la pizarra). Solo si la pizarra **no tiene listas**; permiso «Gestionar listas». Devuelve la pizarra. *(2026-10-20)* |
 | `POST pizarras/<id>/tipos/` · `PATCH, DELETE …/tipos/<tipo>/` | Tipos de actividad. |
 | `POST pizarras/<id>/solicitantes/` · `PATCH, DELETE solicitantes/<id>/` | Solicitantes externos `{nombre}` (si ya existe con otras mayúsculas, devuelve ese) · renombrar · eliminar (sus actividades quedan sin solicitante). Devuelven la pizarra. *(Etapa 3.8)* |
 | `GET, POST pizarras/<id>/actividades/` | Actividades de la pizarra (por lista y posición) · crear: `titulo` y `lista` obligatorios; opcionales `descripcion`, `fecha_solicitud`, `fecha_fin`, `tipos`, `asignados`, `solicitada_por` (id de miembro) **o** `solicitante_externo` (id) **o** `solicitante_nuevo` (nombre: lo crea o reutiliza), `checklist` (lista de textos), `lista_terminado`, `lista_al_completar` y `arriba` (`true` = posición 0). |
-| `GET, PATCH, DELETE actividades/<id>/` | Detalle con checklist, adjuntos, historial, `viene_de`, `solicitante` (`{tipo: "miembro" o "externo", id, nombre}` o `null`), `lista_terminado` y `lista_al_completar` (id o `null`) · editar (los mismos campos que al crear salvo `checklist` y `arriba`; una `lista` distinta la mueve al final de la nueva) · eliminar. |
-| `POST actividades/<id>/mover/` | `{lista, posicion}` (sin posición, al final). Cambiar de lista queda en el historial. |
+| `GET, PATCH, DELETE actividades/<id>/` | Detalle con checklist, adjuntos, historial, `viene_de`, `solicitante` (`{tipo: "miembro" o "externo", id, nombre}` o `null`), `lista_terminado` y `lista_al_completar` (id o `null`) · editar (los mismos campos que al crear salvo `checklist` y `arriba`; una `lista` distinta la mueve arriba de la nueva, *2026-10-20*) · eliminar. |
+| `POST actividades/<id>/mover/` | `{lista, posicion}` (sin posición, **arriba**; *2026-10-20, antes al final*). Cambiar de lista queda en el historial. |
+| `POST actividades/<id>/cumplida/` | `{cumplida: true o false}`: marcarla como cumplida o volverla a abrir (permiso «Editar»; 400 si no tiene fecha de vencimiento). Queda en el historial. La actividad trae `cumplida_en` y `cumplida_por`. Devuelve la actividad. *(2026-10-20)* |
 | `POST actividades/<id>/checklist/` · `POST …/checklist/orden/` | Agregar elemento `{texto}` (hasta 400) · ordenar `{ids}`. Devuelven la actividad. |
 | `PATCH, DELETE checklist/<id>/` | `{texto, hecho}` · quitar. Devuelven la actividad (ya movida si se completó y tiene `lista_al_completar`). |
 | `POST checklist/<id>/convertir/` | Crea la actividad enlazada (campos de alta de actividad; cuándo se palomea lo dice `lista_terminado` de la actividad original). Devuelve `{actividad, nueva}`. |
 | `POST actividades/<id>/adjuntos/` | Multipart, campo `archivo`. 400 si pasa de 10 MB o del espacio de la pizarra. Devuelve la actividad. *(Etapa 3.8)* |
 | `GET adjuntos/<id>/` · `DELETE adjuntos/<id>/` | Descarga (imágenes y PDF en línea, lo demás como descarga) · quitar (devuelve la actividad). *(Etapa 3.8)* |
+| `POST actividades/<id>/comentarios/` | Comentar `{texto}` (hasta 2000), cualquier miembro. Devuelve la actividad (201). El detalle trae `comentarios` (`{id, texto, autor, creado_en, editado_en}`, más reciente primero) y toda actividad trae `n_comentarios`. *(2026-10-20)* |
+| `PATCH, DELETE comentarios/<id>/` | Editar `{texto}` (solo el autor) · borrar (el autor o el dueño). Devuelven la actividad. *(2026-10-20)* |
+| `GET pizarras/<id>/historial/` | Historial de la pizarra, más reciente primero: `{entradas, mas}`. Cada entrada: `{tipo: "movimiento" o "comentario", fecha, usuario, actividad: {id (null si se eliminó), titulo}, de, a, nota, texto}` (`texto`, los primeros 140 caracteres del comentario). Parámetros: `antes` (fecha de la última entrada recibida, para «Ver más») y `persona` (id de usuario). 50 por página. Cualquier miembro. *(2026-10-20)* |
 | `GET invitaciones/<token>/` | Pública: pizarra, correo, quién invitó, estado y si ya hay cuenta. |
 | `POST invitaciones/<token>/aceptar/` · `…/registro/` | Aceptar con sesión · crear cuenta con el correo invitado (ya verificada) y aceptar. Devuelven `{pizarra}`. |
 
@@ -608,7 +688,7 @@ límite `acceso`.
   el enlace con ese correo (no se puede cambiar) y queda dentro de la pizarra. Con sesión de otra
   cuenta, se le pide salir y entrar con la correcta.
 - **Lo ajeno responde 404, no 403**, para no revelar que una pizarra, lista, actividad, elemento de
-  checklist, solicitante o adjunto existe. Las reglas (dueño, permisos, archivada) las aplican los servicios y responden
+  checklist, solicitante, adjunto o comentario existe. Las reglas (dueño, permisos, archivada) las aplican los servicios y responden
   403.
 - **Adjuntos** *(Etapa 3.8)*: no se publican en `MEDIA_URL` (nginx no sirve el
   volumen `media`); se entregan por `GET adjuntos/<id>/` con `FileResponse`, solo a miembros de la
@@ -630,6 +710,13 @@ límite `acceso`.
 - Visibilidad (§4.5): un usuario ve solo las pizarras de las que es miembro y todas sus tarjetas.
   Cada endpoint tiene prueba de que un no miembro no puede leer ni modificar
   (`apps/api/tests/test_api.py`), incluidos los de solicitantes y adjuntos (también la descarga).
+- **Comentarios** *(2026-10-20)*: los escribe cualquier miembro (sin permiso propio), los edita
+  solo su autor y los borra el autor o el dueño; nada en una pizarra archivada (403). Se guardan
+  como texto plano y la PWA los pinta escapados (nunca `v-html`). Pruebas en
+  `apps/api/tests/test_comentarios.py`.
+- **Historial de la pizarra** *(2026-10-20)*: solo miembros (404 a los demás). Muestra el título
+  de actividades ya eliminadas, que cualquier miembro ya había visto; quien sale de la pizarra
+  deja de verlo. Pruebas en `apps/api/tests/test_historial.py`.
 
 ## 8. Plan por etapas
 
@@ -644,6 +731,7 @@ límite `acceso`.
 | 3.6 | «Proyecto» → «Pizarra» en todo el sistema; listas libres en lugar de estatus, listas de cierre, arrastrar y soltar, historial de movimientos, checklist con tarjetas enlazadas, descripción opcional y fecha de inicio (§4.4–§4.6) | ✅ 2026-10-05 · en producción `90939ed` |
 | 3.7 | Ajustes de uso: pizarra nueva sin listas, sin listas de cierre, «Lo que llega a … cuenta como terminado» una por tarjeta bajo su checklist, «Editar» y «Eliminar» arriba del detalle (§4.4–§4.6, §5) | ✅ 2026-10-06 · **sin desplegar** |
 | 3.8 | «Tarjeta» → «Actividad» en todo el sistema, sin prioridad, «Solicitada el» y «Vence el», solicitantes, adjuntos, formulario único, checklist editable con copiar y «Mover a … al completar», filtro por varios tipos, «+» y «Agregar actividad» fijos, sin textos de ayuda (§4.7) | ✅ 2026-10-06 · **sin desplegar** |
+| 3.9 | Actividad en una sola vista (sin «Editar»), buscador en el tablero y en «Mis actividades», comentarios, historial de la pizarra (con eliminaciones), barra lateral que se contrae, plantillas de listas, la raíz que manda a la app con sesión abierta y «Cumplida» (§4.4, §4.5, §5–§7) | ✅ 2026-10-20 · **sin desplegar** |
 | 4 | Por definir: avisos por correo de asignación o vencimiento, búsqueda, comentarios en actividades, manual de usuario o tutoriales (en lugar de los textos de ayuda quitados en la 3.8) | — |
 
 ## 9. Decisiones de diseño
@@ -768,6 +856,73 @@ límite `acceso`.
   editar muestran los mismos campos. Se descartó **editar cada campo en el detalle** (como Trello):
   más trabajo y, como ya se anotó en §5, un formulario siempre abierto invita a cambios
   accidentales.
+- **Detalle y edición en una sola vista** (2026-10-20, Ernesto; reemplaza el «detalle de solo
+  lectura» de arriba): tener un panel para unas cosas (mover, checklist, adjuntos) y un botón
+  «Editar» para otras obligaba a adivinar dónde se cambiaba cada dato y a pasar por dos pantallas.
+  El riesgo de cambios accidentales se cubre con que **nada de los campos se guarda sin
+  «Guardar»** (deshabilitado si no hay cambios) y con la pregunta al cerrar o convertir con cambios
+  pendientes. Se descartaron **guardar cada campo al salir de él** (como Trello: más llamadas,
+  validaciones cruzadas como «Vence el» ≥ «Solicitada el» a medio capturar, y nada que deshacer) y
+  **mostrar el formulario deshabilitado a quien no puede editar** (casillas y campos vacíos se
+  leen peor que «Sin descripción»; para esa persona sigue habiendo una sola vista, de lectura).
+- **Buscador del tablero en el navegador** (2026-10-20, Ernesto): el tablero ya trae todas las
+  actividades de la pizarra con título y descripción, así que filtrar ahí es instantáneo y no
+  necesita endpoint. Busca **todas las palabras en cualquier orden** porque se recuerdan palabras
+  sueltas, no la frase exacta. Se descartaron **buscar en el servidor** (`?q=`; una llamada por
+  tecla para datos que ya están en pantalla), **incluir la checklist, los adjuntos o el
+  solicitante** (resultados que no se explican viendo la tarjeta; el solicitante ya tiene su
+  filtro) y **meterlo en la hoja «Filtrar» del teléfono** (se usa más que los otros filtros y
+  esconderlo obliga a dos toques). El mismo buscador va en «Mis actividades» *(2026-10-20,
+  Ernesto)*, que también trae todas las suyas de una vez.
+- **Comentarios en una sola línea de tiempo con el historial** (2026-10-20, Ernesto): como en
+  Trello, se lee en orden qué pasó y qué se dijo. Modelo propio (`Comentario`) y no
+  `Movimiento.nota`: el historial solo agrega filas, su nota llega a 300 caracteres y un comentario
+  se edita y se borra. **Sin permiso propio** (comenta cualquier miembro): comentar no cambia la
+  actividad, y un permiso «Comentar» sería otro botón por persona que casi nadie apagaría. Se
+  descartaron **un interruptor «Mostrar movimientos»** (los movimientos van en texto chico y no
+  estorban; se agrega si las conversaciones crecen) y **Markdown o HTML en el texto** (riesgo de
+  XSS y nada que lo pida). Editar solo el autor (nadie pone palabras en boca de otro); borrar
+  también el dueño, para limpiar. *Pendiente* (Ernesto lo dejó para después): **avisos por
+  correo** al comentar en una actividad asignada o creada por uno, y **@menciones**; conviene ver
+  primero cómo se usan los comentarios.
+- **Historial de la pizarra en un panel que se abre, a partir de `Movimiento`** (2026-10-20,
+  Ernesto): el caso es «alguien movió algo y no lo encuentro», que se resuelve viendo quién movió
+  qué y tocando la entrada. Se descartó **una columna fija a la derecha** (le quita espacio a las
+  listas y se consulta de vez en cuando). Se reusa `Movimiento` (con `pizarra` y `titulo`) en vez
+  de un modelo de eventos nuevo: ya registra crear, mover y convertir, y solo le faltaba
+  sobrevivir a la eliminación. Los comentarios se mezclan al consultar, sin copiarlos. **Las
+  ediciones de campos no se registran** *(pendiente)*: llenarían el historial de ruido (cada
+  guardado cambia varios campos) y no ayudan a encontrar una actividad. Paginado por fecha
+  (`antes`) y no por número de página, porque entran entradas nuevas mientras se lee.
+- **Plantillas de listas al crear una pizarra** (2026-10-20, Ernesto; matiza «pizarra nueva sin
+  listas» del 2026-10-06): casi siempre se arma lo mismo, y empezar vacía obligaba a escribir
+  tres listas cada vez. Sigue habiendo «Sin listas» para quien quiere las suyas. **Plantillas fijas
+  en el código** y no un modelo `Plantilla` editable: son dos y cambian poco; quien quiere otras
+  copia las de una pizarra suya, que cubre lo mismo sin pantalla de administración. Se copian
+  **solo los nombres y el orden** (no tipos ni solicitantes: cambian de una pizarra a otra). La
+  API sin `plantilla` sigue creando vacía para no cambiar lo que ya la usa; la PWA propone la
+  básica.
+- **«Cumplida» por actividad y no por lista** (2026-10-20, Ernesto): una actividad con fecha
+  pasada salía «Vencida» para siempre, aunque ya se hubiera hecho. Se descartó **volver a las
+  listas de cierre** («lo que llega a [lista] cuenta como cumplido»), quitadas el 2026-10-06
+  porque el check aparecía en todas las listas y qué cuenta como terminado depende de la
+  actividad, no de la lista. **Solo con fecha de vencimiento** (Ernesto): la marca existe para
+  quitar el «Vencida»; en una sin fecha no cambiaría nada de lo que se ve. Fecha y hora con quién
+  (y no un booleano) para poder decir «Cumplida el …». Se descartaron **una sección «Cumplidas»
+  aparte en «Mis actividades»** y **un filtro «Ocultar cumplidas»** (Ernesto): basta con que el
+  chip lo diga. *Pendiente, si hace falta:* marcarla sola al llegar a una lista.
+- **Cambiar de lista la deja arriba, no al final** (2026-10-20, Ernesto; antes «queda al final»,
+  2026-10-05): lo que acaba de llegar a una lista es lo que se busca, y sin prioridad el orden de
+  una lista ya no significa «más urgente primero». Aplica a los botones de lista del detalle, a
+  «Mover a … al completar» y a cambiar la lista por la API; arrastrar sigue dejándola donde se
+  suelta, y crear sigue igual (al final, o arriba con el «+»). Contra: quien use una lista como
+  fila de espera ve que lo nuevo se adelanta; se corrige arrastrando.
+- **«Dueño» y no «Dueña/o»** (2026-10-20, Ernesto): la etiqueta del rol pasó a «Dueño», como ya
+  decía el resto de la interfaz («Hacer dueño», «el dueño de la pizarra»). Se descartó un término
+  neutral («Responsable») porque obligaba a cambiarlo en todos los textos para no mezclarlos.
+- **Barra lateral contraíble recordada en el navegador** (2026-10-20, Ernesto): es una preferencia
+  de la vista de cada quien y en cada dispositivo, así que no va a la base. Se descartó
+  **contraerla sola al abrir una pizarra** (sorprende y cambia de lugar los botones).
 - **Solicitante: dos FK (`solicitada_por` a `Usuario` y `solicitante_externo` a `Solicitante`)**
   (2026-10-06): los miembros ya existen como usuarios y copiarlos al catálogo los dejaría
   desactualizados al cambiar su nombre o salir. Se descartaron **un `Solicitante` con FK opcional a
@@ -1132,3 +1287,132 @@ límite `acceso`.
     de producción construida y `healthy`. PWA probada con Playwright a 390 px y 1280 px: un PNG
     de 11 MB se subió como WebP de 1.5 MB, descarga en línea y como archivo, adjuntar en el
     detalle, quitar con confirmación, clip en la tarjeta y espacio en Ajustes.
+- (2026-10-20) **Cambio al esquema aprobado: detalle y edición de una actividad en una sola vista**
+  (Ernesto; §5, §9). Antes, tocar una actividad abría un detalle de solo lectura con acciones
+  directas y un botón «Editar» que cambiaba al formulario; Ernesto pidió que al tocarla se pueda
+  editar todo ahí, sin dos vistas. Lo aprobado el 2026-10-06 descartaba unirlas por los cambios
+  accidentales; se cubre con «Guardar» explícito y la pregunta al cerrar con cambios.
+  - `PanelActividad.vue`: con «Editar», la actividad abre en modo `editar` (ya no hay botón
+    «Editar» ni modo de detalle para esa persona); sin «Editar», en `ver` (solo lectura). La
+    lista de una actividad que ya existe se cambia con los botones de `.elegir-lista` (`mover/`,
+    al momento) y el `PATCH` del formulario ya no manda `lista`; al crear o convertir sigue el
+    selector. «Viene de», «Eliminar» e historial son comunes a los dos modos.
+  - Cambios sin guardar: una «huella» (JSON del formulario, sin la lista en una que ya existe) se
+    toma al llenar el formulario; si difiere, cerrar (X, Escape, velo o «Cancelar») o convertir
+    piden `confirmar()`. Después de guardar, el formulario se vuelve a llenar con lo guardado y
+    la hoja sigue abierta.
+  - La checklist dentro del formulario ya permite **convertir** (se quitó la prop `sinConvertir`
+    de `Checklist.vue`); al terminar o cancelar la conversión se regresa al formulario de la
+    original.
+  - Clase nueva `.fila-botones.fija` (sticky al pie de `.hoja`), registrada en el estándar de
+    interfaz de CLAUDE.md.
+- (2026-10-20) **Buscador en el tablero** (§5, §9). Componente `Buscador.vue` (lupa, texto y ✕;
+  Escape borra), clase `.buscador` e ícono `lupa`. En `Tablero.vue`, la búsqueda es un filtro
+  más de `pasaFiltro`: se normaliza con `normalizar()` (pasó de `ElegirSolicitante.vue` a
+  `utilidades.ts` para usar la misma en los dos lados) y se exige que cada palabra aparezca en
+  título + descripción. No cuenta en el número de «Filtrar» ni se borra con «Quitar filtros»
+  (tiene su propia ✕); sí cambia el aviso de la lista vacía a «Sin coincidencias.». En teléfono el
+  campo usa 16 px para que Safari no acerque la vista al enfocarlo. De paso, `plural()` agrega
+  «-es» tras consonante: decía «3 actividads» en el tablero, Ajustes y «⋯» de las listas.
+  - Después, ese mismo día, también en «Mis actividades» (`MisActividades.vue`). La búsqueda
+    quedó en `utilidades.ts` (`palabrasDe()` y `coincide()`) para que las dos pantallas busquen
+    igual. La búsqueda se conserva al cerrar una actividad (la lista se vuelve a cargar, el texto
+    no se borra).
+- (2026-10-20) **Comentarios** (§4.4, §5–§7, §9; Ernesto: cualquier miembro comenta, cada quien
+  edita lo suyo, el dueño también borra, sin correos por ahora y sin interruptor de movimientos).
+  - **Modelo** `Comentario` en `apps/actividades/models.py`; migración `actividades.0019`
+    (generada con `makemigrations`). Admin: inline de solo lectura en la actividad, que sí deja
+    borrar (moderar) pero no agregar.
+  - **Servicios:** `comentar`, `editar_comentario` (solo el autor; marca `editado_en` solo si el
+    texto cambió) y `eliminar_comentario` (autor o dueño). Usan `exigir_miembro` +
+    `exigir_activa` y no `exigir_permiso`, porque no hay permiso «Comentar».
+  - **API:** `POST actividades/<id>/comentarios/`, `PATCH, DELETE comentarios/<id>/`; devuelven la
+    actividad. `n_comentarios` sale de un `annotate(Count("comentarios", distinct=True))` en
+    `_actividades()` (así el tablero no trae los textos); fuera de esas consultas,
+    `representacion.actividad` lo cuenta.
+  - **PWA:** `LineaTiempo.vue` reemplaza la lista `.historial` del panel (clase quitada) y mezcla
+    comentarios y movimientos ordenados por fecha. Lo que se puede hacer con cada comentario se
+    calcula en la PWA con lo que ya trae la pizarra (`rol`, `archivada`) y la sesión: no hizo falta
+    un permiso nuevo en la API. El comentario sin publicar se le pasa al panel
+    (`v-model:borrador`) para preguntar al cerrar o convertir, sin habilitar «Guardar». Ícono
+    `comentario` y conteo en la tarjeta (`ActividadItem.vue`).
+  - Pruebas: `apps/actividades/tests/test_comentarios.py` (servicios) y
+    `apps/api/tests/test_comentarios.py` (API: 404 a quien no es miembro, 403 a quien toca el
+    comentario de otro y en pizarra archivada, conteo en el tablero, orden).
+- (2026-10-20) **Cambio al esquema aprobado: el historial ya no se borra con la actividad**
+  (§4.4; Ernesto pidió el historial de la pizarra, §5, y sin esto no quedaría rastro de quién
+  eliminó una actividad).
+  - **`Movimiento`:** `actividad` pasa de `CASCADE` a nula con `SET_NULL`; se agregan `pizarra`
+    (FK, `CASCADE`) y `titulo` (el de ese momento), e índice `(pizarra, -fecha)`. Migración
+    `actividades.0020_historial_de_pizarra`, **escrita a mano**: agrega `pizarra` nula, rellena
+    `pizarra` y `titulo` con un `Subquery` desde la actividad y la vuelve obligatoria. De regreso,
+    su última operación borra primero las filas sin actividad (si no, `actividad` no podría volver
+    a ser obligatoria). Prueba de ida y vuelta en `test_migraciones.py`.
+  - **Eliminación:** `eliminar_actividad` deja una fila con `lista_anterior` = la lista donde
+    estaba y `lista_nueva` vacía, antes de borrarla. Se codificó así y no con un campo `tipo`
+    para no rellenar un campo más: «`lista_anterior` vacía = creación» ya era la convención.
+  - **API:** `GET pizarras/<id>/historial/` (`historial_pizarra` en servicios): toma hasta 51
+    movimientos y 51 comentarios anteriores a `antes`, los mezcla por fecha y corta en 50; si
+    sobra alguno, `mas: true`. `antes` es la fecha de la última entrada tal como la mandó la API
+    (DRF la recorta a milisegundos, así que esa misma entrada queda fuera de la página
+    siguiente). Representación en `representacion.entrada_historial`.
+  - **PWA:** `HistorialPizarra.vue` (hoja; botón «Historial» en la cabecera del tablero, ícono
+    `reloj` en teléfono). Abrir una entrada cierra el historial y abre la actividad.
+  - **Barra lateral contraíble** en `App.vue`: clase `.menu-contraido` en `.armazon` (64 px),
+    iniciales de las pizarras, `aria-label` y `title` con el nombre cuando el texto no se ve;
+    `localStorage` `taskflow.menu-contraido` con `try/catch`.
+  - Pruebas: `apps/api/tests/test_historial.py` (qué trae y en qué orden, la eliminada sin
+    enlace, título actual, filtro por persona, páginas, 404 a quien no es miembro, archivada sí,
+    parámetros inválidos).
+- (2026-10-20) **Plantillas de listas** (§4.5, §5, §6, §9; Ernesto, con las recomendaciones:
+  básica y con revisión, copiar de otra pizarra, la básica marcada y el botón en las vacías).
+  Matiza lo aprobado el 2026-10-06 («la pizarra nace sin listas»): sigue siendo así si no se elige
+  plantilla.
+  - **Servicios** (`apps/pizarras/servicios.py`): `PLANTILLAS_LISTAS`, `crear_pizarra(…,
+    plantilla, copiar_de)` y `usar_plantilla` (permiso «Gestionar listas», solo sin listas). Las
+    listas se crean con `bulk_create` y no con `crear_lista`, porque al crear la pizarra el dueño
+    aún no pasa por `exigir_permiso` y los nombres ya vienen válidos y sin repetir. Copiar busca
+    el origen entre `Pizarra.objects.de_usuario(usuario)`: de una ajena responde 400
+    (`copiar_de`), sin decir si existe.
+  - **API:** `POST pizarras/` acepta `plantilla` y `copiar_de` (sin `plantilla`, vacía);
+    `POST pizarras/<id>/listas/plantilla/` nuevo.
+  - **PWA:** `FormPizarra.vue` con «Empezar con» (radios en `.opciones-filtro`; las plantillas,
+    en `PLANTILLAS_LISTAS` de `utilidades.ts`, iguales a las del servidor). «Las listas de otra
+    pizarra» solo sale si alguna de las tuyas tiene listas. En `Tablero.vue`, el aviso de pizarra
+    sin listas trae «Usar Pendiente · En curso · Finalizada»; `.aviso` ahora deja bajar un botón a
+    su propio renglón.
+  - Pruebas: `apps/pizarras/tests/test_servicios.py` (plantillas, copiar, ajena, usar en vacía y
+    con permiso) y `apps/api/tests/test_plantillas.py` (crear con y sin plantilla, plantilla
+    inválida, copiar de ajena, 404/403/400 de `usar_plantilla`).
+- (2026-10-20) **«Cumplida»** (§4.4, §5, §6, §9; Ernesto: casilla por actividad, solo con fecha de
+  vencimiento, en su lugar de siempre con «Cumplida el …», sin filtro).
+  - **Modelo:** `Actividad.cumplida_en` y `cumplida_por`; migración `actividades.0021`
+    (generada con `makemigrations`).
+  - **Servicios:** `marcar_cumplida` (permiso «Editar»; 400 sin `fecha_fin`; si no cambia nada,
+    no deja fila en el historial). `editar_actividad` la desmarca al quitar la fecha de
+    vencimiento, sin fila en el historial (el cambio que importa es el de la fecha).
+  - **Vencidas:** `representacion.conteos` (resumen de «Mis pizarras») excluye las cumplidas;
+    en la PWA, `esVencida` y `estadoFecha` (`utilidades.ts`), así que el chip, la sección
+    «Vencidas» de «Mis actividades» y su orden ya las tratan como no vencidas.
+  - **API:** `POST actividades/<id>/cumplida/`; solo `cumplida: true` (booleano) la marca.
+  - **PWA:** casilla bajo «Vence el» en `PanelActividad.vue` (solo si la fecha ya está guardada,
+    para no marcar una que el formulario aún no tiene), con quién y cuándo; chip
+    `.chip.cumplida` con el ícono `palomitaCirculo`.
+  - Pruebas: `apps/api/tests/test_cumplida.py` (marcar y desmarcar con su historial, deja de
+    contar como vencida, solo con fecha y quitarla la desmarca, 404/403 y pizarra archivada).
+- (2026-10-20) **Checklist con los palomeados al final** (§4.6): solo en `Checklist.vue` (un
+  `sort` estable por `hecho` sobre el orden manual); el servidor y el orden guardado no cambian.
+  Arrastrar un pendiente entre los hechos lo deja al final de los pendientes.
+- (2026-10-20) **Revisión de ortografía** de lo que lee el usuario (PWA, portada, correos y
+  mensajes de los servicios). Se corrigió: «La lista tiene 3 actividads» (y la concordancia
+  «muévela» / «muévelas», también en `HojaLista.vue`), «…o el dueño pueden eliminarlo» →
+  «puede», una frase de Ajustes sobre «Gestionar tipos» y, en la portada, «Miembros» → «Miembros y
+  ajustes» (el nombre real de la pantalla). Las maquetas de `docs/_mockups/` no se tocaron: son
+  referencia histórica.
+- (2026-10-20) **Cambio al esquema aprobado: cambiar de lista la deja arriba** (§4.4, §5, §6, §9;
+  antes «queda al final», aprobado el 2026-10-05). En `_mover_sin_cascada`, `posicion=None` pasa
+  de `len(hermanas)` a `0`; por eso cambian a la vez los botones del detalle (`mover/` sin
+  posición), «Mover a … al completar» y el `PATCH` con `lista`. Arrastrar manda siempre su
+  posición y no cambia. Pruebas ajustadas en `test_servicios.py` (editar la lista, mover sin
+  posición, al completar). Además, la etiqueta del rol pasó de «Dueña/o» a «Dueño» en «Mis
+  pizarras» y en «Miembros y ajustes».

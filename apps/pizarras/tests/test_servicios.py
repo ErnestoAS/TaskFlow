@@ -25,6 +25,47 @@ def test_la_pizarra_nace_sin_listas(dueno):
     assert not p.listas.exists()
 
 
+def _nombres(p):
+    return list(p.listas.order_by("posicion").values_list("nombre", flat=True))
+
+
+def test_la_pizarra_puede_nacer_con_una_plantilla(dueno):
+    """Plantillas de listas (2026-10-20)."""
+    p = servicios.crear_pizarra(dueno, "Básica", plantilla="basica")
+    assert _nombres(p) == ["Pendiente", "En curso", "Finalizada"]
+    p = servicios.crear_pizarra(dueno, "Con revisión", plantilla="con_revision")
+    assert _nombres(p) == ["Pendiente", "En curso", "En revisión", "Finalizada"]
+    with pytest.raises(ValidationError):
+        servicios.crear_pizarra(dueno, "Rara", plantilla="kanban")
+    assert not Pizarra.objects.filter(nombre="Rara").exists()
+
+
+def test_copiar_las_listas_de_una_pizarra_propia(pizarra, dueno, crear_usuario, listas):
+    servicios.ordenar_listas(
+        pizarra, dueno, [listas["Finalizada"].pk, listas["Pendiente"].pk, listas["En curso"].pk]
+    )
+    copia = servicios.crear_pizarra(dueno, "Copia", plantilla="copiar", copiar_de=pizarra.pk)
+    assert _nombres(copia) == ["Finalizada", "Pendiente", "En curso"]
+    assert not copia.actividades.exists()
+    # De una pizarra ajena no: no debe poder leer sus listas.
+    with pytest.raises(ValidationError):
+        servicios.crear_pizarra(crear_usuario(), "Ajena", plantilla="copiar", copiar_de=pizarra.pk)
+
+
+def test_usar_plantilla_solo_en_una_pizarra_vacia_y_con_permiso(
+    dueno, crear_usuario, agregar_miembro
+):
+    p = servicios.crear_pizarra(dueno, "Vacía")
+    luis = crear_usuario()
+    agregar_miembro(luis, p=p)  # sin «Gestionar listas»
+    with pytest.raises(PermisoDenegado):
+        servicios.usar_plantilla(p, luis, "basica")
+    servicios.usar_plantilla(p, dueno, "basica")
+    assert _nombres(p) == ["Pendiente", "En curso", "Finalizada"]
+    with pytest.raises(ValidationError):
+        servicios.usar_plantilla(p, dueno, "basica")
+
+
 def test_un_no_miembro_no_ve_la_pizarra(pizarra, crear_usuario):
     ajeno = crear_usuario()
     assert not Pizarra.objects.de_usuario(ajeno).exists()

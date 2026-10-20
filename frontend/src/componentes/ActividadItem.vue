@@ -41,6 +41,12 @@ const checklist = computed(() => props.actividad.checklist_conteo);
       <span v-if="actividad.n_adjuntos" class="chip avance-checklist" :title="`${actividad.n_adjuntos} adjuntos`"
         ><Icono nombre="clip" /> {{ actividad.n_adjuntos }}</span
       >
+      <span
+        v-if="actividad.n_comentarios"
+        class="chip avance-checklist"
+        :title="actividad.n_comentarios === 1 ? '1 comentario' : `${actividad.n_comentarios} comentarios`"
+        ><Icono nombre="comentario" /> {{ actividad.n_comentarios }}</span
+      >
       <Avatares v-if="actividad.asignados.length" :usuarios="actividad.asignados" />
       <span v-else class="chip fecha" style="margin-left: auto">Sin asignar</span>
     </div>

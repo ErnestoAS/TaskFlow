@@ -56,7 +56,7 @@ async function creada(p: PizarraDetalle) {
           <div class="fila">
             <h3>{{ p.nombre }}</h3>
             <span v-if="p.archivada" class="chip neutro">Archivada</span>
-            <span v-if="p.rol === 'dueno'" class="etiqueta-rol">Dueña/o</span>
+            <span v-if="p.rol === 'dueno'" class="etiqueta-rol">Dueño</span>
           </div>
           <!-- Una sola línea, tenga las listas que tenga (§4.6). -->
           <div class="resumen">

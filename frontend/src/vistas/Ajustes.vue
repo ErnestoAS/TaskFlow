@@ -218,7 +218,7 @@ async function renombrado(np: PizarraDetalle) {
           <div class="nombre">
             {{ m.usuario.nombre }}{{ m.usuario.id === sesion.usuario?.id ? " (tú)" : "" }}<small>{{ m.usuario.correo }}</small>
           </div>
-          <span v-if="m.rol === 'dueno'" class="etiqueta-rol">Dueña/o</span>
+          <span v-if="m.rol === 'dueno'" class="etiqueta-rol">Dueño</span>
           <div v-else-if="soyDueno" class="acciones-persona">
             <button class="btn btn-chico btn-secundario" :disabled="ocupado" @click="transferir(m)">Hacer dueño</button>
             <button v-if="activo" class="btn btn-chico btn-peligro" :disabled="ocupado" @click="quitar(m)">Quitar</button>
@@ -289,7 +289,7 @@ async function renombrado(np: PizarraDetalle) {
         </div>
       </div>
       <div v-if="!gestionaTipos && activo" class="ayuda" style="font-size: 12px; color: var(--tf-text-muted); margin: 6px 4px 0">
-        Crear y editar tipos lo puede el dueño o quien tenga el permiso «Gestionar tipos».
+        Solo el dueño o quien tenga el permiso «Gestionar tipos» puede crear y editar tipos.
       </div>
 
       <div class="seccion-titulo">Solicitantes · {{ p.solicitantes.length }}</div>

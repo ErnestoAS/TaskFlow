@@ -3,8 +3,9 @@ Actividades: la unidad de trabajo de TaskFlow (§4.4 y §4.6 de la propuesta).
 
 Cada actividad pertenece a una pizarra y está en una de sus listas, en una posición (orden manual).
 Tiene título, descripción, fecha de solicitud y fecha límite (opcionales), cero o más
-asignados (miembros de la pizarra), cero o más tipos (de la misma pizarra) y una checklist. Cada
-creación, movimiento entre listas y conversión de la checklist queda en `Movimiento`.
+asignados (miembros de la pizarra), cero o más tipos (de la misma pizarra), una checklist,
+adjuntos y comentarios. Cada creación, movimiento entre listas y conversión de la checklist queda
+en `Movimiento`.
 
 Las reglas (permisos, que los asignados sean miembros, que lista y tipos sean de la pizarra)
 viven en `servicios.py`: la base de datos no puede expresarlas.
@@ -102,7 +103,7 @@ class Actividad(TimeStampedModel):
         help_text="Vacía: los elementos de la checklist se palomean a mano.",
     )
     # «Mover a [lista] al completar» (Etapa 3.8): cuando su checklist pasa de incompleta a
-    # completa, la actividad se mueve sola al final de esta lista. Despalomear no la regresa.
+    # completa, la actividad se mueve sola arriba de esta lista. Despalomear no la regresa.
     lista_al_completar = models.ForeignKey(
         "pizarras.Lista",
         verbose_name="al completar la checklist, mover a",
@@ -111,6 +112,17 @@ class Actividad(TimeStampedModel):
         on_delete=models.SET_NULL,
         related_name="+",
         help_text="Vacía: completar la checklist no la mueve.",
+    )
+    # «Cumplida» (2026-10-20): solo con fecha de vencimiento, para que deje de salir vencida. Fecha
+    # y hora (no booleano) para decir «Cumplida el …». Reglas en `servicios.marcar_cumplida`.
+    cumplida_en = models.DateTimeField("cumplida el", null=True, blank=True)
+    cumplida_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        verbose_name="cumplida por",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="actividades_cumplidas",
     )
 
     class Meta:
@@ -137,17 +149,35 @@ class Actividad(TimeStampedModel):
 
 class Movimiento(models.Model):
     """
-    Historial de la actividad (§4.6): quién la creó o la movió de qué lista a cuál, fecha y hora.
-    Guarda el NOMBRE de las listas (no una FK) porque las listas se renombran y se eliminan, y el
-    historial debe seguir diciendo lo que pasó. `lista_anterior` vacía = la creación. `nota`
-    describe un evento que no es un movimiento (convertir un elemento de la checklist).
+    Historial de la actividad (§4.6) y de su pizarra (§5): quién la creó, la movió de qué lista a
+    cuál o la eliminó, fecha y hora. Guarda el NOMBRE de las listas (no una FK) porque las listas
+    se renombran y se eliminan, y el historial debe seguir diciendo lo que pasó. `lista_anterior`
+    vacía = la creación; `lista_nueva` vacía = la eliminación (2026-10-20). `nota` describe un
+    evento que no es un movimiento (convertir un elemento de la checklist).
 
-    Solo se agregan filas; las escriben los servicios en la misma transacción que el cambio.
+    Solo se agregan filas; las escriben los servicios en la misma transacción que el cambio. Al
+    eliminar la actividad, sus filas se quedan (sin enlace) en el historial de la pizarra, con el
+    título que tenía (`titulo`).
     """
 
+    # SET_NULL desde 2026-10-20 (antes CASCADE): el historial de la pizarra debe decir quién
+    # eliminó qué.
     actividad = models.ForeignKey(
-        Actividad, verbose_name="actividad", on_delete=models.CASCADE, related_name="movimientos"
+        Actividad,
+        verbose_name="actividad",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="movimientos",
+        help_text="Vacía si la actividad se eliminó: su historial se queda en el de la pizarra.",
     )
+    pizarra = models.ForeignKey(
+        "pizarras.Pizarra",
+        verbose_name="pizarra",
+        on_delete=models.CASCADE,
+        related_name="movimientos",
+    )
+    titulo = models.CharField("título de la actividad", max_length=200, blank=True)
     lista_anterior = models.CharField("lista anterior", max_length=50, blank=True)
     lista_nueva = models.CharField("lista nueva", max_length=50, blank=True)
     nota = models.CharField("nota", max_length=300, blank=True)
@@ -166,13 +196,16 @@ class Movimiento(models.Model):
         verbose_name = "movimiento"
         verbose_name_plural = "historial"
         ordering = ["-fecha", "-id"]
-        indexes = [models.Index(fields=["actividad", "-fecha"], name="movimiento_actividad_fecha")]
+        indexes = [
+            models.Index(fields=["actividad", "-fecha"], name="movimiento_actividad_fecha"),
+            models.Index(fields=["pizarra", "-fecha"], name="movimiento_pizarra_fecha"),
+        ]
 
     def __str__(self):
         if self.nota:
-            return f"{self.actividad}: {self.nota}"
+            return f"{self.titulo}: {self.nota}"
         de = self.lista_anterior or "creación"
-        return f"{self.actividad}: {de} → {self.lista_nueva}"
+        return f"{self.titulo}: {de} → {self.lista_nueva or 'eliminada'}"
 
 
 class ElementoChecklist(TimeStampedModel):
@@ -250,6 +283,39 @@ class Adjunto(TimeStampedModel):
 
     def __str__(self):
         return self.nombre
+
+
+class Comentario(TimeStampedModel):
+    """
+    Comentario en una actividad (2026-10-20, §4.4). Lo escribe cualquier miembro, lo edita su autor
+    y lo borra el autor o el dueño (reglas en `servicios.py`). Texto plano. No va al historial.
+    """
+
+    actividad = models.ForeignKey(
+        Actividad, verbose_name="actividad", on_delete=models.CASCADE, related_name="comentarios"
+    )
+    autor = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        verbose_name="autor",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="comentarios",
+        help_text="Vacío si la cuenta se borró: el comentario se conserva («Usuario eliminado»).",
+    )
+    texto = models.TextField("texto")
+    editado_en = models.DateTimeField("editado en", null=True, blank=True)
+
+    class Meta:
+        verbose_name = "comentario"
+        verbose_name_plural = "comentarios"
+        ordering = ["-creado_en", "-id"]
+        indexes = [
+            models.Index(fields=["actividad", "-creado_en"], name="comentario_actividad_fecha")
+        ]
+
+    def __str__(self):
+        return self.texto[:60]
 
 
 @receiver(post_delete, sender=Adjunto)

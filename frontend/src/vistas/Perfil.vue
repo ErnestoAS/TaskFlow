@@ -75,7 +75,8 @@ async function cerrarSesion() {
     <div class="tarjeta-blanca lista-acciones">
       <button @click="abrir('nombre')"><span class="nombre">Cambiar nombre</span></button>
       <button @click="abrir('password')"><span class="nombre">Cambiar contraseña</span></button>
-      <a v-if="!instalacion.instalada" :href="RAIZ"
+      <!-- `?portada=1`: con sesión, la raíz redirige a la app (2026-10-20); aquí se quiere ver. -->
+      <a v-if="!instalacion.instalada" :href="`${RAIZ}?portada=1#instalar`"
         ><span class="nombre">Instalar la app<small>Pasos en la página de instalación</small></span></a
       >
     </div>

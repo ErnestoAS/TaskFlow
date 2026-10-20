@@ -1,7 +1,7 @@
 from django.conf import settings
 from django.db import connection
 from django.http import HttpResponse, JsonResponse
-from django.shortcuts import render
+from django.shortcuts import redirect, render
 
 
 def healthz(request):
@@ -15,7 +15,13 @@ def healthz(request):
 
 
 def portada(request):
-    """Qué es TaskFlow y cómo instalar la app (§5, maqueta instalacion-v2.html)."""
+    """
+    Qué es TaskFlow y cómo instalar la app (§5.1, maqueta instalacion-v2.html). Con la sesión
+    abierta manda directo a la app (2026-10-20), salvo con `?portada=1` (Perfil → «Instalar la
+    app», que viene a ver los pasos).
+    """
+    if request.user.is_authenticated and "portada" not in request.GET:
+        return redirect("pwa")
     return render(
         request, "core/portada.html", {"registro_abierto": settings.TASKFLOW_REGISTRO_ABIERTO}
     )

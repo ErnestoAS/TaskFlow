@@ -1,12 +1,16 @@
 <!--
   Tablero de una pizarra (§5, §4.6): sus listas en fila, con desplazamiento horizontal.
   - Teléfono: una lista por pantalla; arriba, pestañas con las listas (también se recorren
-    deslizando) y un solo botón «Filtrar» que abre una hoja. Arrastrar: mantener presionada.
+    deslizando o tocando el pedazo atenuado de la de al lado) y un solo botón «Filtrar» que abre
+    una hoja. Arrastrar: mantener presionada.
     Botón flotante «Agregar actividad» en la lista que está a la vista.
   - Computadora: columnas de 284 px con los filtros a la vista, que se desplazan por dentro para
     que «Agregar actividad» (al pie) quede siempre a la vista. Arrastrar con el mouse.
   - Filtros (Etapa 3.8): «Solo mías», uno o varios tipos (sale la que tenga cualquiera) y
-    «Solicitada por».
+    «Solicitada por». Buscador (2026-10-20): texto en el título o la descripción, sin mayúsculas ni
+    acentos y con todas las palabras en cualquier orden; en el navegador, porque el tablero ya
+    tiene todas las actividades. En teléfono va a la vista, fuera de «Filtrar».
+  - «Historial» (2026-10-20) en la cabecera: lo que pasó en toda la pizarra (HistorialPizarra.vue).
   - Orden manual dentro de cada lista; «+» en el encabezado de cada lista (agrega arriba) y
     «Agregar lista» al final (Etapa 3.8). Las opciones de una lista, en su «⋯».
 -->
@@ -16,9 +20,11 @@ import { useRouter } from "vue-router";
 
 import { api, ErrorApi, mensajeDeError } from "../api";
 import { vArrastrable, type Soltado } from "../arrastre";
+import Buscador from "../componentes/Buscador.vue";
 import Cabecera from "../componentes/Cabecera.vue";
 import Chips from "../componentes/Chips.vue";
 import Hoja from "../componentes/Hoja.vue";
+import HistorialPizarra from "../componentes/HistorialPizarra.vue";
 import HojaLista from "../componentes/HojaLista.vue";
 import Icono from "../componentes/Icono.vue";
 import PanelActividad from "../componentes/PanelActividad.vue";
@@ -27,7 +33,7 @@ import { recargarPizarras } from "../pizarras";
 import { sesion } from "../sesion";
 import type { Lista, PizarraDetalle, Actividad } from "../tipos";
 import { avisar } from "../ui";
-import { plural } from "../utilidades";
+import { coincide, palabrasDe, PLANTILLAS_LISTAS, plural } from "../utilidades";
 
 const props = defineProps<{ id: number }>();
 const router = useRouter();
@@ -38,7 +44,9 @@ const soloMias = ref(false);
 const filtroTipos = ref<number[]>([]);
 /** «miembro:3» o «externo:5»; vacío = cualquiera. */
 const filtroSolicitante = ref("");
+const busqueda = ref("");
 const filtrosAbiertos = ref(false);
+const historialAbierto = ref(false);
 const panel = ref<{ id: number | null; lista?: number; arriba?: boolean } | null>(null);
 const hojaLista = ref<Lista | null>(null);
 const agregandoLista = ref(false);
@@ -68,6 +76,8 @@ watch(
     soloMias.value = false;
     filtroTipos.value = [];
     filtroSolicitante.value = "";
+    busqueda.value = "";
+    historialAbierto.value = false;
     panel.value = null;
     hojaLista.value = null;
     agregandoLista.value = false;
@@ -80,7 +90,9 @@ const permisos = computed(() => pizarra.value?.permisos);
 const nFiltros = computed(
   () => (soloMias.value ? 1 : 0) + (filtroTipos.value.length ? 1 : 0) + (filtroSolicitante.value ? 1 : 0),
 );
-const filtrando = computed(() => nFiltros.value > 0);
+/** Las palabras buscadas, normalizadas; sale la actividad que las tenga todas. */
+const palabras = computed(() => palabrasDe(busqueda.value));
+const filtrando = computed(() => nFiltros.value > 0 || palabras.value.length > 0);
 /** Quienes pueden haber solicitado: los miembros y el catálogo de externos. */
 const solicitantes = computed(() => {
   const p = pizarra.value;
@@ -111,7 +123,8 @@ const pasaFiltro = (t: Actividad) =>
   (!soloMias.value || t.asignados.some((u) => u.id === sesion.usuario?.id)) &&
   (!filtroTipos.value.length || t.tipos.some((id) => filtroTipos.value.includes(id))) &&
   (!filtroSolicitante.value ||
-    (!!t.solicitante && `${t.solicitante.tipo}:${t.solicitante.id}` === filtroSolicitante.value));
+    (!!t.solicitante && `${t.solicitante.tipo}:${t.solicitante.id}` === filtroSolicitante.value)) &&
+  coincide(t, palabras.value);
 
 function alternarTipo(id: number) {
   const i = filtroTipos.value.indexOf(id);
@@ -181,6 +194,17 @@ function saltarA(listaId: number) {
     ?.scrollIntoView({ behavior: "smooth", inline: "start", block: "nearest" });
 }
 
+/**
+ * Teléfono (2026-10-20): tocar el pedazo que se asoma de la lista de al lado la trae a la vista,
+ * como su pestaña. Ese toque no abre la actividad que haya debajo: se quería ir a la lista.
+ */
+function alTocarColumna(ev: MouseEvent, listaId: number) {
+  if (listaVisible.value === listaId || !window.matchMedia("(max-width: 899px)").matches) return;
+  ev.stopPropagation();
+  ev.preventDefault();
+  saltarA(listaId);
+}
+
 /** Teléfono: la pestaña marcada sigue a la lista que está a la vista al deslizar. */
 function alDesplazar() {
   const t = tablero.value;
@@ -206,6 +230,26 @@ async function agregarLista() {
     tablero.value?.scrollTo({ left: tablero.value.scrollWidth, behavior: "smooth" });
   } catch (e) {
     errorLista.value = e instanceof ErrorApi ? (e.campos.nombre ?? e.message) : mensajeDeError(e);
+  }
+}
+
+const aplicandoPlantilla = ref(false);
+
+/** Pizarra sin listas: le pone las de la plantilla básica (2026-10-20). */
+async function usarPlantilla() {
+  aplicandoPlantilla.value = true;
+  try {
+    const p = await api<PizarraDetalle>(`pizarras/${props.id}/listas/plantilla/`, "POST", {
+      plantilla: PLANTILLAS_LISTAS[0][0],
+    });
+    pizarra.value = p;
+    listaVisible.value = p.listas[0]?.id ?? null;
+    avisar("Se agregaron las listas.");
+    recargarPizarras().catch(() => undefined);
+  } catch (e) {
+    avisar(mensajeDeError(e));
+  } finally {
+    aplicandoPlantilla.value = false;
   }
 }
 
@@ -240,11 +284,22 @@ function quitarFiltros() {
 <template>
   <Cabecera :titulo="pizarra?.nombre ?? 'Pizarra'" :sub="sub" :atras="{ name: 'pizarras' }">
     <template #acciones>
+      <button v-if="pizarra" class="btn btn-chico btn-secundario" @click="historialAbierto = true">
+        <Icono nombre="reloj" /> Historial
+      </button>
       <RouterLink :to="{ name: 'ajustes', params: { id } }" class="btn btn-chico btn-secundario"
         ><Icono nombre="personas" /> Miembros y ajustes</RouterLink
       >
     </template>
     <template #telefono>
+      <button
+        v-if="pizarra"
+        class="btn-icono solo-telefono"
+        aria-label="Historial de la pizarra"
+        @click="historialAbierto = true"
+      >
+        <Icono nombre="reloj" />
+      </button>
       <RouterLink :to="{ name: 'ajustes', params: { id } }" class="btn-icono solo-telefono" aria-label="Miembros y ajustes"
         ><Icono nombre="personas"
       /></RouterLink>
@@ -271,6 +326,7 @@ function quitarFiltros() {
         <button v-if="pizarra.rol === 'dueno'" class="btn btn-chico btn-secundario" @click="restaurar">Restaurar</button>
       </div>
 
+      <Buscador v-model="busqueda" class="solo-telefono" />
       <div class="barra-tel solo-telefono">
         <button class="btn btn-chico btn-secundario" @click="filtrosAbiertos = true">
           <Icono nombre="filtro" /> Filtrar<span v-if="filtrando" class="contador">{{ nFiltros }}</span>
@@ -281,6 +337,7 @@ function quitarFiltros() {
 
       <div class="filtros solo-computadora">
         <span>{{ plural(actividades.length, "actividad") }}</span>
+        <Buscador v-model="busqueda" />
         <label class="filtro-solicitante">
           Solicitada por
           <select v-model="filtroSolicitante">
@@ -315,12 +372,29 @@ function quitarFiltros() {
         <Icono nombre="info" />
         <span>{{
           permisos?.gestionar_listas
-            ? "Esta pizarra aún no tiene listas. Agrega la primera (por ejemplo «Pendiente») para empezar a crear actividades."
+            ? "Esta pizarra aún no tiene listas. Agrega la primera (por ejemplo «Pendiente») para empezar a crear actividades, o usa las de siempre."
             : "Esta pizarra aún no tiene listas. Pídele al dueño que agregue la primera."
         }}</span>
+        <!-- Plantilla (2026-10-20): para las pizarras que nacieron vacías. -->
+        <button
+          v-if="permisos?.gestionar_listas"
+          class="btn btn-chico btn-primario"
+          :disabled="aplicandoPlantilla"
+          @click="usarPlantilla"
+        >
+          Usar {{ PLANTILLAS_LISTAS[0][1].join(" · ") }}
+        </button>
       </div>
       <div ref="tablero" class="tablero" @scroll.passive="alDesplazar">
-        <section v-for="l in pizarra.listas" :key="l.id" class="lista" :data-columna="l.id" :aria-label="l.nombre">
+        <section
+          v-for="l in pizarra.listas"
+          :key="l.id"
+          class="lista"
+          :class="{ 'de-lado': listaVisible !== l.id }"
+          :data-columna="l.id"
+          :aria-label="l.nombre"
+          @click.capture="alTocarColumna($event, l.id)"
+        >
           <div class="lista-cab">
             <h3 :title="l.nombre">{{ l.nombre }}</h3>
             <span class="num">{{ visibles(l.id).length }}</span>
@@ -354,7 +428,7 @@ function quitarFiltros() {
               :tipos="pizarra.tipos"
               @abrir="panel = { id: $event }"
             />
-            <div v-if="!visibles(l.id).length" class="vacio">{{ filtrando ? "Nada con este filtro." : "Sin actividades." }}</div>
+            <div v-if="!visibles(l.id).length" class="vacio">{{ palabras.length ? "Sin coincidencias." : filtrando ? "Nada con este filtro." : "Sin actividades." }}</div>
           </div>
           <button
             v-if="permisos?.crear"
@@ -408,6 +482,14 @@ function quitarFiltros() {
     @guardada="(t) => { if (!panel?.id) panel = { id: t.id }; refrescar(); }"
     @eliminada="refrescar"
     @abrir="(id) => (panel = { id })"
+  />
+
+  <!-- Abrir una entrada cierra el historial: dos hojas encimadas no caben en el teléfono. -->
+  <HistorialPizarra
+    v-if="historialAbierto && pizarra"
+    :pizarra="pizarra"
+    @cerrar="historialAbierto = false"
+    @abrir="(id) => ((historialAbierto = false), (panel = { id }))"
   />
 
   <HojaLista

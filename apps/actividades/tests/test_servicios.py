@@ -130,14 +130,16 @@ def test_varios_tipos_y_asignados(pizarra, dueno, crear_usuario, agregar_miembro
     assert set(t.asignados.all()) == {dueno, luis} and set(t.tipos.all()) == {t1, t2}
 
 
-def test_editar_la_lista_la_mueve_al_final_y_pide_mover(
+def test_editar_la_lista_la_mueve_arriba_y_pide_mover(
     pizarra, dueno, listas, crear_usuario, agregar_miembro
 ):
-    """Mismo formulario de alta y edición (Etapa 3.8): cambiar la lista es un movimiento."""
+    """Mismo formulario de alta y edición (Etapa 3.8): cambiar la lista es un movimiento. Queda
+    arriba de la nueva desde 2026-10-20 (antes al final)."""
     servicios.crear_actividad(pizarra, dueno, titulo="ya", lista=listas["Finalizada"])
     t = servicios.crear_actividad(pizarra, dueno, titulo="a")
     servicios.editar_actividad(t, dueno, titulo="a2", lista=listas["Finalizada"].pk)
-    assert (t.titulo, t.lista, t.posicion) == ("a2", listas["Finalizada"], 1)
+    assert (t.titulo, t.lista, t.posicion) == ("a2", listas["Finalizada"], 0)
+    assert _orden(listas["Finalizada"]) == ["a2", "ya"]
     assert _historial(t)[-1] == ("Pendiente", "Finalizada", "")
     luis = crear_usuario()
     agregar_miembro(luis)
@@ -174,15 +176,16 @@ def test_mover_a_otra_lista_en_una_posicion(pizarra, dueno, listas):
     assert _historial(a)[-1] == ("Pendiente", "En curso", "")
 
 
-def test_mover_sin_posicion_va_al_final_y_reordenar_no_deja_historial(pizarra, dueno, listas):
-    a = servicios.crear_actividad(pizarra, dueno, titulo="a")
+def test_mover_sin_posicion_va_arriba_y_reordenar_no_deja_historial(pizarra, dueno, listas):
+    """Sin posición, arriba (2026-10-20; antes al final)."""
+    servicios.crear_actividad(pizarra, dueno, titulo="a")
     servicios.crear_actividad(pizarra, dueno, titulo="b")
-    servicios.crear_actividad(pizarra, dueno, titulo="c")
-    servicios.mover_actividad(a, dueno, listas["Pendiente"])
-    assert _orden(listas["Pendiente"]) == ["b", "c", "a"]
-    servicios.mover_actividad(a, dueno, listas["Pendiente"], 0)
+    c = servicios.crear_actividad(pizarra, dueno, titulo="c")
+    servicios.mover_actividad(c, dueno, listas["Pendiente"])
+    assert _orden(listas["Pendiente"]) == ["c", "a", "b"]
+    servicios.mover_actividad(c, dueno, listas["Pendiente"], 2)
     assert _orden(listas["Pendiente"]) == ["a", "b", "c"]
-    assert len(_historial(a)) == 1  # solo la creación
+    assert len(_historial(c)) == 1  # solo la creación
 
 
 def test_mover_solo_a_listas_de_la_pizarra(pizarra, dueno):
@@ -414,9 +417,7 @@ def test_elementos_de_hasta_400_caracteres(padre, dueno):
         servicios.agregar_elemento(padre, dueno, "x" * 401)
 
 
-def test_al_completar_la_mueve_al_final_una_vez(
-    padre, dueno, listas, crear_usuario, agregar_miembro
-):
+def test_al_completar_la_mueve_arriba_una_vez(padre, dueno, listas, crear_usuario, agregar_miembro):
     servicios.crear_actividad(
         pizarra=padre.pizarra, usuario=dueno, titulo="ya", lista=listas["Finalizada"]
     )
@@ -432,7 +433,7 @@ def test_al_completar_la_mueve_al_final_una_vez(
     assert padre.lista == listas["Pendiente"]
     servicios.editar_elemento(c, luis, hecho=True)
     padre.refresh_from_db()
-    assert (padre.lista, padre.posicion) == (listas["Finalizada"], 1)
+    assert (padre.lista, padre.posicion) == (listas["Finalizada"], 0)
     assert _historial(padre)[-1] == ("Pendiente", "Finalizada", "")
     # Despalomear no la regresa; volver a completarla estando ahí no hace nada.
     servicios.editar_elemento(c, luis, hecho=False)

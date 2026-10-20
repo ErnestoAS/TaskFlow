@@ -108,6 +108,31 @@ export interface Movimiento {
   nota: string | null;
 }
 
+/**
+ * Una entrada del historial de la pizarra (2026-10-20): un movimiento (creación: de = null;
+ * eliminación: a = null; o una nota) o un comentario (`texto`, recortado). `actividad.id` es null
+ * si la actividad se eliminó.
+ */
+export interface EntradaHistorial {
+  tipo: "movimiento" | "comentario";
+  fecha: string;
+  usuario: Usuario | null;
+  actividad: { id: number | null; titulo: string };
+  de: string | null;
+  a: string | null;
+  nota: string | null;
+  texto: string | null;
+}
+
+/** Comentario en una actividad (2026-10-20). Texto plano: se pinta escapado, nunca con v-html. */
+export interface Comentario {
+  id: number;
+  texto: string;
+  autor: Usuario | null;
+  creado_en: string;
+  editado_en: string | null;
+}
+
 export interface ElementoChecklist {
   id: number;
   texto: string;
@@ -138,11 +163,17 @@ export interface Actividad {
   solicitante: SolicitanteDeActividad | null;
   creada_por: Usuario | null;
   creado_en: string;
+  /** «Cumplida» (2026-10-20): solo con `fecha_fin`; ya no sale vencida. */
+  cumplida_en: string | null;
+  cumplida_por: Usuario | null;
   checklist_conteo: { hechos: number; total: number } | null;
   viene_de: { id: number; titulo: string; elemento: string } | null;
   n_adjuntos: number;
+  n_comentarios: number;
   /** Solo en el detalle. */
   checklist?: ElementoChecklist[];
   historial?: Movimiento[];
   adjuntos?: Adjunto[];
+  /** Más reciente primero. */
+  comentarios?: Comentario[];
 }
